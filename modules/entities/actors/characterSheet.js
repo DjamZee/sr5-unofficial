@@ -1,0 +1,370 @@
+import {
+  isAlwaysActive
+} from "../items/always-active.js"
+import {
+  ActorSheetSR5
+} from "./baseSheet.js"
+import {
+  mentorWarningLines
+} from "../items/mentor-conversion.js"
+import {
+  SR5Credstick 
+} from "../../interface/credstick.js"
+import {
+  isStoredAway
+} from "../../interface/storage-rules.js"
+import {
+  ordersForSheet
+} from "../../interface/shop-orders.js"
+import {
+  SR5_CharacterUtility
+} from "./utilityActor.js"
+import {
+  SR5_ActorHelper
+} from "./entityActor-helpers.js"
+import {
+  knowsBloodMagic, bloodPointsOf, athamesOf, athamePointsOf
+} from "../../system/blood-magic.js"
+import {
+  SR5FactionRegistry
+} from "../../interface/faction-registry.js"
+import {
+  SHEET_ACTIONS_WITHOUT_TEST
+} from "../../system/matrix-ownership.js"
+import {
+  SR5FactionsApp
+} from "../../interface/factions-app.js"
+import {
+  clearEssenceHole
+} from "../../system/essence-hole.js"
+
+/**
+ * An Actor sheet for player character type actors in the Shadowrun 5 system.
+ */
+export class SR5ActorSheet extends ActorSheetSR5 {
+  constructor(...args) {
+    super(...args)
+
+    this._shownKarmaGains = true
+    this._shownKarmaExpenses = true
+    this._shownNuyenGains = true
+    this._shownNuyenExpenses = true
+    this._shownReputationGains = true
+    this._shownReputationExpenses = true
+    this._shownUntrainedSkills = false
+    this._shownNonRollableMatrixActions = false
+    this._shownInactiveMatrixPrograms = true
+    this._shownUntrainedGroups = false
+    this._filters = {
+      skills: "",
+      matrixActions: "",
+    }
+  }
+
+  static DEFAULT_OPTIONS = {
+    classes: ["app", "window-app", "sr5", "actor", "pc"],
+    position: {
+      width: 900, height: 618 
+    },
+    window: {
+      resizable: true
+    },
+    actions: {
+      // Faction Reputation, gamemaster's window (Cutting Aces p. 156)
+      openFactions: () => SR5FactionsApp.open(),
+      // Essence lost to a removed implant (SR5 p. 53): the gamemaster gives it back when the removal was a mistake
+      clearEssenceHole: function () {
+        return clearEssenceHole(this.actor)
+      },
+    },
+  }
+
+  static PARTS = {
+    sheet: {
+      template: "systems/sr5/templates/actors/pc-sheet.hbs",
+      root: true,
+      scrollable: [".sr-panel"],
+    },
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options)
+
+    this._prepareItems(context.actor)
+    this._prepareSkills(context.actor)
+    this._prepareSkillGroups(context.actor)
+    this._prepareMatrixActions(context.actor)
+
+    context.rulesMatrixGrid = game.settings.get("sr5", "sr5MatrixGridRules")
+    context.rulesCalledShot = game.settings.get("sr5", "sr5CalledShotsRules")
+    context.rulesKillCode = game.settings.get("sr5", "sr5KillCodeRules")
+    context.matrixActionsRigger5 = game.settings.get("sr5", "sr5Rigger5Actions")
+    // Faction Reputation (Cutting Aces p. 157): read here, written by the gamemaster's window only
+    context.factionStanding = SR5FactionRegistry.standing(this.actor.id)
+    context.isGM = game.user.isGM
+    // Faille d'Essence (Chrome Flesh p. 74): derived, so not in the plain copy of the actor
+    context.essenceHole = this.actor.system.essence?.hole ?? 0
+    // Spirit Domination (Forbidden Arcana p. 176), optional rule: the leash toggle of the summoned spirits
+    context.leashRule = game.settings.get("sr5", "spiritLeash")
+
+    return context
+  }
+
+  _prepareSkills(actor) {
+    const activeSkills = {
+    }
+    const flightSkill = game.settings.get("sr5", "sr5FlightSkill")
+    for (let [key, skill] of Object.entries(actor.system.skills)) {
+      if (key === "flight" && !flightSkill) continue
+      if (skill.rating.value > 0 || this._shownUntrainedSkills) activeSkills[key] = skill
+    }
+    actor.system.skills = activeSkills
+  }
+
+  _prepareSkillGroups(actor) {
+    const activeGroups = {
+    }
+    for (let [key, group] of Object.entries(actor.system.skillGroups)) {
+      if (group.value > 0 || this._shownUntrainedGroups) {
+        activeGroups[key] = group
+      }
+    }
+    actor.system.skillGroups = activeGroups
+  }
+
+  _prepareMatrixActions(actor) {
+    const activeMatrixActions = {
+    }
+    //An AI without a device emulates Attack and Sleaze (Data Trails p. 159)
+    let emulates = SR5_CharacterUtility.isDevicelessAI(this.actor)
+    let hasAttack = emulates || actor.system.matrix.attributes.attack.value > 0
+    let hasSleaze = emulates || actor.system.matrix.attributes.sleaze.value > 0
+    let killCodeRules = game.settings.get("sr5", "sr5KillCodeRules") ? true : false
+    let rigger5Actions = game.settings.get("sr5", "sr5Rigger5Actions") ? true : false
+    for (let [key, matrixAction] of Object.entries(actor.system.matrix.actions)) {
+      //Depth actions need the AI loaded on the device it acts on (Data Trails p. 159)
+      if (emulates && matrixAction.source === "dataTrails") continue
+      let linkedAttribute = matrixAction.limit?.linkedAttribute
+      if ( (matrixAction.source === "core" || (killCodeRules && matrixAction.source === "killCode") || (rigger5Actions && matrixAction.source === "rigger5") || (matrixAction.source === "dataTrails" && actor.system.activeSpecialAttribute === "depth")) && ((matrixAction.test?.dicePool >= 0 && (linkedAttribute === "attack" && hasAttack) ) ||
+        (matrixAction.test?.dicePool >= 0 && (linkedAttribute === "sleaze" && hasSleaze) ) ||
+        (matrixAction.test?.dicePool > 0 && (linkedAttribute === "firewall" || linkedAttribute === "dataProcessing" || linkedAttribute === "") ) ||
+        this._shownNonRollableMatrixActions)) {
+        activeMatrixActions[key] = matrixAction
+      }
+      //Lot 19: the actions with no test the sheet takes (owner's actions, Grid Hop), in the unfolded list
+      else if (this._shownNonRollableMatrixActions && SHEET_ACTIONS_WITHOUT_TEST.includes(key)) activeMatrixActions[key] = matrixAction
+    }
+    actor.system.matrix.actions = activeMatrixActions
+  }
+
+  _prepareItems(actor) {
+    const knowledges = []
+    const languages = []
+    const weapons = []
+    const armors = []
+    const augmentations = []
+    const qualities = []
+    const spells = []
+    const focuses = []
+    const adeptPowers = []
+    const metamagics = []
+    const gears = []
+    const spirits = []
+    const cyberdecks = []
+    const programs = []
+    const karmas = []
+    const nuyens = []
+    // Cash the character carries, as opposed to the ledger below it
+    const credsticks = []
+    const contacts = []
+    const lifestyles = []
+    const sins = []
+    const vehicles = []
+    const vehiclesMod = []
+    const martialArts = []
+    const powers = []
+    const preparations = []
+    const complexForms = []
+    const sprites = []
+    const echoes = []
+    const ammunitions = []
+    const externalEffects = []
+    const traditions = []
+    const mentorSpirits = []
+    const rituals = []
+    const reputations = []
+    const storages = []
+
+    // Iterate through items, allocating to containers
+    for (let i of actor.items) {
+      if (i.type === "itemKnowledge") knowledges.push(i)
+      else if (i.type === "itemLanguage") languages.push(i)
+      else if (i.type === "itemQuality") qualities.push(i)
+      else if (i.type === "itemSpell") spells.push(i)
+      else if (i.type === "itemFocus") focuses.push(i)
+      else if (i.type === "itemWeapon") weapons.push(i)
+      else if (i.type === "itemArmor") armors.push(i)
+      else if (i.type === "itemAugmentation") augmentations.push(i)
+      else if (i.type === "itemAdeptPower") adeptPowers.push(i)
+      else if (i.type === "itemMartialArt") martialArts.push(i)
+      else if (i.type === "itemMetamagic") metamagics.push(i)
+      else if (i.type === "itemGear") {
+        gears.push(i)
+        // A credstick is gear like any other, and also the character's cash
+        // while they carry it: one left in a storage is listed with the gear
+        if (i.system.isCredstick && !isStoredAway(i, this.actor)) credsticks.push(i)
+      }
+      else if (i.type === "itemSpirit") spirits.push(i)
+      else if (i.type === "itemDevice") cyberdecks.push(i)
+      else if (i.type === "itemProgram") {
+        if (i.system.isActive === true || i.system.type === "agent" || this._shownInactiveMatrixPrograms) programs.push(i)
+      }
+      else if (i.type === "itemKarma") {
+        if (i.system.type == "gain" && this._shownKarmaGains) karmas.push(i)
+        if (i.system.type == "loss" && this._shownKarmaExpenses) karmas.push(i)
+      }
+      else if (i.type === "itemNuyen") {
+        if (i.system.type == "gain" && this._shownNuyenGains) nuyens.push(i)
+        if (i.system.type == "loss" && this._shownNuyenExpenses) nuyens.push(i)
+      }
+      else if (i.type === "itemContact") contacts.push(i)
+      else if (i.type === "itemLifestyle") lifestyles.push(i)
+      else if (i.type === "itemStorage") storages.push(i)
+      else if (i.type === "itemSin") sins.push(i)
+      else if (i.type === "itemVehicle") vehicles.push(i)
+      else if (i.type === "itemVehicleMod") vehiclesMod.push(i)
+      else if (i.type === "itemPower") powers.push(i)
+      else if (i.type === "itemPreparation") preparations.push(i)
+      else if (i.type === "itemComplexForm") complexForms.push(i)
+      else if (i.type === "itemSprite") sprites.push(i)
+      else if (i.type === "itemEcho") echoes.push(i)
+      else if (i.type === "itemAmmunition") ammunitions.push(i)
+      else if (i.type === "itemEffect") externalEffects.push(i)
+      else if (i.type === "itemDrug" || i.type === "itemToxin") gears.push(i)
+      else if (i.type === "itemTradition") traditions.push(i)
+      else if (i.type === "itemMentorSpirit") mentorSpirits.push(i)
+      else if (i.type === "itemRitual") rituals.push(i)
+      else if (i.type === "itemReputation") {
+        if (i.system.type == "gain" && this._shownReputationGains) reputations.push(i)
+        if (i.system.type == "loss" && this._shownReputationExpenses) reputations.push(i)
+      }
+    }
+
+    actor.knowledges = knowledges
+    actor.languages = languages
+    actor.weapons = weapons
+    actor.weaponAccessories = weapons
+      .filter(w => w.system.category === "weaponAccessory")
+      .sort((a, b) => a.name.localeCompare(b.name))
+    actor.armors = armors
+    actor.augmentations = augmentations
+    actor.qualities = qualities
+    actor.spells = spells
+    actor.focuses = focuses
+    actor.adeptPowers = adeptPowers
+    actor.metamagics = metamagics
+    //Blood Magic Points at hand (Street Grimoire p. 90), for a magician who knows Sacrifice or Cannibalize
+    actor.bloodMagicPoints = {
+      known: knowsBloodMagic(this.actor) || athamesOf(this.actor).length > 0, value: bloodPointsOf(this.actor),
+      athame: athamePointsOf(this.actor), hasAthame: athamesOf(this.actor).length > 0,
+      cannibalize: !!this.actor.system.magic?.metamagics?.cannibalize,
+    }
+    actor.spirits = spirits
+    actor.gears = gears
+    actor.cyberdecks = cyberdecks
+    actor.programs = programs
+    // The files it stores (SR5 p. 228)
+    actor.files = Array.from(actor.items).filter(i => i.type === "itemFile")
+    actor.karmas = karmas
+    actor.nuyens = nuyens
+    actor.credsticks = credsticks
+    actor.cashOnHand = SR5Credstick.cashOnHand(this.actor)
+    // Bought, paid, not delivered yet (SR5 p. 420)
+    actor.shopOrders = ordersForSheet(this.actor)
+    actor.contacts = contacts
+    actor.lifestyles = lifestyles
+    actor.sins = sins
+    SR5_ActorHelper.markDeployedVehicles(vehicles, game.actors, SR5_ActorHelper.sidekickCreatorId(this.actor))
+    actor.vehicles = vehicles
+    actor.vehiclesMod = vehiclesMod
+    actor.martialArts = martialArts
+    actor.powers = powers
+    actor.preparations = preparations
+    actor.complexForms = complexForms
+    actor.sprites = sprites
+    actor.echoes = echoes
+    actor.ammunitions = ammunitions
+    actor.externalEffects = externalEffects
+    actor.traditions = traditions
+    actor.mentorSpirits = mentorSpirits
+    actor.mentorWarnings = mentorWarningLines(this.actor)
+    actor.rituals = rituals
+    actor.reputations = reputations
+    actor.storages = this._prepareStorages(actor, storages)
+    this._applyStoredGear(actor, storages)
+  }
+
+  /**
+   * Stored gear leaves the lists a player reads to act — Combat, Matrix,
+   * Magic — because none of it is within reach. It stays in the lists that
+   * say what the character owns, greyed out and saying where it sits, so
+   * nobody thinks their gear has gone missing.
+   */
+  _applyStoredGear(actor, storages) {
+    const names = new Map(storages.map(s => [s._id, s.name]))
+    const isStored = i => isStoredAway(i, this.actor)
+
+    // Out of reach: these lists answer "what can I do right now?"
+    actor.weapons = actor.weapons.filter(i => !isStored(i))
+    actor.weaponAccessories = actor.weaponAccessories.filter(i => !isStored(i))
+    actor.armors = actor.armors.filter(i => !isStored(i))
+    actor.ammunitions = actor.ammunitions.filter(i => !isStored(i))
+    actor.cyberdecks = actor.cyberdecks.filter(i => !isStored(i))
+    actor.programs = actor.programs.filter(i => !isStored(i))
+    actor.focuses = actor.focuses.filter(i => !isStored(i))
+
+    // Still listed: these answer "what do I own?"
+    for (const list of [actor.gears, actor.vehicles, actor.augmentations]) {
+      for (const item of list) {
+        if (isStored(item)) item.storedInName = names.get(item.system.storedIn) ?? ""
+      }
+    }
+  }
+
+  /** @override */
+  async _onDropItemCreate(itemData) {
+    switch(itemData.type){
+      case "itemTradition":
+        for (let i of this.actor.items){
+          if (i.type === "itemTradition") {
+            return ui.notifications.warn(game.i18n.localize('SR5.WARN_OnlyOneTradition'))
+          }
+        }
+        return super._onDropItemCreate(itemData)
+      case "itemDevice":
+        this._activeUnlessOneIs(itemData, i => i.type === "itemDevice")
+        return super._onDropItemCreate(itemData)
+      case "itemArmor":
+        this._activeUnlessOneIs(itemData, i => i.type === "itemArmor")
+        return super._onDropItemCreate(itemData)
+      case "itemWeapon":
+        this._activeUnlessOneIs(itemData, i => i.type === "itemWeapon" && i.system.category === itemData.system.category)
+        return super._onDropItemCreate(itemData)
+      case "itemFocus":
+      case "itemAugmentation":
+      case "itemQuality":
+      case "itemEcho":
+        itemData.system.isActive = true
+        return super._onDropItemCreate(itemData)
+      case "itemAdeptPower":
+      case "itemPower":
+      case "itemMartialArt" :
+        if (isAlwaysActive(itemData)) itemData.system.isActive = true
+        return super._onDropItemCreate(itemData)
+      case "itemVehicleMod":
+        return ui.notifications.info(game.i18n.localize('SR5.INFO_ForbiddenItemType'))
+      default:
+        return super._onDropItemCreate(itemData)
+    }
+  }
+}

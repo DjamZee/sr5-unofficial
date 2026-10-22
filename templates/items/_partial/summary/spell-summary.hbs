@@ -1,0 +1,48 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.SpellCategory'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation 'spellCategories' system.category)}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.SpellTypeShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+            {{#if system.category}}
+                {{#ife system.category 'illusion'}}{{findTranslation 'spellIllusionTypes' system.subCategory}} {{findTranslation 'spellIllusionSens' system.illusionSense}}{{/ife}}
+                {{#ife system.category 'combat'}}{{findTranslation 'spellCombatTypes' system.subCategory}}{{/ife}}
+                {{#ife system.category 'detection'}}{{findTranslation 'spellDetectionTypes' system.subCategory}} {{findTranslation 'spellDetectionSens' system.detectionSense}}{{/ife}}
+                {{#ife system.category 'manipulation'}}{{findTranslation 'spellManipulationTypes' system.subCategory}}{{/ife}}
+                {{#ife system.category 'health'}}-{{/ife}}
+            {{else}}
+                -
+            {{/if}}
+        </span>
+    </p>
+</li>
+{{#ife system.category "combat"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.DamageValue'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+            {{#if system.damageValue.base}}
+                {{system.damageValue.base}}{{findTranslation 'damageTypesShort' system.damageType}} ({{findTranslation 'specialDamageTypes' system.damageElement}}{{#if system.damageElementSecond}}/{{findTranslation 'specialDamageTypes' system.damageElementSecond}}{{/if}})
+            {{else}}
+                -
+            {{/if}}
+        </span>
+    </p>
+</li>
+{{/ife}}
+
+{{> systems/sr5/templates/items/_partial/summary/_common/durationMagic-summary.hbs}}
+
+{{> systems/sr5/templates/items/_partial/summary/_common/rangeMagic-summary.hbs}}
+
+{{#if system.preparation}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.PreparationFormula'}}</span>
+    </p>
+</li>
+{{/if}}

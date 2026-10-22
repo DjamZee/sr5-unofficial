@@ -1,0 +1,155 @@
+<!-- MODIFIERS -->
+<li class="grid SR-LigneEnTete SR-TextUppercase SR-PaddingTop10">
+    <div class="col-11">
+        {{localize 'SR5.Modifiers'}}
+        <a class="SR-DialogToggle" data-target="dicePoolModifier" data-action="show"><i class="fas fa-angle-down SR-SubColor"></i></a>
+		<a class="SR-DialogToggle" data-target="dicePoolModifier" data-action="hide" style="display: none;"><i class="fas fa-angle-up SR-SubColor"></i></a>
+    </div>
+    <div class="col-1 SR-TextCenter">
+		<input disabled type="number" name="dicePoolModifiers" value="0" data-dtype="Number" placeholder="0" />
+	</div>
+</li>
+<!-- CUSTOM MODIFIER-->
+{{> systems/sr5/templates/rolls/rollDialogPartial/customModifier.hbs}}
+<!-- SITUATIONAL EFFECTS: outside the folded list, so that they are seen -->
+{{> systems/sr5/templates/rolls/rollDialogPartial/situationalModifiers.hbs}}
+<!-- CUTTING ACES: con step, social maneuver, carried effects (lot 21) -->
+{{#if social.ca}}
+{{> systems/sr5/templates/rolls/rollDialogPartial/socialCuttingAces.hbs}}
+{{/if}}
+
+<div id="dicePoolModifier" style="display: none;">
+    <!-- ALREADY APPLIED MODIFIERS-->
+    {{#each dicePool.modifiers}}
+    <li class="grid">
+        <div class="col-11">
+            {{label}}{{localize 'SR5.Colons'}}
+            {{#if (eq type 'cumulativeDefense')}}
+                <a class="resetCumulativeDefense" data-tooltip="{{localize 'SR5.HELP_CumulativeDefenseResetMsg'}}"><em class="fas fa-sm fa-sync"></em></a>
+            {{/if}}
+        </div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" name="dicePoolModifiers" value="{{value}}" data-dtype="Number" placeholder="0" data-type="{{@key}}"/>
+        </div>
+    </li>
+    
+    {{/each}}
+
+    <!-- ATTRIBUTE CHOICE -->
+    {{#if dialogSwitch.attribute}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/attributeChoice.hbs}}
+    {{/if}}
+
+    <!-- WOUND MODIFIER-->
+    {{#if dialogSwitch.penalty}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/woundModifier.hbs}}
+    {{/if}}
+
+    <!-- RUNNING (SR5 p. 164) -->
+    {{#if dialogSwitch.running}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/runningModifier.hbs}}
+    {{/if}}
+
+    <!-- SPECIALIZATION -->
+    {{#if dialogSwitch.specialization}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/specializationModifier.hbs}}
+    {{/if}}
+
+    <!-- ATTACK - VARIOUS RANGED MODIFIERS -->
+	{{#if (and (eq test.type "attack") (eq test.typeSub "rangedWeapon"))}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/attackRangedModifier.hbs}}
+    {{/if}}
+
+    <!-- ATTACK - VARIOUS MELEE MODIFIERS -->
+    {{#if (and (eq test.type "attack") (eq test.typeSub "meleeWeapon"))}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/meleeModifier.hbs}}
+    {{/if}}
+
+    <!-- SPECIFIC SKILL TEST -->
+    {{#if (or (eq test.type 'skill') (eq test.type 'skillDicePool') (eq test.type 'vehicleRepair') (eq test.type 'vehicleModInstall') (eq test.type 'accessoryInstall'))}}
+        <!-- PERCEPTION -->
+        {{#if (eq test.typeSub "perception")}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/perceptionType.hbs}}
+        {{/if}}
+        <!-- MEDECINE && FIRST AID -->
+        {{#if (or (eq test.typeSub "medecine") (eq test.typeSub "firstAid"))}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/healingModifier.hbs}}
+        {{/if}}
+        <!-- ESCAPE ARTIST -->
+        {{#if (eq test.typeSub "escapeArtist")}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/escapeArtistModifier.hbs}}
+        {{/if}}
+        <!-- SURVIVAL -->
+        {{#if (eq test.typeSub "survival")}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/survivalModifier.hbs}}
+        {{/if}}
+        <!--ETIQUETTE / CON / INTIMIDATION / LEADERSHIP / NEGOCIATION / Impersonation / Performance -->
+        {{#if (or (eq test.typeSub "etiquette") (eq test.typeSub "con") (eq test.typeSub "intimidation") (eq test.typeSub "leadership") (eq test.typeSub "negotiation") (eq test.typeSub "impersonation") (eq test.typeSub "performance"))}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/socialModifier.hbs}}
+        {{/if}}
+        <!-- AERONAUTICS MECHANIC / ARMORER / AUTOMOTIVE MECHANIC  /CYBERTECHNOLOGY / FORGERY / HARDWARE / INDUSTRIAL MECHANIC / NAUTICAL MECHANIC -->
+        {{#if (or (eq test.typeSub "aeronauticsMechanic") (eq test.typeSub "armorer") (eq test.typeSub "automotiveMechanic") (eq test.typeSub "cybertechnology") (eq test.typeSub "forgery") (eq test.typeSub "hardware") (eq test.typeSub "industrialMechanic") (eq test.typeSub "nauticalMechanic") )}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/buildingModifier.hbs}}
+        {{/if}}
+    {{/if}}
+
+    <!-- SPELLS - FORCE - BACKGROUND COUNT -->
+    {{#if (or (eq test.type "spell") (eq test.type "preparationFormula") (eq test.type "preparation") (eq test.type "ritual") (eq test.type "power") )}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/backgroundCountModifier.hbs}}
+    {{/if}}
+
+    <!-- SUMMONING SPIRIT TYPE -->
+	{{#if (eq test.typeSub "summoning")}}
+    <li class="grid">
+        <div class="col-11 SR-SpiritTypeLabel">{{localize 'SR5.SpiritType'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" name="dicePoolModSpiritType" value="" placeholder="0" data-dtype="Number" />
+        </div>
+    {{/if}}
+
+    <!-- ASTRAL REPUTATION -->
+    {{#if magic.astralReputationMod}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/astralReputation.hbs}}
+    {{/if}}
+
+    <!-- SPIRIT AID -->
+    {{#if dialogSwitch.spiritAid}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/spiritAidModifier.hbs}}
+    {{/if}}
+
+    <!-- TARGET TYPE MODIFIERS -->
+    {{#if (eq test.typeSub "binding")}}
+        {{> systems/sr5/templates/rolls/rollDialogPartial/targetTypeModifier.hbs}}
+    {{/if}}
+
+    <!-- DEFENSE MODIFIERS -->
+    {{#if (eq test.type "defense")}}
+        {{#if (eq test.typeSub "rangedWeapon")}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/defenseRangedModifiers.hbs}}
+        {{/if}}
+        {{#if (eq test.typeSub "meleeWeapon")}}
+            {{> systems/sr5/templates/rolls/rollDialogPartial/defenseMeleeModifier.hbs}}
+        {{/if}}
+    {{/if}}
+</div>
+
+<!-- SIGNATURE TARGETING -->
+{{#if (eq test.type "sensorTarget")}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/signature.hbs}}
+{{/if}}
+
+<!-- SIGNATURE MASKING OF A VEHICLE SPOTTED WITH SENSORS (Rigger 5.0 p. 169) -->
+{{#if dialogSwitch.signatureMasking}}
+<li class="grid">
+    <div class="col-10" data-tooltip="{{localize 'SR5.SignatureMaskingSpottingHint'}}">{{localize 'SR5.SignatureMaskingSpotting'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight"><input type="checkbox" class="SR-ModCheckbox" data-target="dicePoolModSignatureMasking" data-modifier="signatureMasking" {{#if dialogSwitch.signatureMaskingChecked}}checked{{/if}}></div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModSignatureMasking" value="{{#if dialogSwitch.signatureMaskingChecked}}{{dialogSwitch.signatureMasking}}{{else}}0{{/if}}" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+{{/if}}
+
+<!-- CENTERING METAMAGIC -->
+{{#if dialogSwitch.centering}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/centering.hbs}}
+{{/if}}

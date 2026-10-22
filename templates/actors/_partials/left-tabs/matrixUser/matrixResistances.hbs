@@ -1,0 +1,56 @@
+<!-- MATRIX RESISTANCES -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete SR-TextUppercase">
+			<div class="col-12 SR-TextUppercase">{{localize 'SR5.MatrixResistances'}}</div>
+		</li>
+		<li class="grid">
+			<div class="col-10">{{localize 'SR5.MatrixDamage'}}</div>
+			<div class="col-2 SR-TextCenter"
+			data-helpTitle="{{localize 'SR5.HELP_MatrixResistance' key=(localize 'SR5.MatrixDamage') }}"
+		  	data-helpDetails="system.matrix.resistances.matrixDamage"
+			>
+				{{system.matrix.resistances.matrixDamage.dicePool}}
+			</div>
+		</li>
+			{{#if (or (eq actor.type 'actorPc') (eq actor.type 'actorGrunt'))}}
+				{{#if (or (eq system.matrix.deviceType "livingPersona") (eq system.matrix.deviceType "headcase") )}}
+					<li class="grid">
+						<div class="col-10">{{localize 'SR5.Fading'}}</div>
+						<div class="col-2 SR-TextCenter"
+						  data-helpTitle="{{localize 'SR5.HELP_MatrixResistance' key=(localize 'SR5.Fading') }}"
+		  	  			  data-helpDetails="system.matrix.resistances.fading">
+							  {{system.matrix.resistances.fading.dicePool}}
+							</div>
+					</li>
+				{{/if}}
+				<li class="grid">
+					<div class="col-10">{{localize 'SR5.BiofeedbackDamage'}}</div>
+					<div class="col-2 SR-TextCenter"
+					data-helpTitle="{{localize 'SR5.HELP_MatrixResistance' key=(localize 'SR5.BiofeedbackDamage') }}"
+		  	  		data-helpDetails="system.matrix.resistances.biofeedback"
+					>
+						{{system.matrix.resistances.biofeedback.dicePool}}
+					</div>
+				</li>
+				<li class="grid">
+					<div class="col-10">{{localize 'SR5.Dumpshock'}}</div>
+					<div class="col-2 SR-TextCenter"
+					data-helpTitle="{{localize 'SR5.HELP_MatrixResistance' key=(localize 'SR5.Dumpshock') }}"
+		  	  		data-helpDetails="system.matrix.resistances.dumpshock"
+					>
+						{{system.matrix.resistances.dumpshock.dicePool}}
+					</div>
+				</li>
+				<li class="grid">
+					<div class="col-10">{{localize 'SR5.DataBomb'}}</div>
+					<div class="col-2 SR-TextCenter"
+					data-helpTitle="{{localize 'SR5.HELP_MatrixResistance' key=(localize 'SR5.DataBomb') }}"
+		  	  		data-helpDetails="system.matrix.resistances.dataBomb"
+					>
+						{{system.matrix.resistances.dataBomb.dicePool}}
+					</div>
+				</li>
+			{{/if}}
+		</ul>
+	</div>

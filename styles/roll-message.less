@@ -1,0 +1,725 @@
+/* v13: #chat-log replaced by #chat, .message replaced by .chat-message */
+/* v13: a popped-out card is .chat-popout (id app-chat-popout-<message>): #chat-popout matched nothing, and the card
+   fell back on Foundry's parchment (DjamZ, 21/10, manual 7.1.4) */
+#chat, #chat-notifications, .chat-popout {
+  .chat-message.SRCustomMessage {
+    background-color: var(--sr-text-color-light);
+    color: var(--sr-text-color-dark);
+    border          : 2px solid var(--sr-ui-border-color);
+    line-height: normal;
+    padding: 0;
+
+    .message-content{
+      padding: 0;
+    }
+  }
+
+  .chat-message {
+    background-image   : var(--sr-img-bg-white50);
+    background-size    : cover;
+    background-position: top left;
+    background-repeat  : no-repeat;
+    background-color   : var(--sr-text-color-light);
+    border-radius   : 5px;
+    border          : 1px solid var(--sr-text-color-dark);
+    color           : var(--sr-text-color-dark);
+    margin-bottom   : 5px;
+    padding: 0;
+    line-height     : 17px;
+
+    .message-sender { white-space: normal; }
+    .message-metadata { white-space: nowrap; }
+
+    .nue {
+      padding: 4px 8px;
+    }
+
+    .message-content {
+      padding: 5px 5px 0px 5px;
+      font-family: var(--sr-font-body);
+      color: var(--sr-text-color-dark);
+
+      /* v13: remove padding when content has child elements (roll cards) */
+      &:has(*) {
+        padding: 0;
+      }
+    }
+
+    input {
+      width       : 30px;
+      text-align  : center;
+      margin-right: 5px;
+    }
+
+    /* v13: style Foundry's default header (replaces custom .SR-MessageHeader) */
+    /* Use > to avoid targeting <header class="SR-CardHeader"> inside .message-content */
+    > header {
+      background-color: var(--sr-text-color-dark);
+      line-height     : 20px;
+      padding         : 2px;
+      color           : var(--sr-text-color-light);
+      display         : flex;
+      align-items     : center;
+
+      .SRAuthorIcon {
+        width       : 25px;
+        height      : 25px;
+        flex        : 0 0 25px;
+        margin-right: 5px;
+        border-color: #95046f;
+      }
+
+      h4 {
+        font-family   : var(--sr-font-body-bold);
+        text-transform: uppercase;
+        // The SR5 red, on every card: DjamZ's call (21/10), over the 2.4:1 contrast that had it lightened in pack 5
+        color         : var(--sr-ui-border-color);
+        font-size     : var(--sr-font-size-normal);
+        flex-grow     : 2;
+        margin-bottom : 0;
+        align-self    : center;
+      }
+
+      a {
+        color        : var(--sr-ui-border-color);
+
+        &:hover {
+          color      : var(--sr-text-color-flash);
+          text-shadow: none;
+        }
+      }
+    }
+
+    .part-header {
+      margin-left       : 5px;
+      margin-right      : 5px;
+      font-family       : var(--sr-font-body-bold);
+      border-bottom: none;
+    }
+
+    .dice-tooltip {
+      .part-total {
+        border          : 1px solid var(--sr-ui-border-color);
+          background-color: color-mix(in srgb, var(--sr-ui-border-color) 50%, transparent);
+          color           : var(--sr-text-color-light);
+      }
+
+      .dice-rolls .roll.d6 {
+        background-image  : none;
+        height            : 20px;
+        width             : 20px;
+        text-align        : center;
+        margin-right      : 2.55px;
+        margin-left       : 2.55px;
+        margin-bottom     : 5px;
+        padding-top       : 1px;
+        border            : 1px solid var(--sr-ui-border-color);
+        line-height       : 17px;
+        font-family       : var(--sr-font-body);
+        font-size         : var(--sr-font-size-small);
+        font-weight       : normal;
+      }
+    }
+
+    .dice-formula {
+      padding-top        : 5px;
+      padding-bottom     : 15px;
+      text-align         : center;
+      background-image   : var(--sr-img-chat-message);
+      background-repeat  : no-repeat;
+      background-size    : cover;
+      background-position: bottom;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      font-family   : var(--sr-font-body-bold);
+      text-transform: uppercase;
+      color         : var(--sr-text-color-light);
+      font-size     : var(--sr-font-size-normal);
+      margin        : auto;
+      text-align    : center;
+    }
+
+    .dice-total {
+      margin-top    : 5px;
+      font-family   : var(--sr-font-body-bold);
+      text-transform: uppercase;
+      color         : var(--sr-text-color-light);
+      font-size     : var(--sr-font-size-normal);
+      text-align    : center;
+      line-height   : 20px;
+      margin-left     : 0px;
+      margin-right    : 0px;
+      margin-top      : 5px;
+      background-color: var(--sr-ui-border-color);
+      margin-bottom   : 0px;
+      border          : 0px;
+      border-radius   : 0px;
+      font-size: 1em;
+    }
+
+    .SR-CardHeader {
+      padding-top        : 5px;
+      padding-bottom     : 15px;
+      text-align         : center;
+      background-image   : var(--sr-img-chat-message);
+      background-repeat  : no-repeat;
+      background-size    : cover;
+      background-position: bottom;
+
+      .SRAuthorIcon {
+        width       : 35px;
+        height      : 35px;
+        margin-left : 2px;
+        margin-right: 5px;
+        border      : 1px solid var(--sr-text-color-dark);
+      }
+
+      .SR-CardHeaderTitle {
+        font-family   : var(--sr-font-body-bold);
+        text-transform: uppercase;
+        color         : var(--sr-text-color-light);
+        font-size     : var(--sr-font-size-normal);
+        margin        : auto;
+        text-align    : center;
+      }
+    }
+
+    .SR-CardContent {
+      padding    : 5px 5px 0px 5px;
+      font-family: var(--sr-font-body);
+      font-size  : var(--sr-font-size-small);
+
+      p {
+        margin: 0;
+      }
+
+      .SR-LigneEnTete {
+        border-bottom: solid 1px var(--sr-ui-border-color);
+        color: var(--sr-ui-border-color);
+        font-family: var(--sr-font-body-bold);
+      }
+
+      .SR-CardDices {
+        display        : flex;
+        flex-flow      : row wrap;
+        justify-content: center;
+        margin-top     : 5px;
+        margin-left    : -3px;
+
+        .SR-Dice {
+          height       : 20px;
+          width        : 20px;
+          text-align   : center;
+          margin-right : 2.55px;
+          margin-left  : 2.55px;
+          margin-bottom: 5px;
+          padding-top  : 1px;
+        }
+
+        .succes {
+          border          : 1px solid var(--sr-ui-border-color);
+          background-color: color-mix(in srgb, var(--sr-ui-border-color) 50%, transparent);
+          color           : var(--sr-text-color-light);
+
+          &.edge {
+            box-shadow   : 2px 2px 3px color-mix(in srgb, var(--sr-text-color-dark) 50%, transparent);
+          }
+        }
+
+        .exploded {
+          background-color: color-mix(in srgb, var(--sr-ui-border-color) 75%, transparent);
+        }
+
+        .echec {
+          border: 1px solid var(--sr-text-color-flash);
+          color : var(--sr-text-color-flash);
+
+          &.edge {
+            box-shadow   : 2px 2px 3px color-mix(in srgb, var(--sr-text-color-dark) 50%, transparent);
+          }
+        }
+
+        .glitch {
+          border          : 1px solid var(--sr-text-color-flash);
+          color           : var(--sr-text-color-light);
+          background-color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+
+          &.edge {
+            box-shadow   : 2px 2px 3px color-mix(in srgb, var(--sr-text-color-dark) 50%, transparent);
+          }
+        }
+      }
+
+      .SR5-message-hit {
+        background-color: #960570;
+        display         : flex;
+        line-height     : 20px;
+        margin-bottom   : 0px !important;
+        margin-top      : 5px;
+        padding-left    : 5px;
+        padding-right   : 5px;
+      }
+
+      .SR-UlAssensing {
+        list-style: disc;
+        padding-left: 17px;
+        padding-top: 5px;
+      }
+
+      .SR-ListAssensing {
+        display: list-item;
+      }
+    }
+
+    .SR-CardButton {
+      margin-top    : 5px;
+      font-family   : var(--sr-font-body-bold);
+      text-transform: uppercase;
+      color         : var(--sr-text-color-light);
+      font-size     : var(--sr-font-size-normal);
+      text-align    : center;
+      line-height   : 20px;
+
+      button.messageAction {
+        width       : 100%;
+        margin      : 5px 0 0 0;
+        padding     : 0 5px;
+        line-height : 20px;
+        min-height  : unset;
+        height      : auto;
+      }
+
+      .SR-CardButtonHit {
+        background-color: var(--sr-ui-border-color);
+        margin-bottom   : 0px;
+        border          : 0px;
+        border-radius   : 0px;
+      }
+
+      .endTest {
+        margin-left     : 0px;
+        margin-right    : 0px;
+        margin-top      : 5px;
+        line-height     : 20px;
+        font-family     : var(--sr-font-body-bold);
+        text-transform  : uppercase;
+        color           : var(--sr-text-color-light);
+        font-size       : var(--sr-font-size-normal);
+
+        &:hover {
+          box-shadow: none;
+        }
+      }
+
+      // The chase card's opposition (chase-roll.js) is an opposed test too: it wore the theme's teal on pink (manual 6.4.2)
+      .opposedTest, .chaseRoll {
+        background-color: var(--sr-text-color-flash);
+        line-height     : 20px;
+        margin          : 5px 0px 0px 0px;
+        border          : 0px;
+        border-radius   : 0px;
+        padding-left    : 5px;
+        padding-right   : 5px;
+        padding-top     : 0px;
+        padding-bottom  : 0px;
+        font-family     : var(--sr-font-body-bold);
+        text-transform  : uppercase;
+        color           : var(--sr-text-color-light);
+        font-size       : var(--sr-font-size-normal);
+        text-align      : center;
+        border          : 0px;
+        border-radius   : 0px;
+
+        &:hover {
+          color: var(--sr-text-color-dark);
+          box-shadow: none;
+        }
+      }
+
+      .nonOpposedTest {
+        background-color: var(--sr-text-color-dark);
+        line-height     : 20px;
+        margin          : 5px 0px 0px 0px;
+        border          : 0px;
+        border-radius   : 0px;
+        padding-left    : 5px;
+        padding-right   : 5px;
+        padding-top     : 0px;
+        padding-bottom  : 0px;
+        font-family     : var(--sr-font-body-bold);
+        text-transform  : uppercase;
+        color           : var(--sr-text-color-light);
+        font-size       : var(--sr-font-size-normal);
+        text-align      : center;
+        border          : 0px;
+        border-radius   : 0px;
+
+        &:hover {
+          color: var(--sr-text-color-flash);
+          box-shadow: none;
+        }
+      }
+
+      .attackerTest {
+        background-color: var(--sr-text-color-dark);
+        line-height     : 20px;
+        margin          : 5px 0px 0px 0px;
+        border          : 0px;
+        border-radius   : 0px;
+        padding-left    : 5px;
+        padding-right   : 5px;
+        padding-top     : 0px;
+        padding-bottom  : 0px;
+        font-family     : var(--sr-font-body-bold);
+        text-transform  : uppercase;
+        color           : var(--sr-text-color-light);
+        font-size       : var(--sr-font-size-normal);
+        text-align      : center;
+        border          : 0px;
+        border-radius   : 0px;
+
+        &:hover {
+          color: var(--sr-text-color-flash);
+          box-shadow: none;
+        }
+      }
+    }
+
+    .table-draw {
+      background: none !important;
+      padding: 0 0 4px 0;
+      border: none !important;
+      box-shadow: none !important;
+
+      // The header the card never had: core writes no title of its own, and
+      // the name of the table only appeared in the message's flavour line.
+      // Built in modules/interface/table-draw.js — core reads no template
+      // for this message.
+      .SR-TableHeader {
+        align-items: center;
+        gap: 5px;
+        padding: 4px 5px;
+        margin-bottom: 4px;
+        text-align: left;
+
+
+        .SR-TableHeaderIcon {
+          flex: 0 0 28px;
+          width: 28px;
+          height: 28px;
+          object-fit: cover;
+          border: 1px solid var(--sr-text-color-dark);
+        }
+
+        .SR-CardHeaderTitle {
+          margin: 0;
+          text-align: left;
+        }
+      }
+
+      .table-description,
+      .table-results,
+      .dice-roll {
+        margin-left: 5px;
+        margin-right: 5px;
+      }
+
+      // Table name header
+      h4, h3 {
+        font-family: var(--sr-font-title);
+        text-transform: uppercase;
+        color: var(--sr-text-color-dark);
+        border: none;
+        background: none;
+        margin: 0 0 4px 0;
+        padding: 2px 0;
+        font-size: var(--sr-font-size-normal);
+      }
+
+      // Dice formula and total
+      .dice-roll {
+        margin: 4px 0;
+
+        .dice-formula {
+          background: var(--sr-text-color-dark);
+          color: var(--sr-text-color-light);
+          font-family: var(--sr-font-title);
+          text-transform: uppercase;
+          border: none;
+          border-radius: 0;
+          padding: 2px 8px;
+        }
+
+        .dice-total {
+          background: var(--sr-text-color-flash);
+          color: var(--sr-text-color-light);
+          font-family: var(--sr-font-title);
+          border: none;
+          border-radius: 0;
+          padding: 2px 8px;
+        }
+      }
+
+      // The table's own description, above the results
+      .table-description {
+        // --sr-text-color-grey is white at half opacity: it is the discreet
+        // grey of the DARK surfaces. The body of a chat message is white, so
+        // it left this line invisible. Dimming the dark text is the version
+        // of "discreet" this surface calls for.
+        color: color-mix(in srgb, var(--sr-text-color-dark) 65%, transparent);
+        font-family: var(--sr-font-body);
+        font-size: var(--sr-font-size-small);
+        font-style: italic;
+        padding-bottom: 4px;
+
+        p {
+          margin: 0;
+        }
+
+        &:empty {
+          display: none;
+        }
+      }
+
+      // Result list
+      ol, ul {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        background: none !important;
+        border: none !important;
+      }
+
+      .table-result,
+      li {
+        background: none !important;
+        border: none !important;
+        border-bottom: 1px solid color-mix(in srgb, var(--sr-ui-border-color-idle) 30%, transparent) !important;
+        box-shadow: none !important;
+        padding: 4px 0;
+        margin: 0;
+
+        &:last-child {
+          border-bottom: none !important;
+        }
+      }
+
+      // V13 draws each result as an <img> followed by a .description block.
+      // Both are children of a .flexrow, which wraps by default and whose
+      // children are given a full-width basis: the text was pushed onto a
+      // line of its own below the icon, and a ten-result draw became a
+      // column of gaps. Keep the row on one line.
+      .table-results li {
+        flex-wrap: nowrap;
+        align-items: baseline;
+        gap: 6px;
+        padding: 2px 0;
+        line-height: 1.25;
+
+        > img {
+          flex: 0 0 20px;
+          width: 20px;
+          height: 20px;
+          object-fit: cover;
+          border: none;
+          margin: 0;
+          align-self: center;
+        }
+
+        > .description {
+          flex: 1 1 auto;
+        }
+
+        // A result that draws an actor or an item is a link: let it hug its
+        // own label instead of stretching its plate across the card
+        > .content-link {
+          flex: 0 1 auto;
+          // A long name wraps inside the card instead of running out of it (« Balles Subsoniques (Pistolet de
+          // poche) », manual 8.4.3)
+          min-width: 0;
+          white-space: normal;
+        }
+
+        // A text result's name keeps its own width, the description takes the rest: given an equal share, the name
+        // broke in the middle of a word (« intéressan-t », manual 8.4.3)
+        > .name {
+          flex: 0 1 auto;
+        }
+      }
+
+      .description {
+        color: var(--sr-text-color-dark);
+        font-family: var(--sr-font-body);
+
+        p {
+          margin: 0;
+        }
+
+        // A generator names each of its sub-tables, as a heading or as a
+        // line that is nothing but bold. Left to the core sizes, a single h1
+        // stood taller than the card's own title and drowned the answer it
+        // introduces. A bold word inside a sentence is left alone.
+        h1, h2, h3, h4, h5, h6,
+        > b:only-child,
+        > strong:only-child,
+        > p > b:only-child,
+        > p > strong:only-child {
+          display: block;
+          font-family: var(--sr-font-body-bold);
+          font-size: var(--sr-font-size-small);
+          font-weight: normal;
+          line-height: 1.3;
+          text-transform: uppercase;
+          color: var(--sr-ui-border-color);
+          border: none;
+          border-bottom: 1px solid var(--sr-ui-border-color);
+          margin: 0;
+        }
+      }
+
+      // Hide the placeholders core hands a result that has no icon of its
+      // own, and keep an icon a table really chose
+      .result-image,
+      img[src*="icons/svg/d20"],
+      img[src*="icons/svg/invisible"] {
+        display: none;
+      }
+
+      .result-text {
+        padding: 2px 0;
+        color: var(--sr-text-color-dark);
+        font-family: var(--sr-font-body);
+      }
+
+      // Any inner cards/containers
+      .result,
+      .table-result-text,
+      [class*="result"] {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+  }
+}
+
+
+
+
+.dice-roll .dice-formula {
+  background: none;
+}
+
+
+
+
+.SR5-message-edit {
+  width: 20px;
+}
+
+.SR5-message-chance {
+  width     : 20px;
+  text-align: right;
+}
+
+
+// A drawn line that came up more than once says so before its name. Written
+// into the message by core's own result template, from
+// modules/entities/rollTables/entityRollTable.js — no colour of its own, so
+// it reads the same on every surface a chat card lands on.
+// A result line is a `.flexrow`, and core hands every child of one an equal
+// share of the width. Left to itself a three-character count took 117px and
+// pushed its own text out of line with the rows above it, so the badge is
+// told to take only the room it needs.
+.SR-TableQuantity {
+  flex        : 0 0 auto;
+  font-weight : bold;
+  margin-right: 4px;
+  white-space : nowrap;
+}
+
+
+// What a table handed over, and the buttons that hand it on. One row per
+// payment — the gear, the money — under the results of a table draw,
+// inside the card core wrote.
+.SR-TablePayout {
+  margin     : 4px 5px 0 5px;
+  padding-top: 4px;
+
+  // The label above, its button under it, the whole width, like every card button (DjamZ, 21/10, manual 8.4.3)
+  .SR-TablePayoutRow {
+    align-items    : stretch;
+    display        : flex;
+    flex-direction : column;
+    gap            : 4px;
+
+    & + .SR-TablePayoutRow {
+      margin-top: 4px;
+    }
+  }
+
+  .SR-TablePayoutLabel {
+    flex       : 0 0 auto;
+    font-weight: bold;
+    text-align : center;
+  }
+
+  // Left to Foundry's variables, the theme painted these turquoise at 75 %
+  // on a half-transparent red, laid over the white card: about 1.1:1, hardly
+  // readable. They wear the colours of the system's other chat card buttons.
+  // Qualified by `.chat-message` to outweigh the theme's own
+  // `body[class*=" sr-theme-"] button`.
+  .chat-message & button {
+    flex            : 0 0 auto;
+    line-height     : normal;
+    width           : auto;
+    background-color: var(--sr-text-color-dark);
+    border          : 0px;
+    border-radius   : 0px;
+    color           : var(--sr-text-color-light);
+    font-family     : var(--sr-font-body-bold);
+    text-transform  : uppercase;
+
+    &:hover:not(:disabled) {
+      color     : var(--sr-text-color-flash);
+      box-shadow: none;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+
+// "Relancer" and "Partager" under a table draw (table-actions.js). Added at
+// render, never stored in the card; they wear the payout buttons' colours.
+.SR-TableActions {
+  align-items    : stretch;
+  display        : flex;
+  flex-direction : column;
+  gap            : 4px;
+  margin         : 4px 5px 0 5px;
+
+  .chat-message & button {
+    flex            : 0 0 auto;
+    line-height     : normal;
+    width           : auto;
+    background-color: var(--sr-text-color-dark);
+    border          : 0px;
+    border-radius   : 0px;
+    color           : var(--sr-text-color-light);
+    font-family     : var(--sr-font-body-bold);
+    text-transform  : uppercase;
+
+    &:hover:not(:disabled) {
+      color     : var(--sr-text-color-flash);
+      box-shadow: none;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}

@@ -1,0 +1,19 @@
+<li class="SR-LigneEnTete SR-PaddingTop10 grid SR-TextUppercase">
+    <div class="col-12">{{localize 'SR5.PreparationFormulaOptions'}}</div>
+</li>
+
+<!--FORCE-->
+{{> systems/sr5/templates/rolls/rollDialogPartial/force.hbs}}
+
+<!-- PREPARATION TRIGGER -->
+{{> systems/sr5/templates/rolls/rollDialogPartial/preparationTrigger.hbs}}
+
+<!-- SPIRIT AID -->
+{{#if dialogSwitch.spiritAid}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/spiritAidCommand.hbs}}
+{{/if}}
+
+<!--REAGENTS-->
+{{#if dialogSwitch.reagents}}
+      {{> systems/sr5/templates/rolls/rollDialogPartial/reagents.hbs}}
+{{/if}}

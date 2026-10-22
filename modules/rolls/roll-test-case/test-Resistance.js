@@ -1,0 +1,310 @@
+import {
+  SR5_EntityHelpers 
+} from "../../entities/helpers.js"
+import {
+  SR5_RollMessage 
+} from "../roll-message.js"
+import {
+  SR5 
+} from "../../config.js"
+import {
+  SR5Combat 
+} from "../../system/srcombat.js"
+import {
+  SR5_ActorHelper 
+} from "../../entities/actors/entityActor-helpers.js"
+import {
+  SR5_CombatHelpers
+} from "../roll-helpers/combat.js"
+import {
+  electromancerInitiative
+} from "../../entities/items/magic-masteries.js"
+
+export default async function resistanceInfo(cardData, actorId){
+  let actor = SR5_EntityHelpers.getRealActorFromID(actorId)
+  let actorData = actor.system
+  let hardenedArmor
+
+  //Remove Resist chat button from previous chat message, if necessary
+  handlePreviousButtons(cardData)
+
+  //Toxin management
+  if (cardData.test.typeSub === "toxinDamage"){
+    cardData.damage.value = cardData.damage.toxin.power - cardData.roll.hits
+    cardData.damage.type = cardData.damage.toxin.damageType
+
+    //Handle called Shot specifics
+    if (cardData.combat.calledShot.name){
+      if (cardData.previousMessage.messageId) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "spendNetHits")
+      cardData = await handleCalledShotResistanceInfo(cardData, actor)
+    }
+
+    if (cardData.damage.value > 0) {
+      //Get Damage info
+      let damage = ""
+      if (cardData.damage.type) damage = `& ${cardData.damage.value}${game.i18n.localize(SR5.damageTypesShort[cardData.damage.type])}`
+            
+      //Get Speed info
+      let speed = game.i18n.localize("SR5.ApplyToxinEffectAtTheEndOfTheRound")
+      if (cardData.damage.toxin.speed > 0) speed = `${game.i18n.format('SR5.ApplyToxinEffectAtTheEndOfXRound', {
+        round: cardData.damage.toxin.speed
+      })}`
+            
+      //If Actor is in combat, adjust speed to display the good round
+      let combatant = SR5Combat.getCombatantFromActor(actor)
+      if (combatant){
+        let speedRound = combatant.combat.round + cardData.damage.toxin.speed
+        speed = `${game.i18n.format('SR5.ApplyToxinEffectAtTheEndOfXRound', {
+          round: speedRound
+        })}`
+      }
+      if (cardData.damage.toxin.type === "airEngulf") return cardData.chatCard.buttons.toxinEffect = SR5_RollMessage.generateChatButton("nonOpposedTest", "toxinEffect",`${game.i18n.localize("SR5.ApplyDamage")} ${cardData.damage.value}${game.i18n.localize(SR5.damageTypesShort[cardData.damage.type])}`)
+      //A toxin item's special effect is shown as is, the GM applies it
+      let special = cardData.damage.toxin.type === "custom" && cardData.damage.toxin.custom?.special ? `<br> ${Handlebars.escapeExpression(cardData.damage.toxin.custom.special)}` : ""
+      return cardData.chatCard.buttons.toxinEffect = SR5_RollMessage.generateChatButton("nonOpposedTest", "toxinEffect",`${game.i18n.localize("SR5.ApplyToxinEffect")} ${damage}<br> ${speed}${special}`)
+    }
+    //Power brought below 1 by an antitoxin: every effect stops (Chrome Flesh p. 154)
+    else if (cardData.damage.toxin.antitoxin && cardData.damage.toxin.power < 1) return cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","",game.i18n.localize("SR5.AntitoxinNeutralized"))
+    else return cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","",game.i18n.localize("SR5.NoDamage"))
+  }
+
+  //Add automatic succes for Hardened Armor. Fatigue is resisted without any armor (SR5 p. 174), a drug with Body only or
+  //as a toxin (entities/items/drug-damage.js)
+  if ((actorData.specialProperties?.hardenedArmors.normalWeapon.value > 0) && (cardData.damage.source !== "magical") && !["fatigue", "drugDamage"].includes(cardData.test.typeSub)) {
+    hardenedArmor = SR5_CombatHelpers.hardenedArmorAutoHits(actorData.specialProperties.hardenedArmors.normalWeapon.value, cardData.combat.armorPenetration)
+    if (hardenedArmor > 0) {
+      ui.notifications.info(`${game.i18n.localize("SR5.HardenedArmor")}${game.i18n.localize("SR5.Colons")} ${hardenedArmor} ${game.i18n.localize("SR5.INFO_AutomaticHits")}`)
+      cardData.roll.hits += hardenedArmor
+    }
+  }
+  if ((actorData.specialProperties?.hardenedArmors.fire.value > 0) && (cardData.damage.element === "fire")) {
+    hardenedArmor = SR5_CombatHelpers.hardenedArmorAutoHits(actorData.specialProperties.hardenedArmors.fire.value, cardData.combat.armorPenetration)
+    if (hardenedArmor > 0) {
+      ui.notifications.info(`${game.i18n.localize("SR5.HardenedArmor")}${game.i18n.localize("SR5.Colons")} ${hardenedArmor} ${game.i18n.localize("SR5.INFO_AutomaticHits")}`)
+      cardData.roll.hits += hardenedArmor
+    }
+  }
+
+  //Calcul damage value
+  cardData.damage.value = cardData.damage.base - cardData.roll.hits
+
+  // SR5 p. 231: dumpshock also disorients the character, whatever the damage resisted (resisted to nothing included)
+  if (cardData.test.typeSub === "dumpshock") await SR5_ActorHelper.dumpshockEffect(actorId)
+
+  //If no Damage, return
+  if (cardData.damage.value <= 0) return cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","",game.i18n.localize("SR5.NoDamage"))
+    
+  //Handle continous damage
+  if (cardData.damage.isContinuous && cardData.test.typeSub !== "continuousDamage") {
+    cardData.chatCard.buttons.damage = SR5_RollMessage.generateChatButton("nonOpposedTest", "damage",`${game.i18n.localize("SR5.ApplyDamage")} ${cardData.damage.value}${game.i18n.localize(SR5.damageTypesShort[cardData.damage.type])}`)
+    //The DV of the following phases is worked out again on the engulfing spirit when they are resisted
+    //(rollData-Resistance.js): the button shows that one, never the DV written on the card, or none when it is not found
+    const attackId = SR5_ActorHelper.engulfFirstPhase(cardData)?.attackId ?? await SR5_ActorHelper.engulfAttackFor(actor)
+    const engulf = attackId ? await SR5_ActorHelper.engulfDamageOf(attackId) : null
+    let label = game.i18n.localize("SR5.TakeOnDamageContinuous")
+    if (engulf) {
+      label += ` ${game.i18n.localize("SR5.DamageValueShort")}${game.i18n.localize("SR5.Colons")} ${engulf.value}${game.i18n.localize(SR5.damageTypesShort[engulf.type])}`
+      if (engulf.armorPenetration) label += ` / ${game.i18n.localize("SR5.ArmorPenetrationShort")}${game.i18n.localize("SR5.Colons")} ${engulf.armorPenetration}`
+    }
+    cardData.chatCard.buttons.resistanceCard = SR5_RollMessage.generateChatButton("nonOpposedTest","resistanceCardContinuousDamage",label)
+    cardData.damage.resistanceType = "physicalDamage"
+    //Escape engulf
+    cardData.chatCard.buttons.escapeEngulf = SR5_RollMessage.generateChatButton("nonOpposedTest","escapeEngulf", game.i18n.localize("SR5.EscapeEngulfAttempt"))
+    return
+  }
+
+  //Handle anticoagulant effect
+  if(cardData.damage.element === "anticoagulant") {
+    cardData.combat.calledShot.effects = {
+      "0": {
+        "name": "anticoagulant"
+      }
+    }
+  }
+
+  //Handle called Shot specifics
+  if (cardData.combat.calledShot.name){
+    if (cardData.previousMessage.messageId) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "spendNetHits")
+    if (cardData.damage.resistanceType !== "fatiguedDamage") cardData = await handleCalledShotResistanceInfo(cardData, actor, actorId)
+    if (cardData.combat.calledShot.name === "splittingDamage") {
+      if (cardData.damage.splittedTwo) return cardData.chatCard.buttons.damage = SR5_RollMessage.generateChatButton("nonOpposedTest", "damage",`${game.i18n.localize("SR5.ApplyDamage")} ${cardData.damage.splittedOne}${game.i18n.localize('SR5.DamageTypeStunShort')} & ${cardData.damage.splittedTwo}${game.i18n.localize('SR5.DamageTypePhysicalShort')}`)
+      else return cardData.chatCard.buttons.damage = SR5_RollMessage.generateChatButton("nonOpposedTest", "damage",`${game.i18n.localize("SR5.ApplyDamage")} ${cardData.damage.splittedOne}${game.i18n.localize('SR5.DamageTypeStunShort')}`)
+    }
+  }
+
+  //Electromancer (Forbidden Arcana p. 35): once the damage is resisted, a combat spell that hurts takes (caster's excess
+  //hits / 2, rounded up) off the target's Initiative. Excess hits: over the resistance for a direct spell, over the
+  //defense for an indirect one
+  if (cardData.magic?.electromancer && cardData.damage.value > 0) {
+    const direct = cardData.damage.resistanceType === "directSpellMana" || cardData.damage.resistanceType === "directSpellPhysical"
+    const excess = direct ? (Number(cardData.previousMessage.hits) || 0) - (Number(cardData.roll.hits) || 0) : cardData.previousMessage.attackerNetHits
+    const initiative = electromancerInitiative(excess)
+    if (initiative > 0) {
+      SR5Combat.changeInitInCombatHelper(SR5Combat.fighterIdOf(actor), -initiative)
+      ui.notifications.info(`${actor.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.format("SR5.INFO_Electromancer", {
+        value: initiative
+      })}`)
+      cardData.chatCard.buttons.electromancer = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest", "", game.i18n.format("SR5.INFO_Electromancer", {
+        value: initiative
+      }))
+    }
+  }
+
+  //Normal damage
+  if (cardData.damage.value > 0) cardData.chatCard.buttons.damage = SR5_RollMessage.generateChatButton("nonOpposedTest", "damage",`${game.i18n.localize("SR5.ApplyDamage")} ${cardData.damage.value}${game.i18n.localize(SR5.damageTypesShort[cardData.damage.type])}`)
+}
+
+
+function handlePreviousButtons(cardData) {
+  let originalMessage, prevData
+
+  //No previous card (a drug crash, for one): no button to remove, and nothing to relay to the GM
+  if (!cardData.previousMessage?.messageId) return
+
+  originalMessage = game.messages.get(cardData.previousMessage.messageId)
+  prevData = originalMessage?.flags?.sr5data
+
+  if ((prevData?.test.type === "spell" || prevData?.test.type === "preparation") && prevData?.magic.spell.range === "area");
+  else if (prevData?.test.typeSub === "grenade" || prevData?.combat?.grenade?.isGrenade);
+  else if (cardData.damage.isContinuous && cardData.test.typeSub === "continuousDamage");
+  else if (cardData.damage.resistanceType === "fatiguedDamage") SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "fatiguedCard") 
+  //An air engulf's following phase answers the previous phase's card: its "Take on" button goes, or the same phase
+  //could be resisted twice before it is applied (Victoire's review)
+  else if (cardData.test.typeSub === "toxinDamage" && prevData?.damage?.toxin?.type === "airEngulf" && prevData?.chatCard?.buttons?.resistanceCard) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "resistanceCard")
+  else if (cardData.test.typeSub === "toxinDamage") SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "resistanceToxin")
+  else SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "resistanceCard")
+
+  //Remove Biofeedback chat button from previous chat message
+  if (cardData.test.typeSub === "biofeedbackDamage") {
+    if (prevData.chatCard.buttons.attackerDoBiofeedbackDamage) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "attackerDoBiofeedbackDamage")
+    if (prevData.chatCard.buttons.defenderDoBiofeedbackDamage) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "defenderDoBiofeedbackDamage")
+  }
+}
+
+async function handleCalledShotResistanceInfo(cardData, actor, actorId){
+  cardData.roll.netHits = cardData.previousMessage.hits - cardData.roll.hits
+  // Run & Gun p. 128 : l'effet exige des dommages « après son test de résistance », donc avant la
+  // limite de VD de la localisation. Sinon la limite 0 de la poignée de porte et du moteur de vitre
+  // (p. 129) effacerait toujours leur effet.
+  const damageAfterResistance = cardData.damage.value
+
+  //Handle specific target limit damage if any
+  // Run & Gun p. 129: door lock and window motor have a DV limit of 0 (the 0 elsewhere means "no limit")
+  if (["doorLock", "windowMotor"].includes(cardData.combat.calledShot.location)) cardData.damage.value = 0
+  if (cardData.combat.calledShot.limitDV !== 0) {
+    if (cardData.combat.calledShot.limitDV < cardData.damage.value) ui.notifications.info(`${game.i18n.format("SR5.INFO_DVLimitByCalledShot", {
+      value: cardData.combat.calledShot.limitDV
+    })}`)
+    cardData.damage.value = Math.min(cardData.damage.value, cardData.combat.calledShot.limitDV)
+  }
+
+  switch(cardData.combat.calledShot.name){
+    case "flameOn":
+      SR5_ActorHelper.fireDamageEffect(actorId)
+      break
+    case "extremeIntimidation":
+      cardData.chatCard.buttons.fear = SR5_RollMessage.generateChatButton("nonOpposedTest","calledShotFear",`${game.i18n.localize('SR5.Composure')} (${cardData.previousMessage.attackerNetHits})`)
+      cardData.damage.value = 0
+      break
+    case "warningShot":
+      cardData.chatCard.buttons.fear = SR5_RollMessage.generateChatButton("nonOpposedTest","calledShotFear",`${game.i18n.localize('SR5.Composure')} (4)`)
+      cardData.damage.value = 0
+      break
+    case "ricochetShot":
+      cardData.chatCard.buttons.fear = SR5_RollMessage.generateChatButton("nonOpposedTest","calledShotFear",`${game.i18n.localize('SR5.Composure')} (2)`)
+      cardData.combat.calledShot.effects = {
+        "0":  {
+          "name": "shaked"
+        }
+      }
+      break
+    case "bellringer":
+      SR5Combat.changeInitInCombatHelper(SR5Combat.fighterIdOf(actor), -10)
+      ui.notifications.info(`${actor.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.format("SR5.INFO_Stunned", {
+        initiative: 10
+      })}`)
+      cardData.chatCard.buttons.bellringerEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","", `${game.i18n.localize("SR5.EffectApplied")} (${game.i18n.localize("SR5.STATUSES_Stunned")})`)
+      break
+    case "shakeUp":
+      SR5Combat.changeInitInCombatHelper(SR5Combat.fighterIdOf(actor), cardData.combat.calledShot.initiative)			
+      ui.notifications.info(`${actor.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.format("SR5.INFO_ShakeUp", {
+        value: cardData.combat.calledShot.initiative
+      })}`)
+      cardData.chatCard.buttons.shakeUpEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","", `${game.i18n.localize("SR5.EffectApplied")} (${game.i18n.localize("SR5.STATUSES_Shaked")})`)
+      break
+    case "pin":
+      if (cardData.damage.value > actor.system.itemsProperties.armor.value){
+        cardData.combat.calledShot.effects = {
+          "0": {
+            "name": "pin",
+            "initialDV": cardData.previousMessage.attackerNetHits, // Run & Gun p. 125: the net hits of the attack are the strength of the hold
+          }
+        }
+        cardData.chatCard.buttons.calledShotEffect = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotEffect",`${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize(SR5.calledShotsEffects[cardData.combat.calledShot.name])}`)
+      }
+      break
+    case "dirtyTrick":
+      if (cardData.roll.netHits > 0){
+        cardData.combat.calledShot.effects = {
+          "0": {
+            "name": "dirtyTrick"
+          }
+        }
+        cardData.chatCard.buttons.calledShotEffect = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotEffect",`${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize(SR5.calledShotsEffects[cardData.combat.calledShot.name])}`)
+      }
+      break
+    case "splittingDamage": {
+      let originalDamage = cardData.damage.value
+      cardData.damage.splittedOne = Math.ceil(originalDamage/2)
+      //A module's Armor against this attack counts too (sr5.situationalArmor, rollData-Resistance.js)
+      if (originalDamage > (actor.system.itemsProperties.armor.value + (cardData.combat.situationalArmor || 0) + cardData.combat.armorPenetration)) cardData.damage.splittedTwo = Math.floor(originalDamage/2)				
+      break
+    }
+  }
+
+  // Run & Gun p. 126 et 128 : les effets d'une localisation (personnage ou véhicule) et l'hémorragie
+  // de Chair déchiquetée ne s'appliquent que si la cible subit des dommages après sa résistance
+  const needsDamage = ['specificTarget', 'upTheAnte', 'shreddedFlesh'].includes(cardData.combat.calledShot.name)
+  if (needsDamage && damageAfterResistance <= 0 &&cardData.combat.calledShot.effects.length) {
+    cardData.combat.calledShot.effects = []
+    ui.notifications.info(game.i18n.localize('SR5.INFO_CalledShotEffectsResisted'))
+  }
+  if (cardData.combat.calledShot.effects.length) {		
+    let effectsName = []
+    for (let effect of Object.values(cardData.combat.calledShot.effects)) {
+      switch (effect.name){
+        case "stunned":
+          cardData.chatCard.buttons[effect.name] = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotStunned",`${game.i18n.format('SR5.EffectResistanceTest', {
+            effect: game.i18n.localize(SR5.calledShotsEffects[effect.name])
+          })}`)
+          break
+        case "buckled":
+          cardData.chatCard.buttons[effect.name] = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotBuckled",`${game.i18n.format('SR5.EffectResistanceTest', {
+            effect: game.i18n.localize(SR5.calledShotsEffects[effect.name])
+          })}`)
+          break
+        case "nauseous":
+          cardData.chatCard.buttons[effect.name] = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotNauseous",`${game.i18n.format('SR5.EffectResistanceTest', {
+            effect: game.i18n.localize(SR5.calledShotsEffects[effect.name])
+          })}`)
+          break
+        case "knockdown":
+          cardData.chatCard.buttons[effect.name] = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotKnockdown",`${game.i18n.format('SR5.EffectResistanceTest', {
+            effect: game.i18n.localize(SR5.calledShotsEffects[effect.name])
+          })}`)
+          break
+        case "fatigued":
+          break
+        default: {
+          effectsName.push(effect.name)
+          let effectsLabel = effectsName.map(e => game.i18n.localize(SR5.calledShotsEffects[e]))
+          effectsLabel = effectsLabel.join(", ")
+          let applyLabel = (effectsName.length > 1) ? game.i18n.localize("SR5.ApplyEffects") : game.i18n.localize("SR5.ApplyEffect")
+          cardData.chatCard.buttons.calledShotEffect = SR5_RollMessage.generateChatButton("nonOpposedTest", "calledShotEffect", `${applyLabel}${game.i18n.localize("SR5.Colons")} ${effectsLabel}`)
+        }
+      }
+    }
+  }
+
+  return cardData
+}

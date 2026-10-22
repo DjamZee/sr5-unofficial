@@ -1,0 +1,20 @@
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.Skill'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.weaponSkill.category" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.combatSkills selected=system.weaponSkill.category localize=true}}
+        </select>
+    </div>
+</li>
+{{#if weaponLimbChoices}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.WeaponHeldByLimb'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.heldByLimb">
+            <option value="">{{localize 'SR5.WeaponHeldByBody'}}</option>
+            {{selectOptions weaponLimbChoices selected=system.heldByLimb}}
+        </select>
+    </div>
+</li>
+{{/if}}

@@ -1,0 +1,15 @@
+<!-- TARGET MATRIX GRID -->
+{{#if systemRules.grid}}
+<li class="grid" id="matrixTargetGrid" style="display: none;">
+    <div class="col-5">{{localize 'SR5.GridTarget'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-6 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModTargetGrid" data-modifier="targetGrid" >
+            <option value="none">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.gridTypes selected=targetGrid localize=true sort=true}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModTargetGrid" value="" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+{{/if}}

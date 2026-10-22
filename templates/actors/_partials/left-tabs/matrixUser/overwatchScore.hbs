@@ -1,0 +1,17 @@
+{{#if (or system.isGM system.matrix.programs.babyMonitor.isActive)}}
+<!-- OVERWATCH SCORE -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete SR-TextUppercase">
+			<div class="col-10">{{localize 'SR5.OverwatchScore'}}</div>
+			<div class="col-2 SR-TextCenter SR-NeutralLightColor {{#if system.isGM}}changeValueByClick {{/if}}" data-binding="system.matrix.overwatchScore"
+			{{#if system.isGM}}
+			  data-helpTitle="{{localize 'SR5.HELP_OverwatchScoreEdit'}}"
+              data-helpMessage="{{localize 'SR5.HELP_OverwatchScoreEditMsg'}}"
+			{{/if}}
+			>
+				{{system.matrix.overwatchScore}}</div>
+		</li>
+	</ul>
+</div>
+{{/if}}

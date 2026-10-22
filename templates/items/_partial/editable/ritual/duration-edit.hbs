@@ -1,0 +1,31 @@
+<li class="SR-EnTete">
+    <p class="SR-TextUppercase">{{localize 'SR5.Duration'}}</p>
+</li>
+
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.DurationToPerform'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2">{{localize 'SR5.Force'}} ×</div>
+    <div class="col-5">
+        <select name="system.durationToPerform" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.extendedIntervals selected=system.durationToPerform localize=true}}
+        </select>
+    </div>
+</li>
+
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.Duration'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-3">
+        <select name="system.duration" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.ritualDurations selected=system.duration localize=true}}
+        </select>
+    </div>
+    <div class="col-2">{{localize 'SR5.Multiplier'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2">
+        <select name="system.durationMultiplier" data-dtype="{{system.durationMultiplier}}" required>
+            <option value="">{{localize 'SR5.None'}}</option>
+            {{selectOptions lists.ritualDurationMultipliers selected=system.durationMultiplier localize=true}}
+         </select>
+    </div>
+</li>

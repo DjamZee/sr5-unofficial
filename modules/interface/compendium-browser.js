@@ -1,0 +1,696 @@
+import {
+  withoutShadowedMegapack
+} from '../system/megapack.js'
+import {
+  SR5 
+} from '../config.js'
+import {
+  SR5_EntityHelpers 
+} from '../entities/helpers.js'
+import {
+  BROWSER_FILTERS, ACTOR_BROWSER_FILTERS, OTHER_BROWSER_FILTERS, getEntryInfo
+} from './compendium-browser-filters.js'
+import {
+  enhanceSelects 
+} from '../helpers/enhance-selects.js'
+import {
+  SR5ShopWindow
+} from './shop-window.js'
+import {
+  sr5PromptDraw, SR5WeightedTableBuilder
+} from './table-from-compendium.js'
+
+const ALL_FILTERS = {
+  ...BROWSER_FILTERS, ...ACTOR_BROWSER_FILTERS, ...OTHER_BROWSER_FILTERS
+}
+
+/**
+ * The only system fields the sidebar needs to count subtypes. Asking a pack for
+ * a field makes Foundry read every document it holds, so the browser asks for
+ * these two and nothing more; everything else is fetched for the entries it is
+ * about to show. On a pack of 4700 items the difference is an instant window
+ * instead of one that never opens.
+ */
+const SUBTYPE_FIELDS = [...new Set(
+  Object.values(ALL_FILTERS).filter(def => def.subtypes).map(def => def.subtypes.field)
+)]
+
+/** The types the sidebar splits into subtypes (weapons, augmentations, vehicles, devices, spirits, sprites). */
+const SUBTYPED = new Map(Object.entries(ALL_FILTERS).filter(([, def]) => def.subtypes).map(([type, def]) => [type, def.subtypes.field]))
+
+const NOT_FOR_SALE = 'flags.sr5.notForSale'
+
+/**
+ * The fields a pack must still be asked for, its index in memory being what it is (lot 9).
+ *
+ * The light index (name, type, picture) comes with the world: it costs nothing. Each field asked beyond it makes
+ * the server read every document of the pack, and with all the active modules that is what kept the browser from
+ * opening on a big world. So a pack is asked only for what its own entries need and do not carry yet: the subtype
+ * field when it holds a weapon, an augmentation, a vehicle, a device, a spirit or a sprite; the prototype flag for
+ * a player (a gamemaster sees prototypes anyway). Nothing is asked of a pack of spells, qualities or journals.
+ * @param {{documentName: string, index: Iterable<object>}} pack
+ * @param {boolean} isGM
+ * @returns {string[]}
+ */
+export function browserIndexFields(pack, isGM) {
+  if (pack.documentName !== 'Item' && pack.documentName !== 'Actor') return []
+  const fields = new Set()
+  for (const entry of pack.index ?? []) {
+    const field = SUBTYPED.get(entry.type)
+    if (field && !foundry.utils.hasProperty(entry, field)) fields.add(field)
+    if (!isGM && pack.documentName === 'Item' && entry.flags === undefined) fields.add(NOT_FOR_SALE)
+  }
+  return [...fields]
+}
+
+/**
+ * What the browser knows of the compendiums, shared by every window and kept from one opening to the next:
+ * `entries` is the list, `complete` says the subtype fields have been read, `pending` the reading under way.
+ * Dropped by "Refresh" and by any change in a compendium.
+ */
+const browserIndex = {
+  entries: null, complete: false, pending: null, generation: 0
+}
+
+export class SR5CompendiumBrowser extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.api.ApplicationV2
+) {
+  // Singleton
+  static _instance = null
+
+  static open(initialType = null) {
+    if (SR5CompendiumBrowser._instance?.rendered) {
+      SR5CompendiumBrowser._instance.bringToFront()
+      if (initialType) {
+        SR5CompendiumBrowser._instance._selectedTypes = new Set([initialType])
+        SR5CompendiumBrowser._instance.render()
+      }
+      return SR5CompendiumBrowser._instance
+    }
+    const browser = new SR5CompendiumBrowser()
+    SR5CompendiumBrowser._instance = browser
+    if (initialType) browser._selectedTypes = new Set([initialType])
+    // render() is a promise nobody awaits: without this, a failure to open
+    // leaves neither a window nor a word in the console
+    browser.render(true).catch(err => {
+      console.error('SR5 Compendium Browser: failed to open', err)
+      ui.notifications?.error(game.i18n.localize('SR5.CompendiumBrowserFailed'))
+    })
+    return browser
+  }
+
+  static DEFAULT_OPTIONS = {
+    id: 'sr5-compendium-browser',
+    classes: ['sr5', 'sr-application', 'sr-compendium-browser'],
+    position: {
+      width: 960, height: 700
+    },
+    window: {
+      title: 'SR5.CompendiumBrowser',
+      icon: 'fas fa-search',
+      resizable: true,
+    },
+    actions: {
+      viewItem: SR5CompendiumBrowser.#onViewItem,
+      clearFilters: SR5CompendiumBrowser.#onClearFilters,
+      refreshIndex: SR5CompendiumBrowser.#onRefreshIndex,
+      // The browser is for looking things up; buying happens in the shop's own window (lot B)
+      openShop: () => SR5ShopWindow.open(),
+      drawAtRandom: SR5CompendiumBrowser.#onDrawAtRandom,
+      buildTable: SR5CompendiumBrowser.#onBuildTable,
+    },
+  }
+
+  static PARTS = {
+    browser: {
+      template: 'systems/sr5/templates/interface/compendium-browser.hbs' 
+    } 
+  }
+
+  constructor(options = {
+  }) {
+    super(options)
+    this._selectedTypes = new Set()
+    this._searchText = ''
+    this._activeFilters = {
+    }
+    this._sortKey = 'name'
+    this._sortDirection = 'asc'
+    this._indexCache = null
+    this._page = 0
+    this._pageSize = 100
+  }
+
+  /* -------------------------------------------- */
+  /*  Data Loading                                */
+  /* -------------------------------------------- */
+
+  /**
+   * The packs the browser lists: items, actors, and the other documents it has filters for. Without those of a
+   * shadowed Megapack (both active): same entries, same _id, every row would be shown twice.
+   */
+  static _browsedPacks() {
+    const otherDocTypes = Object.keys(OTHER_BROWSER_FILTERS)
+    return withoutShadowedMegapack(game.packs).filter(p => p.documentName === 'Item' || p.documentName === 'Actor' || otherDocTypes.includes(p.documentName))
+  }
+
+  /** The browser's entries, built from the indices in memory: no request to the server. */
+  static _entriesFromIndices() {
+    const allEntries = []
+    for (const pack of SR5CompendiumBrowser._browsedPacks()) {
+      const docName = pack.documentName
+      const useDocNameAsType = docName !== 'Item' && docName !== 'Actor'
+      for (const entry of pack.index) {
+        allEntries.push({
+          ...entry,
+          type: useDocNameAsType ? docName : entry.type,
+          docName,
+          uuid: `Compendium.${pack.collection}.${docName}.${entry._id}`,
+          packId: pack.collection,
+          packLabel: pack.metadata.label,
+        })
+      }
+    }
+    return allEntries
+  }
+
+  /** Ask each pack for the fields it still lacks (browserIndexFields), then build the entries again. */
+  static async _completeIndex() {
+    const generation = browserIndex.generation
+    const started = performance.now()
+    const asked = SR5CompendiumBrowser._browsedPacks()
+      .map(pack => [pack, browserIndexFields(pack, game.user.isGM)])
+      .filter(([, fields]) => fields.length)
+    await Promise.all(asked.map(async ([pack, fields]) => {
+      try {
+        await pack.getIndex({
+          fields
+        })
+      } catch (err) {
+        console.warn(`SR5 Compendium Browser: Failed to index pack ${pack.collection}`, err)
+      }
+    }))
+    // Dropped meanwhile ("Refresh", a compendium changed): the next opening starts again
+    if (generation !== browserIndex.generation) return
+    // The documents already read for the page shown are kept: they are not asked of the server again
+    const read = new Map((browserIndex.entries ?? []).filter(e => e._detailed && e.system).map(e => [e.uuid, e]))
+    browserIndex.entries = SR5CompendiumBrowser._entriesFromIndices().map(entry => {
+      const old = read.get(entry.uuid)
+      return old ? Object.assign(entry, {
+        system: old.system, flags: old.flags, _detailed: true
+      }) : entry
+    })
+    browserIndex.complete = true
+    console.log(`SR5 Compendium Browser | ${asked.length} compendium(s) asked for fields, in ${Math.round(performance.now() - started)} ms`)
+  }
+
+  /** Forget what was read: the next opening reads the compendiums again. */
+  static dropIndex() {
+    browserIndex.entries = null
+    browserIndex.complete = false
+    browserIndex.pending = null
+    browserIndex.generation++
+  }
+
+  /** A document of a compendium was created, changed or deleted: the list may be out of date. */
+  static onDocumentChanged(document) {
+    if (document?.pack) SR5CompendiumBrowser.dropIndex()
+  }
+
+  /**
+   * The entries, at once from the light index; the subtype fields are read behind it and the window shown again
+   * when they arrive. A player waits for them: the prototype flag must hide a prototype before it is ever shown.
+   */
+  async _loadAllIndices() {
+    browserIndex.entries ??= SR5CompendiumBrowser._entriesFromIndices()
+    if (!browserIndex.complete) {
+      if (!browserIndex.pending) {
+        const pending = SR5CompendiumBrowser._completeIndex().then(() => {
+          if (browserIndex.pending === pending) browserIndex.pending = null
+          const open = SR5CompendiumBrowser._instance
+          if (browserIndex.complete && open?.rendered) open.render()
+        })
+        browserIndex.pending = pending
+      }
+      if (!game.user.isGM) {
+        await browserIndex.pending
+        // Dropped while it was read: read again rather than show a list without the prototype flag
+        if (!browserIndex.complete) return this._loadAllIndices()
+      }
+    }
+    this._indexCache = browserIndex.entries
+    return this._indexCache
+  }
+
+  /** Are the subtypes still being read? The sidebar says so. */
+  get _indexPending() {
+    return !browserIndex.complete
+  }
+
+  /**
+   * Fetch the system data of the given entries, once, and keep it on them.
+   *
+   * Only the entries about to be displayed — or those a filter is about to be
+   * applied to — go through here, so the cost follows what is on screen rather
+   * than the size of the compendiums.
+   */
+  async _ensureDetails(entries) {
+    const missing = entries.filter(e => !e._detailed)
+    if (!missing.length) return
+
+    const byPack = new Map()
+    for (const entry of missing) {
+      if (!byPack.has(entry.packId)) byPack.set(entry.packId, [])
+      byPack.get(entry.packId).push(entry)
+    }
+
+    await Promise.all([...byPack].map(async ([packId, list]) => {
+      const pack = game.packs.get(packId)
+      // mark them either way: a pack that cannot answer must not be asked again
+      try {
+        const documents = pack ? await pack.getDocuments({
+          _id__in: list.map(e => e._id)
+        }) : []
+        const byId = new Map(documents.map(d => [d.id, d]))
+        for (const entry of list) {
+          const document = byId.get(entry._id)
+          if (document) {
+            entry.system = document.system
+            // the "not for sale / prototype" flag lives there, not in the light index
+            entry.flags = document.flags
+          }
+          entry._detailed = true
+        }
+      } catch (err) {
+        console.warn(`SR5 Compendium Browser: Failed to load details from ${packId}`, err)
+        for (const entry of list) entry._detailed = true
+      }
+    }))
+  }
+
+  /** Does this filter read something the light index does not carry? */
+  _needsDetails() {
+    return Object.entries(this._activeFilters).some(([key, value]) =>
+      value !== '' && value !== undefined && !SUBTYPE_FIELDS.includes(key))
+  }
+
+  /* -------------------------------------------- */
+  /*  Filtering                                   */
+  /* -------------------------------------------- */
+
+  _pruneFilters() {
+    const validKeys = new Set()
+    for (const sel of this._selectedTypes) {
+      const baseType = sel.includes(':') ? sel.split(':')[0] : sel
+      const typeDef = ALL_FILTERS[baseType]
+      if (typeDef) for (const f of typeDef.filters) validKeys.add(f.key)
+    }
+    for (const key of Object.keys(this._activeFilters)) {
+      if (!validKeys.has(key)) delete this._activeFilters[key]
+    }
+  }
+
+  _filterEntries(entries) {
+    let results = entries
+
+    // Filter by item type(s) — supports compound keys like "itemWeapon:meleeWeapon"
+    if (this._selectedTypes.size) {
+      results = results.filter(e => {
+        for (const sel of this._selectedTypes) {
+          if (!sel.includes(':')) {
+            // Simple type match
+            if (e.type === sel) return true
+          } else {
+            // Compound key: "itemType:subtypeValue"
+            const [itemType, subVal] = sel.split(':')
+            if (e.type !== itemType) continue
+            const def = ALL_FILTERS[itemType]
+            if (!def?.subtypes) continue
+            const entrySubVal = foundry.utils.getProperty(e, def.subtypes.field) || '_none'
+            if (entrySubVal === subVal) return true
+          }
+        }
+        return false
+      })
+    }
+
+    // Filter by search text
+    if (this._searchText) {
+      const search = this._searchText.toLowerCase()
+      results = results.filter(e => e.name.toLowerCase().includes(search))
+    }
+
+    // Filter by active type-specific filters
+    for (const [key, value] of Object.entries(this._activeFilters)) {
+      if (value === '' || value === undefined) continue
+      results = results.filter(e => {
+        const entryValue = foundry.utils.getProperty(e, key)
+        if (typeof value === 'boolean') return !!entryValue === value
+        return String(entryValue) === String(value)
+      })
+    }
+
+    // Sort
+    results.sort((a, b) => {
+      let aVal = foundry.utils.getProperty(a, this._sortKey) ?? ''
+      let bVal = foundry.utils.getProperty(b, this._sortKey) ?? ''
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      return this._sortDirection === 'asc' ? cmp : -cmp
+    })
+
+    return results
+  }
+
+  /** The entries this user may see, indices loaded on first use. */
+  async _visibleEntries() {
+    // Asked each time: the shared index may have been completed or dropped since the last render
+    await this._loadAllIndices()
+    // A prototype is the gamemaster's (Élise's choice, 2026-10-05): a player never sees it, nor counts it
+    return game.user.isGM ? this._indexCache : this._indexCache.filter(e => e.flags?.sr5?.notForSale !== true)
+  }
+
+  /** What the filters let through of `entries`: the whole list, before it is cut into pages. */
+  async _applyFilters(entries) {
+    // A filter reading beyond the light index needs the documents themselves.
+    // Only the selected types can match it, so that is all we fetch.
+    if (this._needsDetails()) {
+      const selected = [...this._selectedTypes].map(sel => sel.includes(':') ? sel.split(':')[0] : sel)
+      await this._ensureDetails(selected.length ?
+        entries.filter(e => selected.includes(e.type)) :
+        entries)
+    }
+    return this._filterEntries(entries)
+  }
+
+  /** The filters, as a card keeps them to draw again from the same list (table-from-compendium.js). */
+  get filterState() {
+    return {
+      types: [...this._selectedTypes], search: this._searchText, filters: {
+        ...this._activeFilters
+      }
+    }
+  }
+
+  /**
+   * The entries a set of filters lets through, read anew: what "Relancer" draws from on a card drawn
+   * from the browser. The browser is built for it and never shown.
+   * @param {{types: string[], search: string, filters: object}} state
+   */
+  static async entriesFor(state) {
+    // The index read by the browser is shared (browserIndex): nothing is read again for a card
+    const browser = new SR5CompendiumBrowser()
+    browser._selectedTypes = new Set(state?.types ?? [])
+    browser._searchText = String(state?.search ?? '')
+    browser._activeFilters = {
+      ...(state?.filters ?? {
+      })
+    }
+    return browser._applyFilters(await browser._visibleEntries())
+  }
+
+  /* -------------------------------------------- */
+  /*  Context Preparation                         */
+  /* -------------------------------------------- */
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options)
+
+    const allEntries = await this._visibleEntries()
+
+    // Build type/subtype counts
+    const typeCounts = {
+    }
+    const subtypeCounts = {
+    }
+    for (const e of allEntries) {
+      typeCounts[e.type] = (typeCounts[e.type] || 0) + 1
+      const def = ALL_FILTERS[e.type]
+      if (def?.subtypes) {
+        const subVal = foundry.utils.getProperty(e, def.subtypes.field) || '_none'
+        const compoundKey = `${e.type}:${subVal}`
+        subtypeCounts[compoundKey] = (subtypeCounts[compoundKey] || 0) + 1
+      }
+    }
+
+    // Build type list — expand subtypes where defined
+    const itemTypes = []
+    for (const [key, def] of Object.entries(ALL_FILTERS)) {
+      if (!typeCounts[key]) continue
+      // While the subtypes are read the type shows whole, and stays so as long as it is ticked whole
+      if (def.subtypes && (this._indexPending || this._selectedTypes.has(key))) itemTypes.push({
+        key,
+        label: game.i18n.localize(def.label),
+        icon: def.icon,
+        count: typeCounts[key],
+        selected: this._selectedTypes.has(key),
+      })
+      if (def.subtypes && this._indexPending) continue
+      if (def.subtypes) {
+        const optionsMap = SR5[def.subtypes.options] || {
+        }
+        for (const [subVal, i18nKey] of Object.entries(optionsMap)) {
+          const compoundKey = `${key}:${subVal}`
+          const count = subtypeCounts[compoundKey] || 0
+          if (!count) continue
+          itemTypes.push({
+            key: compoundKey,
+            label: game.i18n.localize(i18nKey),
+            icon: def.icon,
+            count,
+            selected: this._selectedTypes.has(compoundKey),
+          })
+        }
+      } else {
+        itemTypes.push({
+          key,
+          label: game.i18n.localize(def.label),
+          icon: def.icon,
+          count: typeCounts[key] || 0,
+          selected: this._selectedTypes.has(key),
+        })
+      }
+    }
+    itemTypes.sort((a, b) => a.label.localeCompare(b.label))
+
+    // Build filter definitions from the union of all selected types
+    let filterDefs = []
+    const seenFilterKeys = new Set()
+    for (const sel of this._selectedTypes) {
+      const type = sel.includes(':') ? sel.split(':')[0] : sel
+      const typeDef = ALL_FILTERS[type]
+      if (!typeDef) continue
+      for (const f of typeDef.filters) {
+        if (seenFilterKeys.has(f.key)) continue
+        seenFilterKeys.add(f.key)
+        const def = {
+          ...f, label: game.i18n.localize(f.label) 
+        }
+        if (f.type === 'select' && f.options) {
+          const configOptions = SR5[f.options] || {
+          }
+          def.choices = Object.entries(configOptions).map(([k, v]) => ({
+            key: k,
+            label: game.i18n.localize(v),
+            selected: this._activeFilters[f.key] === k,
+          })).sort((a, b) => a.label.localeCompare(b.label))
+        }
+        if (f.type === 'boolean') {
+          def.checked = !!this._activeFilters[f.key]
+        }
+        filterDefs.push(def)
+      }
+    }
+
+    // Filter entries
+    const filtered = await this._applyFilters(allEntries)
+    const totalCount = filtered.length
+
+    // Paginate, then fetch the details of that page alone
+    const lists = SR5_EntityHelpers.sortTranslations(SR5)
+    const maxItems = (this._page + 1) * this._pageSize
+    const page = filtered.slice(0, maxItems)
+    // The window shows at once; the line under each name (read from the documents) follows when they arrive
+    if (page.some(e => !e._detailed) && !this._detailsPending) {
+      this._detailsPending = this._ensureDetails(page).finally(() => {
+        this._detailsPending = null
+        if (this.rendered) this.render()
+      })
+    }
+    const results = page.map(e => {
+      const def = ALL_FILTERS[e.type]
+      let typeLabel = game.i18n.localize(def?.label || e.type)
+      if (def?.subtypes) {
+        const subVal = foundry.utils.getProperty(e, def.subtypes.field)
+        const optionsMap = SR5[def.subtypes.options] || {
+        }
+        if (subVal && optionsMap[subVal]) typeLabel = game.i18n.localize(optionsMap[subVal])
+      }
+      return {
+        ...e,
+        typeLabel,
+        typeIcon: def?.icon || 'fa-cube',
+        info: getEntryInfo(e, lists),
+      }
+    })
+    context.itemTypes = itemTypes
+    context.indexPending = this._indexPending
+    context.filterDefs = filterDefs
+    context.results = results
+    context.totalCount = totalCount
+    context.shownCount = results.length
+    context.hasMore = maxItems < totalCount
+    context.searchText = this._searchText
+    context.hasTypeFilter = this._selectedTypes.size > 0
+    context.sortKey = this._sortKey
+    context.sortDirection = this._sortDirection
+    context.canBuildTable = foundry.documents.RollTable.implementation.canUserCreate(game.user)
+
+    return context
+  }
+
+  /* -------------------------------------------- */
+  /*  Render Lifecycle                             */
+  /* -------------------------------------------- */
+
+  _onRender(context, options) {
+    super._onRender(context, options)
+    const el = this.element
+
+    // Custom dropdown enhancement
+    enhanceSelects(el)
+
+    // Search input
+    const searchInput = el.querySelector('.sr-browser-search input')
+    if (searchInput) {
+      searchInput.focus()
+      const len = searchInput.value.length
+      searchInput.setSelectionRange(len, len)
+      let debounce = null
+      searchInput.addEventListener('input', (event) => {
+        clearTimeout(debounce)
+        debounce = setTimeout(() => {
+          this._searchText = event.target.value
+          this._page = 0
+          this.render()
+        }, 300)
+      })
+    }
+
+    // Type checkboxes
+    el.querySelectorAll('.sr-browser-type-cb').forEach(cb => {
+      cb.addEventListener('change', (event) => {
+        const type = event.target.dataset.type
+        if (event.target.checked) {
+          this._selectedTypes.add(type)
+        } else {
+          this._selectedTypes.delete(type)
+        }
+        this._pruneFilters()
+        this._page = 0
+        this.render()
+      })
+    })
+
+    // Filter selects
+    el.querySelectorAll('[data-filter-key]').forEach(select => {
+      select.addEventListener('change', (event) => {
+        const key = event.target.dataset.filterKey
+        this._activeFilters[key] = event.target.value || undefined
+        this._page = 0
+        this.render()
+      })
+    })
+
+    // Boolean filter checkboxes
+    el.querySelectorAll('[data-filter-boolean]').forEach(cb => {
+      cb.addEventListener('change', (event) => {
+        const key = event.target.dataset.filterBoolean
+        this._activeFilters[key] = event.target.checked || undefined
+        this._page = 0
+        this.render()
+      })
+    })
+
+    // Load more button
+    const loadMore = el.querySelector('.sr-browser-load-more')
+    if (loadMore) {
+      loadMore.addEventListener('click', () => {
+        this._page++
+        this.render()
+      })
+    }
+
+    // Sort buttons
+    el.querySelectorAll('[data-sort-key]').forEach(btn => {
+      btn.addEventListener('click', (event) => {
+        const key = event.currentTarget.dataset.sortKey
+        if (this._sortKey === key) {
+          this._sortDirection = this._sortDirection === 'asc' ? 'desc' : 'asc'
+        } else {
+          this._sortKey = key
+          this._sortDirection = 'asc'
+        }
+        this.render()
+      })
+    })
+
+    // Drag support on result rows
+    el.querySelectorAll('.sr-browser-result[draggable]').forEach(row => {
+      row.addEventListener('dragstart', (event) => {
+        const uuid = event.currentTarget.dataset.uuid
+        const docType = event.currentTarget.dataset.docName || 'Item'
+        event.dataTransfer.setData('text/plain', JSON.stringify({
+          type: docType, uuid 
+        }))
+      })
+    })
+  }
+
+  /* -------------------------------------------- */
+  /*  Actions                                     */
+  /* -------------------------------------------- */
+
+  static async #onViewItem(event, target) {
+    const uuid = target.closest('[data-uuid]')?.dataset.uuid
+    if (!uuid) return
+    const doc = await fromUuid(uuid)
+    if (doc) doc.sheet.render(true)
+  }
+
+  static #onClearFilters() {
+    this._searchText = ''
+    this._activeFilters = {
+    }
+    this._selectedTypes.clear()
+    this._page = 0
+    this.render()
+  }
+
+  static #onRefreshIndex() {
+    SR5CompendiumBrowser.dropIndex()
+    this._indexCache = null
+    this._page = 0
+    this.render()
+  }
+
+  /** "Tirer au hasard": among everything the filters let through, every page included */
+  static async #onDrawAtRandom() {
+    const entries = await this._applyFilters(await this._visibleEntries())
+    const label = game.i18n.localize('SR5.CompendiumBrowser')
+    return sr5PromptDraw({
+      name: this._searchText ? `${label} — ${this._searchText}` : label,
+      entries,
+      source: {
+        kind: 'browser', state: this.filterState
+      }
+    })
+  }
+
+  /** "Créer une table pondérée": of everything the filters let through */
+  static async #onBuildTable() {
+    const entries = await this._applyFilters(await this._visibleEntries())
+    return SR5WeightedTableBuilder.open(this._searchText || game.i18n.localize('SR5.CompendiumBrowser'), entries)
+  }
+}

@@ -1,0 +1,354 @@
+/**
+ * What the GM's browser accepts from the generic sockets (updateItem, deleteItem, createItemEffect,
+ * updateActorData). Security lot of Sixtine, ruled by DjamZ and Élise before the djamz.11.
+ *
+ * The server stamps the sender: a GM, or an owner of the target (the actor, or the actor that holds
+ * the item), writes as before. Anyone else may only ask for one of the uses below, the effect of a
+ * card on what she does not own. The GM reads that card again from the chat log (never from the
+ * request): its author must be a GM or own the actor that rolled it, and what it changes is bounded
+ * by the sheet (the pool the GM's browser prepares, plus Chance, SR5 p. 56) and by the item itself:
+ * numbers only go down, switches only go off, a monitor never fills past its size.
+ *
+ * Pure rules here; the lookups are in miscellaneous.js.
+ */
+import {
+  dispelledValue
+} from "./dispel-rules.js"
+
+/** Whether `user` may write on `document` (an actor, or an item through the actor holding it). */
+export function ownsTarget(user, document) {
+  if (!user || !document) return false
+  if (user.isGM) return true
+  const holder = document.documentName === "Item" ? (document.parent ?? document) : document
+  return !!holder?.testUserPermission?.(user, "OWNER")
+}
+
+/**
+ * Whether a card may stand behind a request: written by a GM, or by an owner of the actor that
+ * rolled it (`rollerOwned`, worked out by the caller from the card's owner.actorId).
+ */
+export function cardTrusted(author, rollerOwned) {
+  if (!author) return false
+  return author.isGM || !!rollerOwned
+}
+
+/** The world setting that has the GM's browser check the rolls of the players (DjamZ, 08/10: off by default). */
+export const PLAYER_ROLLS_SETTING = "sr5CheckPlayerRolls"
+
+/** Whether the GM's browser checks a player's card (hits counted again, dice past the pool, alerts). Where no setting
+ * can be read (the tests), it does. */
+export function playerRollsChecked() {
+  try {
+    return game.settings.get("sr5", PLAYER_ROLLS_SETTING) !== false
+  } catch {
+    return true
+  }
+}
+
+/** Whether a card stands as a GM's would, as written: a GM's, or, while the players' rolls are not checked
+ * (playerRollsChecked), one an owner of the actor that rolled it wrote (`rollerOwned`). */
+export function standsAsGM(author, rollerOwned) {
+  if (!author) return false
+  return !!author.isGM || (!!rollerOwned && !playerRollsChecked())
+}
+
+const isNumber = value => typeof value === "number" && Number.isFinite(value)
+
+/**
+ * The test types each use accepts (Zélia's review, B2: a Perception card opened a maglock). The card
+ * must be the test the rule names, rolled by the actor the rule names.
+ */
+export const USE_TESTS = {
+  // Matrix damage: the defender who wins hurts the attacker; the loser of a resistance takes it
+  matrixDamage: ["matrixDefense", "matrixResistance", "iceDefense", "complexFormDefense"],
+  deactivateFocus: ["enchantmentResistance"],
+  reduceEffect: ["dispellResistance", "disjointingResistance", "complexFormResistance"],
+  dispelledEffect: ["dispellResistance", "disjointingResistance", "complexFormResistance"],
+  // A skill test is written "skillDicePool" on its card (rollData-Skill.js), measured in game
+  maglock: ["skillDicePool"],
+  support: ["matrixAction"],
+}
+
+/** Whether a card of this test type (and sub-type) may stand behind this use. */
+export function testAllowed(use, test) {
+  if (!(USE_TESTS[use] ?? []).includes(test?.type)) return false
+  if (use === "maglock") return test.typeSub === "locksmith"
+  if (use === "support") return ["iAmTheFirewall", "intervene"].includes(test.typeSub)
+  return true
+}
+
+/**
+ * The test a reducing card answers (dispelling, disenchanting, Kill Complex Form), and where the GM
+ * reads its pool on the sheet of the actor who rolled it.
+ */
+export const REDUCER_POOLS = {
+  counterspelling: "skills.counterspelling.test.dicePool",
+  disenchanting: "skills.disenchanting.test.dicePool",
+  killComplexForm: "matrix.resonanceActions.killComplexForm.test.dicePool",
+}
+
+/**
+ * The hits of a card counted again on its dice (SR5 p. 44): only the first `allowed` dice of the pool
+ * count, the rerolls of the Rule of Six after them (p. 58). null when the card shows no dice.
+ * `rerolls` false: no Rule of Six at all, for a test that did not push the limit (SR5 p. 58: only Edge brings it).
+ * `secondChance` true (chanceSpent): the dice Second Chance rerolled (SR5 p. 58), kept apart on the roll, count too,
+ * one per failed die among those counted at most. Without it an honest card lost them (Laurine, 08/10).
+ */
+export function recountHits(rollJSON, allowed, {
+  rerolls = true, secondChance = false
+} = {
+}) {
+  let roll = rollJSON
+  if (typeof roll === "string") {
+    try {
+      roll = JSON.parse(roll)
+    } catch {
+      return null
+    }
+  }
+  const results = roll?.terms?.[0]?.results
+  if (!Array.isArray(results)) return null
+  const kept = results.filter(d => !d.ruleOfSix).slice(0, Math.max(0, Math.floor(Number(allowed)) || 0))
+  const counted = [...kept, ...(rerolls ? earnedRerolls(kept, results.filter(d => d.ruleOfSix)) : [])]
+  return counted.filter(isHit).length + (secondChance ? chanceHits(roll, counted) : 0)
+}
+
+const isHit = d => d.active !== false && d.discarded !== true && Number(d.result) >= 5
+
+/** The hits of the dice Second Chance rerolled (SR5 p. 58), kept apart on the roll (roll-test.js secondeChance): one
+ * die per failure among the `counted` dice at most. 0 when the roll shows none. */
+export function chanceHits(rollJSON, counted) {
+  let roll = rollJSON
+  if (typeof roll === "string") {
+    try {
+      roll = JSON.parse(roll)
+    } catch {
+      return 0
+    }
+  }
+  const chance = roll?.secondChance?.terms?.[0]?.results
+  if (!Array.isArray(chance) || !Array.isArray(counted)) return 0
+  return chance.slice(0, counted.filter(d => Number(d.result) < 5).length).filter(isHit).length
+}
+
+/** The pool a card was rolled with (its dicePool.value), without the Edge a push of the limit added to it
+ * (modifiers "edge" in the dialog, "pushTheLimit" after the roll): that push is counted apart, once granted. */
+export function rolledPool(data) {
+  const edge = (data?.dicePool?.modifiers ?? []).filter(m => m?.type === "edge" || m?.type === "pushTheLimit")
+    .reduce((sum, m) => sum + (Number(m.value) || 0), 0)
+  return Math.max(0, (Number(data?.dicePool?.value) || 0) - edge)
+}
+
+/** The most dice a card may count: `sheetCap` (its pool on the sheet, plus Chance), or the pool it was rolled with
+ * plus Chance when larger: the sheet may have dropped since the roll (a deck switched off, silent mode, a wound;
+ * Laurine, 08/10). Dice past both still do not count. */
+export function cardPoolCap(card, sheetCap) {
+  const edge = Number(card?.roller?.system?.specialAttributes?.edge?.augmented?.value) || 0
+  return Math.max(Number(sheetCap) || 0, rolledPool(card?.data) + edge)
+}
+
+/** Whether the dice a card's Second Chance rerolled may count (recountHits): the card says it, and the roller's
+ * sheet shows Edge spent, as for a push of the limit (edgeSpentOn). */
+export function chanceSpent(data, roller) {
+  return !!data?.edge?.hasUsedSecondChance && edgeSpentOn(roller)
+}
+
+/**
+ * The hits a card may count, with or without the Edge it says it spent (SR5 p. 58, Push the Limit: Edge added to the
+ * pool, Rule of Six, no limit). Without Edge: the first `pool` dice, no reroll, within the test's `limit` (0: none).
+ * With it: `pool` + `edge` dice, the rerolls they earn (never more than the dice), no limit. null without dice.
+ * `secondChance` (chanceSpent): the dice Second Chance rerolled count too, within the same limit (SR5 p. 58).
+ */
+export function hitsUnderPush({
+  rollJSON, pool, edge = 0, limit = 0, pushed = false, secondChance = false
+}) {
+  const base = Math.max(0, Math.floor(Number(pool)) || 0)
+  if (pushed) return recountHits(rollJSON, base + Math.max(0, Math.floor(Number(edge)) || 0))
+  const hits = recountHits(rollJSON, base, {
+    rerolls: false, secondChance
+  })
+  if (hits === null) return null
+  const cap = Math.floor(Number(limit)) || 0
+  return cap > 0 ? Math.min(hits, cap) : hits
+}
+
+/** Whether the sheet shows Edge spent (the card's push is only believed then, and the GM still confirms it). */
+export function edgeSpentOn(actor) {
+  return (Number(actor?.system?.conditionMonitors?.edge?.actual?.value) || 0) > 0
+}
+
+/**
+ * The rerolls of the Rule of Six a card really earned (SR5 p. 56 VO, p. 58 VF): one per six, the sixes of the
+ * rerolls included, as Foundry's explosion rolls them; the dice a card writes past them count for nothing (Bodo's
+ * review, 06/10: thirty forged rerolls prefilled 42 hits). A chain of sixes has no end in the dice a card may write:
+ * never more rerolls than dice in the pool (Hyacinthe's review, 06/10), which a true roll all but never reaches
+ * (about one die in five).
+ */
+export function earnedRerolls(kept, rerolls) {
+  let owed = kept.filter(d => Number(d.result) === 6).length
+  const earned = []
+  for (const die of rerolls) {
+    if (owed <= 0 || earned.length >= kept.length) break
+    owed--
+    earned.push(die)
+    if (Number(die.result) === 6) owed++
+  }
+  return earned
+}
+
+/** The key of a card spent on a use and a target: a card serves once per use (Zélia's review, B3). */
+export function consumedKey(messageId, use, targetUuid = "") {
+  return `${messageId}|${use}|${targetUuid}`
+}
+
+/** A whole number from 0 to `cap`: what a card's claimed hits count at most. */
+export function bounded(claimed, cap) {
+  const value = Math.floor(Number(claimed))
+  if (!Number.isFinite(value) || value < 0) return 0
+  return Math.min(value, Math.max(0, Math.floor(Number(cap)) || 0))
+}
+
+/** A number that may only go down, and not below `floor`. */
+function lowered(next, current, floor = 0) {
+  return isNumber(next) && next >= floor && next <= (Number(current) || 0)
+}
+
+//An effect weakened (dispelling): a bonus goes down, a malus (Decrease Attribute) goes back up, neither past `bound`
+//(0 by default)
+function towardZero(next, current, bound = 0) {
+  const c = Number(current) || 0
+  const b = Number(bound) || 0
+  return isNumber(next) && (c < 0 ? (next <= b && next >= c) : (next >= b && next <= c))
+}
+
+//The furthest an effect held up by a dispelled item may go: what the GM works out from its source entry and the card's
+//net hits (dispel-rules.js). Its own value when the entry did not read the hits: a fixed value is not dispelled
+//`hits`: the fewest hits the effect may still stand on, from the flags its applier wrote (effectHits)
+function linkedBound(entry, current, netHits, hits = null) {
+  const next = dispelledValue(entry, current, netHits, hits)
+  return next === null ? (Number(current) || 0) : next
+}
+
+const off = next => next === false
+
+/**
+ * Matrix damage on a device (SR5 p. 228): its monitor only fills, by the card's damage at most
+ * (plus one for a virtual machine, p. 247) and never past its size. Switched off when bricked.
+ * @param {object} changes the fields that differ from the stored system
+ * @param {object} stored the item's stored system
+ * @param {number} size the monitor's prepared size
+ * @param {number} damage the most boxes the card may fill
+ */
+export function matrixDamageAllowed(changes, stored, size, damage) {
+  const allowed = ["conditionMonitors", "isActive", "wirelessTurnedOn"]
+  if (Object.keys(changes).some(key => !allowed.includes(key))) return false
+  if ("isActive" in changes && !off(changes.isActive)) return false
+  if ("wirelessTurnedOn" in changes && !off(changes.wirelessTurnedOn)) return false
+  const monitor = changes.conditionMonitors
+  if (monitor === undefined) return true
+  if (Object.keys(monitor).some(key => key !== "matrix")) return false
+  if (!monitor.matrix || Object.keys(monitor.matrix).some(key => key !== "actual")) return false
+  const before = stored?.conditionMonitors?.matrix?.actual ?? {
+  }
+  const actual = monitor.matrix.actual ?? {
+  }
+  for (const [key, value] of Object.entries(actual)) {
+    if (!["base", "value"].includes(key)) return false
+    //The value is worked out from the base when the item is prepared, and stored as 0: a player's browser sends the
+    //prepared one (Hortense, measured: every relay was refused). It stands only as the new base, within the monitor
+    if (key === "value") {
+      const base = "base" in actual ? actual.base : before.base
+      if (!isNumber(value) || value !== Number(base) || value > size) return false
+      continue
+    }
+    const was = Number(before[key]) || 0
+    if (!isNumber(value) || value < was || value > size || value - was > damage) return false
+  }
+  return true
+}
+
+/** A focus switched off by disenchanting (SR5 p. 304): that switch, nothing else. */
+export function deactivateAllowed(changes) {
+  return Object.keys(changes).length === 1 && off(changes.isActive)
+}
+
+/**
+ * A spell, complex form or preparation weakened by a card (dispelling, SR5 p. 299; Kill Complex Form,
+ * p. 252; disjointing, Street Grimoire): its hits (or potency) go down by the card's net hits at most,
+ * and the effects it held up lose their value with them.
+ * @param {object} changes the fields that differ from the stored system
+ * @param {object} stored the item's stored system
+ * @param {number} netHits the most the card may take away
+ * @param {boolean} linked an effect the item held up, rather than the item itself
+ * @param {string} key "hits", or "potency" for a preparation
+ * @param {object|null} entry for a linked effect, the transfer entry of the item it came from (linkedEntryOf): its
+ *   value goes no further than that entry and the net hits give
+ */
+export function reduceAllowed(changes, stored, netHits, linked = false, key = "hits", entry = null, hits = null) {
+  for (const [field, value] of Object.entries(changes)) {
+    if (!linked && field === key) {
+      if (!lowered(value, stored?.[key], Math.max(0, (Number(stored?.[key]) || 0) - netHits))) return false
+    } else if (linked && field === "value") {
+      if (!towardZero(value, stored?.value, linkedBound(entry, stored?.value, netHits, hits))) return false
+    } else if (field === "isActive") {
+      if (!off(value)) return false
+    } else if (!linked && field === "targetOfEffect") {
+      const kept = Array.isArray(stored?.targetOfEffect) ? stored.targetOfEffect : []
+      if (!Array.isArray(value) || value.some(uuid => !kept.includes(uuid))) return false
+    } else if (linked && field === "customEffects") {
+      //Stored as a list, the change of one value comes as the whole entry: everything but the value must stay as stored
+      for (const [id, effect] of Object.entries(value ?? {
+      })) {
+        const before = stored?.customEffects?.[id]
+        if (!effect || !before) return false
+        if (Object.keys(effect).some(k => k !== "value" && JSON.stringify(effect[k]) !== JSON.stringify(before[k]))) return false
+        if (!towardZero(effect.value, before.value, linkedBound(entry, before.value, netHits, hits))) return false
+      }
+    } else return false
+  }
+  return true
+}
+
+/**
+ * A Kill Code support effect (I Am the Firewall, Intervene, p. 43-44) on an ally: an itemEffect of
+ * that kind, of the hacker the card names, its value the card's hits within the hacker's pool, and
+ * replacing only that hacker's earlier effects of that kind.
+ * @param {object} effect the effect, flat keys allowed ("system.type")
+ * @param {string} hackerId the id of the actor that rolled the card
+ * @param {number} hits the card's hits, already bounded by the hacker's pool
+ * @param {object[]} replaced the items to remove first
+ */
+export function supportEffectAllowed(effect, hackerId, hits, replaced) {
+  if (!effect || effect.type !== "itemEffect") return false
+  const flat = foundry.utils.flattenObject(effect)
+  const type = flat["system.type"]
+  if (!["iAmTheFirewall", "intervene"].includes(type) || flat["system.ownerID"] !== hackerId) return false
+  if (!isNumber(flat["system.value"]) || flat["system.value"] > hits) return false
+  for (const [keyPath, value] of Object.entries(flat)) {
+    if (/^system\.customEffects\.[^.]+\.value$/.test(keyPath) && (!isNumber(value) || value > hits)) return false
+  }
+  return replaced.every(item => item && item.type === "itemEffect" && item.system?.ownerID === hackerId && item.system?.type === type)
+}
+
+/** One service spent of a spirit (SR5 p. 300): exactly one, and none when it has none left. */
+export function serviceSpentAllowed(changes, storedServices) {
+  const keys = Object.keys(changes)
+  if (keys.length !== 1 || keys[0] !== "services") return false
+  const services = changes.services ?? {
+  }
+  const current = Number(storedServices) || 0
+  return Object.keys(services).length === 1 && services.value === current - 1 && current > 0
+}
+
+/** A maglock opened by a card (SR5 p. 365): its casing comes off, its anti-tamper goes. */
+export function maglockAllowed(changes, storedMaglock) {
+  const keys = Object.keys(changes)
+  if (keys.length !== 1 || keys[0] !== "maglock") return false
+  const stored = storedMaglock ?? {
+  }
+  const entries = Object.entries(changes.maglock ?? {
+  })
+  return entries.length > 0 && entries.every(([key, value]) =>
+    (key === "caseRemoved" && value === true && stored.caseRemoved !== true) ||
+    (key === "hasAntiTamper" && value === false && stored.hasAntiTamper === true))
+}

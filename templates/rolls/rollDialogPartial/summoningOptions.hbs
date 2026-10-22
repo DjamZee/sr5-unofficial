@@ -1,0 +1,14 @@
+<li class="SR-LigneEnTete SR-PaddingTop10 grid SR-TextUppercase">
+    <div class="col-12">{{localize 'SR5.SummoningOptions'}}</div>
+</li>
+
+<!--FORCE-->
+{{> systems/sr5/templates/rolls/rollDialogPartial/force.hbs}}
+
+<!--SUMMONING TYPE-->
+{{> systems/sr5/templates/rolls/rollDialogPartial/summoningModifier.hbs}}
+
+<!--REAGENTS-->
+{{#if dialogSwitch.reagents}}
+      {{> systems/sr5/templates/rolls/rollDialogPartial/reagents.hbs}}
+{{/if}}

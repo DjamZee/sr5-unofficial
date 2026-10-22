@@ -1,0 +1,121 @@
+import {
+  afterEach
+} from 'vitest'
+import {
+  cancelVehicleOwnerSyncs
+} from '../modules/entities/actors/vehicle-owner-sync.js'
+
+// The updateActor and item hooks schedule the copy of a rigger on its drones, 100 ms later: none outlives its test,
+// or it fires in another file on a mock actor (Unhandled Rejection "actor.toObject is not a function")
+afterEach(() => cancelVehicleOwnerSyncs())
+
+// Foundry VTT document class stubs
+globalThis.Actor = class {}
+globalThis.Item = class {}
+globalThis.Combat = class {}
+globalThis.TokenDocument = class {}
+
+// Foundry VTT global mocks
+globalThis.foundry = {
+  utils: {
+    duplicate: (obj) => JSON.parse(JSON.stringify(obj)),
+    deepClone: (obj) => JSON.parse(JSON.stringify(obj)),
+    getProperty: (obj, key) => key.split('.').reduce((o, k) => o?.[k], obj),
+    setProperty: (obj, key, val) => {
+      const parts = key.split('.')
+      const last = parts.pop()
+      const target = parts.reduce((o, k) => (o[k] ??= {
+      }, o[k]), obj)
+      target[last] = val
+    },
+    mergeObject: (target, source) => Object.assign(target, source),
+  },
+  abstract: {
+    TypeDataModel: class {},
+    DataModel: class {},
+  },
+  documents: {
+    RollTable: class {},
+    TableResult: class {},
+  },
+  applications: {
+    api: {
+      ApplicationV2: class {},
+      HandlebarsApplicationMixin: (base) => base,
+    },
+  },
+  canvas: {
+    placeables: {
+      MeasuredTemplate: class {},
+      Token: class {},
+    },
+  },
+}
+
+// Foundry CONFIG stub (modules/config.js writes CONFIG.statusEffects on load)
+if (!globalThis.CONFIG) globalThis.CONFIG = {
+  statusEffects: [],
+}
+
+// Canvas stub
+if (!globalThis.canvas) globalThis.canvas = {
+  ready: false,
+}
+
+// CONFIG stub: modules/config.js writes into it at import time
+if (!globalThis.CONFIG) globalThis.CONFIG = {
+}
+
+// Provide game.i18n.localize as identity function (returns the key unchanged)
+if (!globalThis.game) globalThis.game = {
+}
+if (!globalThis.game.i18n) globalThis.game.i18n = {
+}
+if (!globalThis.game.i18n.localize) globalThis.game.i18n.localize = (key) => key
+if (!globalThis.game.settings) globalThis.game.settings = {
+  get: () => null,
+}
+// registerSystemSettings also registers menus (the shop's, for one)
+if (!globalThis.game.settings.registerMenu) globalThis.game.settings.registerMenu = () => {}
+if (!globalThis.game.i18n.format) globalThis.game.i18n.format = (key, _data) => key
+
+// CONFIG stub: config.js assigns CONFIG.statusEffects while it is being imported, so anything that
+// imports it — directly, or through a helper that does — needs this to exist before that import runs.
+if (!globalThis.CONFIG) globalThis.CONFIG = {
+}
+// An earlier stub may already have created CONFIG, so the vision tests' Canvas entries are added
+// on their own rather than inside a literal that would then never run.
+if (!globalThis.CONFIG.Canvas) globalThis.CONFIG.Canvas = {
+  visionModes: {
+  },
+  detectionModes: {
+  },
+}
+
+// UI notification stubs
+if (!globalThis.ui) globalThis.ui = {
+}
+if (!globalThis.ui.notifications) globalThis.ui.notifications = {
+  warn: () => {},
+  info: () => {},
+  error: () => {},
+}
+
+// CONFIG stub: config.js writes its status effects into it on import
+if (!globalThis.CONFIG) globalThis.CONFIG = {
+}
+
+// Foundry extends String with slugify
+if (!String.prototype.slugify) {
+   
+  String.prototype.slugify = function ({
+    replacement = "-", strict = false 
+  } = {
+  }) {
+    let slug = this.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+      .replace(/[^a-z0-9]+/g, replacement)
+      .replace(new RegExp(`^${replacement}+|${replacement}+$`, "g"), "")
+    if (strict) slug = slug.replace(new RegExp(`[^a-z0-9${replacement}]+`, "g"), "")
+    return slug
+  }
+}

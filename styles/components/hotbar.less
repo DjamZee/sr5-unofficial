@@ -1,0 +1,48 @@
+@import "../commons/layout-mixin.less";
+
+/* === Hotbar === */
+#hotbar {
+  .slot {
+    .sr-block-slot();
+    .sr-block-floating();
+
+    &:hover {
+      .sr-block-boxed-hover();
+
+      &.open .key {
+        color: var(--sr-ui-color-active);
+      }
+    }
+
+    &.full .key {
+      background-color: transparent;
+      color: var(--sr-ui-color-active);
+    }
+
+    &.open .key {
+      background-color: transparent;
+      /* An empty slot stays discreet, but its number has to stay readable */
+      color: var(--sr-text-color-grey);
+    }
+
+    &.sr-macro-active {
+      border-color: var(--sr-ui-color-active);
+      box-shadow: inset 0 0 6px var(--sr-ui-color-active), 0 0 4px var(--sr-ui-color-active);
+    }
+
+    .sr-macro-toggle-badge {
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      font-size: 12px;
+      line-height: 1;
+      color: var(--sr-text-color-grey-dark);
+      opacity: 0.6;
+
+      &.active {
+        color: var(--sr-ui-color-active);
+        opacity: 1;
+      }
+    }
+  }
+}

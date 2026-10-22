@@ -1,0 +1,45 @@
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.TraditionSpiritCombat'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.spiritCombat" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spiritTypes selected=system.spiritCombat localize=true}}
+        </select>
+    </div>
+</li>
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.TraditionSpiritDetection'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.spiritDetection" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spiritTypes selected=system.spiritDetection localize=true}}
+        </select>
+    </div>
+</li>
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.TraditionSpiritIllusion'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.spiritIllusion" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spiritTypes selected=system.spiritIllusion localize=true}}
+        </select>
+    </div>
+</li>
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.TraditionSpiritManipulation'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.spiritManipulation" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spiritTypes selected=system.spiritManipulation localize=true}}
+        </select>
+    </div>
+</li>
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.TraditionSpiritHealth'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.spiritHealth" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spiritTypes selected=system.spiritHealth localize=true}}
+        </select>
+    </div>
+</li>

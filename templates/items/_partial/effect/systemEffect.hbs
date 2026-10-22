@@ -1,0 +1,147 @@
+<div class="SRBlockSheet">
+	<ul>
+		<li class="SR-LigneEnTete SR-TextUppercase">
+			{{localize 'SR5.SystemEffects'}}
+		</li>
+		<li class="grid SR-EnTete">
+			<div class="col-5 SR-TextUppercase">{{localize 'SR5.Category'}}</div>
+			<div class="col-6 SR-TextUppercase">{{localize 'SR5.Property'}}</div>
+			<div class="col-1 SR-TextRight">
+				{{#if owner}}
+				<a class="subItem" data-tooltip="{{localize 'SR5.Add'}}" data-binding="systemEffects" data-subaction="add">
+					<em class="fas fa-plus"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+		{{#each system.systemEffects}}
+		<li class="grid subItemManagement" data-key="{{@key}}">
+
+			<div class="col-5 SR-PaddingRight5">
+				<select name="system.systemEffects.{{@key}}.category" required>
+					{{#select category}}
+					<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+					<option value="specialCase">{{localize 'SR5.SpecialCase'}}</option>
+					<option value="specificRollEffect">{{localize 'SR5.SpecificRollEffect'}}</option>
+					<option value="spiritPower">{{localize 'SR5.SpiritPower'}}</option>
+					<option value="spritePower">{{localize 'SR5.SpritePower'}}</option>
+					<option value="tradition">{{localize 'SR5.HELP_MagicalTradition'}}</option>
+					<option value="drug">{{localize 'SR5.Drug'}}</option>
+					<option value="baseOwnItem">{{localize 'SR5.BaseOwnedItem'}}</option>
+					<option value="specificItem">{{localize 'SR5.SpecificItem'}}</option>
+					{{/select}}
+				</select>
+			</div>
+
+			<div class="col-6 SR-PaddingRight5">
+				{{#if category}}
+				<select name="system.systemEffects.{{@key}}.value" required>
+				{{#select value}}
+					<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+
+					{{#ife category 'specificItem'}}
+						<option value="medkit">{{localize 'SR5.Medkit'}}</option>
+						<option value="milkBrick">{{localize 'SR5.MilkBrick'}}</option>
+					{{/ife}}
+
+					{{#ife category 'baseOwnItem'}}
+						{{#each (lookup ../lists 'actorTypes')}}
+						<option value="{{@key}}">{{localize this}}</option>	
+						{{/each}}
+						{{#each (lookup ../lists 'spiritTypes')}}
+						<option value="{{@key}}">{{localize 'SR5.Spirit'}}{{localize 'SR5.Colons'}} {{localize this}}</option>
+						{{/each}}
+						{{#each (lookup ../lists 'spriteTypes')}}
+						<option value="{{@key}}">{{localize 'SR5.Sprite'}}{{localize 'SR5.Colons'}} {{localize this}}</option>
+						{{/each}}							
+					{{/ife}}
+
+					{{#ife category 'specialCase'}}
+						<option value="sustainingMod1">{{localize 'SR5.SustainingMod1'}}</option>
+						<option value="doubleEssenceCost">{{localize 'SR5.EssenceCostDouble'}}</option>
+						<option value="biocompatibilityCyberware">{{localize 'SR5.EssenceCostBiocompatibilityCyberware'}}</option>
+						<option value="biocompatibilityBioware">{{localize 'SR5.EssenceCostBiocompatibilityBioware'}}</option>
+						<option value="adapsine">{{localize 'SR5.EssenceCostAdapsine'}}</option>
+						<option value="woundResolve">{{localize 'SR5.WoundResolveEffect'}}</option>
+						<option value="delicateFingers">{{localize 'SR5.DelicateFingersEffect'}}</option>
+						<option value="hotDrop">{{localize 'SR5.HotDropEffect'}}</option>
+						<option value="transhumanPrototype">{{localize 'SR5.EssenceCostTranshumanPrototype'}}</option>
+						<option value="naniteAttributeBoost">{{localize 'SR5.NaniteAttributeBoost'}}</option>
+						<option value="matrixFusionSlave">{{localize 'SR5.MatrixFusionSlave'}}</option>
+						<option value="matrixFusionMaster">{{localize 'SR5.MatrixFusionMaster'}}</option>
+						<option value="nanomaintenance">{{localize 'SR5.Nanomaintenance'}}</option>
+						<option value="streamCyberadept">{{localize 'SR5.StreamCyberadept'}}</option>
+						<option value="socialIgnoreNegative">{{localize 'SR5.SOCIALTRAIT_Effect_socialIgnoreNegative'}}</option>
+						<option value="etiquetteIntuition">{{localize 'SR5.SOCIALTRAIT_Effect_etiquetteIntuition'}}</option>
+						<option value="influenceLogic">{{localize 'SR5.SOCIALTRAIT_Effect_influenceLogic'}}</option>
+						<option value="streamMachinist">{{localize 'SR5.StreamMachinist'}}</option>
+						<option value="streamSourcerer">{{localize 'SR5.StreamSourcerer'}}</option>
+						<option value="streamTechnoshaman">{{localize 'SR5.StreamTechnoshaman'}}</option>
+						<option value="streamMorphinae">{{localize 'SR5.StreamMorphinae'}}</option>
+						<option value="streamApophenian">{{localize 'SR5.StreamApophenian'}}</option>
+						<option value="streamErisian">{{localize 'SR5.StreamErisian'}}</option>
+						<option value="echoMachineMind">{{localize 'SR5.EchoMachineMind'}}</option>
+						<option value="echoResonantDissonance">{{localize 'SR5.EchoResonantDissonance'}}</option>
+						<option value="echoHumanMachineInterface">{{localize 'SR5.EchoHumanMachineInterface'}}</option>
+						<option value="riggerSpeedDemon">{{localize 'SR5.RiggerSpeedDemon'}}</option>
+						<option value="riggerInformationOverload">{{localize 'SR5.RiggerInformationOverload'}}</option>
+						<option value="riggerDealerGround">{{localize 'SR5.RiggerDealerGround'}}</option>
+						<option value="riggerDealerWatercraft">{{localize 'SR5.RiggerDealerWatercraft'}}</option>
+						<option value="riggerDealerAircraft">{{localize 'SR5.RiggerDealerAircraft'}}</option>
+						<option value="riggerDealerDrone">{{localize 'SR5.RiggerDealerDrone'}}</option>
+						<option value="riggerStuntman">{{localize 'SR5.RiggerStuntman'}}</option>
+						<option value="riggerTirelessPursuer">{{localize 'SR5.RiggerTirelessPursuer'}}</option>
+						<option value="elementalBody">{{localize 'SR5.SpecialCaseElementalBody'}}</option>
+						<option value="petrification">{{localize 'SR5.SpecialCasePetrification'}}</option>
+					{{/ife}}
+
+					{{#ife category 'specificRollEffect'}}
+						<option value="sre_ResonanceSpike">{{localize 'SR5.ResonanceSpike'}}</option>
+						<option value="sre_Derezz">{{localize 'SR5.Derezz'}}</option>
+						<option value="sre_Redundancy">{{localize 'SR5.Redundancy'}}</option>
+						<option value="sre_Coriolis">{{localize 'SR5.Coriolis'}}</option>
+						<option value="sre_ObjectResistance">{{localize 'SR5.ObjectResistanceTest'}}</option>
+					{{/ife}}
+
+					{{#ife category 'spiritPower'}}
+						{{#each (lookup ../lists 'AllSpiritPowers')}}
+						<option value="{{@key}}">{{localize this}}</option>	
+						{{/each}}						
+					{{/ife}}
+
+					{{#ife category 'spritePower'}}
+						{{#each (lookup ../lists 'spriteOptionalPowers')}}
+						<option value="{{@key}}">{{localize this}}</option>	
+						{{/each}}						
+					{{/ife}}
+
+					{{#ife category 'tradition'}}
+						{{#each (lookup ../lists 'traditionTypes')}}
+						<option value="{{@key}}">{{localize this}}</option>	
+						{{/each}}						
+					{{/ife}}
+
+					{{#ife category 'drug'}}
+						{{#each (lookup ../lists 'drugs')}}
+						<option value="{{@key}}">{{localize this}}</option>	
+						{{/each}}						
+					{{/ife}}
+
+				{{/select}}
+				</select>
+				{{/if}}
+			</div>
+
+			<div class="col-1 SR-TextRight">
+				<a class="subItem" data-tooltip="{{localize 'SR5.Clone'}}" data-index="{{@key}}"" data-binding="systemEffects" data-subaction="clone">
+					<em class="fa fa-sm fa-clone"></em>
+				</a>
+				<a class="subItem" data-tooltip="{{localize 'SR5.Delete'}}" data-index="{{@key}}" data-binding="systemEffects" data-subaction="delete">
+					<em class="fa fa-sm fa-trash"></em>
+				</a>
+			</div>
+
+		</li>
+		{{/each}}
+	</ul>
+</div>

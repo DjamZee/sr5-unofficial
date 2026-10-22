@@ -1,0 +1,27 @@
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete">
+			<div class="col-12"><p class="SR-TextUppercase">{{localize 'SR5.MagicType'}}</p></div>
+		</li>
+		<li class="grid">
+			<div class="col-12" 
+			data-helpTitle="{{localize 'SR5.HELP_MagicType'}}"
+            data-helpMessage="{{localize 'SR5.HELP_MagicTypeMsg'}}"
+			>
+				<select name="system.magic.magicType" data-dtype="String">
+					<option value="">{{localize 'SR5.None'}}</option>
+					{{selectOptions lists.magicTypes selected=system.magic.magicType localize=true}}
+				</select>
+			</div>
+		</li>
+		<li class="grid">
+			<div class="col-10">{{localize 'SR5.InitiationGrade'}}</div>
+			<div class="col-2 SR-TextCenter changeValueByClick" data-binding="system.magic.initiationGrade"
+			  data-helpTitle="{{localize 'SR5.InitiationGrade'}}"
+              data-helpMessage="{{localize 'SR5.HELP_InitiationGradeMsg'}}"
+			>
+		  		{{system.magic.initiationGrade}}
+			</div>
+	  	</li>
+	</ul>
+</div>

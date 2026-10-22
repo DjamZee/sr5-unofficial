@@ -1,0 +1,93 @@
+<!-- POWERS -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="SR-LigneEnTete grid">
+			<div class="col-4">
+				<p class=" SR-TextUppercase ">{{localize 'SR5.Powers'}}</p>
+			</div>
+			<div class="col-1">
+				<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.DicePool'}}">{{localize 'SR5.DicePoolShort'}}</p>
+			</div>
+			<div class="col-1">
+				<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.PowerTypes'}}">{{localize 'SR5.PowerTypeShort'}}</p>
+			</div>
+			<div class="col-1">
+				<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.PowerRange'}}">{{localize 'SR5.PowerRangeShort'}}</p>
+			</div>
+			<div class="col-2">
+				<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.ActionType'}}">{{localize 'SR5.ActionTypeShort'}}</p>
+			</div>
+			<div class="col-2">
+				<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.PowerDuration'}}">{{localize 'SR5.PowerDurationShort'}}</p>
+			</div>
+			<div class="col-1">
+				{{#if owner}}
+				<p class="SR-TextRight add-item" data-helpTitle="{{localize 'SR5.HELP_ItemAdd' key=(findTranslation 'itemTypes' 'itemPower')}}" 
+				data-helpMessage="{{localize 'SR5.HELP_ItemAddMsg'}}">
+					<a class="item-create" data-tooltip="{{localize 'SR5.Add'}}" data-type="itemPower">
+						<em class="fas fa-plus"></em>
+					</a>
+				</p>
+				{{/if}}
+			</div>
+		</li>
+		{{#each actor.powers}}
+		<li class="item grid" data-item-id="{{_id}}" draggable="true">
+			<div class="col-4 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+				{{#if (missing system.type system.range system.actionType system.duration)}}
+				<p class="incomplete" data-tooltip="{{localize 'SR5.UI_WarningMissingValues' type=(localize 'ITEM.TypePouvoir')}}">{{name}}</p>
+				{{else}}
+				<p>{{name}}{{#if system.itemRating}} ({{system.itemRating}}){{/if}}</p>
+				{{/if}}
+			</div>
+			{{#if (gt system.test.dicePool 0)}}
+			<div class="col-1 roll-logo SR-TextCenter sr-roll" data-rolltype="power"
+			  data-helpTitle="{{localize 'SR5.DicePool'}}"
+			  data-helpMessage="{{localize 'SR5.HELP_PowerRollMsg'}}"
+			  data-helpDetailsItem="system.test"
+			  data-helpItemId="{{_id}}">
+				{{system.test.dicePool}}
+			</div>
+			{{else}}
+			<div class="col-1 SR-TextCenter">-</div>
+			{{/if}}
+			<div class="col-1">
+				<p class="SR-TextCenter">{{valueOrDash (findTranslation 'spellTypesShort' system.type)}}</p>
+			</div>
+			<div class="col-1">
+				<p class="SR-TextCenter">{{valueOrDash (findTranslation 'spellRangesShort' system.range)}}</p>
+			</div>
+			<div class="col-2">
+				<p class="SR-TextCenter">{{valueOrDash (findTranslation 'powerActionTypes' system.actionType)}}</p>
+			</div>
+			<div class="col-2">
+				<p class="SR-TextCenter">
+					{{valueOrDash (findTranslation 'spellDurationsShort' system.duration)}}
+					{{#if (ne system.duration 'instantaneous')}}
+						{{#if system.isActive}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isActive"
+						data-helpTitle="{{localize 'SR5.HELP_PowerSustain' key=name}}"
+						data-helpMessage="{{localize 'SR5.HELP_PowerSustainMsg'}}">
+							<em class="fas fa-sm fa-praying-hands SR-SubColor"></em>
+						</a>
+						{{else}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isActive"
+						data-helpTitle="{{localize 'SR5.HELP_PowerSustain' key=name}}"
+						data-helpMessage="{{localize 'SR5.HELP_PowerSustainMsg'}}">
+							<em class="fas fa-sm fa-praying-hands"></em>
+						</a>
+						{{/if}}
+					{{/if}}
+				</p>
+			</div>
+			<div class="col-1 grid SR-TextRight">
+				{{#if ../owner}}
+				<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
+					<em class="fas fa-sm fa-edit item-management"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+		{{/each}}
+	</ul>
+</div>

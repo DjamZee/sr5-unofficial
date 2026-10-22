@@ -1,0 +1,104 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleCategoryShort'}}{{localize 'SR5.Colons'}}</span>
+        {{#ife system.type "vehicle"}}
+            <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation 'vehicleCategories' system.category)}}</span>
+        {{else}}
+            <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation 'droneCategories' system.category)}}</span>
+        {{/ife}}
+    </p>
+</li>
+{{#if system.offRoadMode}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_HandlingORShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.handlingOffRoad}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_SpeedORShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.speedOffRoad}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_AccelerationORShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.accelerationOffRoad}}</span>
+    </p>
+</li>
+{{else}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_HandlingShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.handling}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_SpeedShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.speed}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_AccelerationShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.acceleration}}</span>
+    </p>
+</li>
+{{/if}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_BodyShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.body}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_ArmorShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.armor}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_PilotShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.pilot}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.VehicleStat_SensorShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.sensor}}</span>
+    </p>
+</li>
+{{#ife system.type "vehicle"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Vehicle_SeatingShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.attributes.seating}}</span>
+    </p>
+</li>
+{{/ife}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Vehicle_RI_S'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+        {{#ife system.type "drone"}}
+          {{localize 'SR5.Vehicle_RI_Builtin_S'}}
+        {{else}}
+        {{#if system.riggerInterface}}
+          {{localize 'SR5.Vehicle_RI_Installed_S'}}
+        {{else}}
+          {{localize 'SR5.Vehicle_RI_NotInstalled_S'}}
+        {{/if}}
+        {{/ife}}
+        </span>
+    </p>
+</li>
+{{#ife system.offRoadMode "true"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.OffRoadMode'}}</span>
+    </p>
+</li>
+{{/ife}}

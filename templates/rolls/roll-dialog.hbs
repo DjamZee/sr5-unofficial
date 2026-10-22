@@ -1,0 +1,184 @@
+<div class="SR5jet">
+  	<div >
+		<ul>
+	  	<!-- BASE DICEPOOL -->
+	  	{{#if (eq test.type "objectResistance")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/objectResistanceChoice.hbs}}
+	  	{{else}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/dicePool.hbs}}
+	  	{{/if}}
+
+	  	<!-- ATTRIBUTE OF THE SKILL (SR5 p. 130) -->
+	  	{{#if skillAttribute}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/skillAttribute.hbs}}
+	  	{{/if}}
+
+	  	<!-- MODIFIERS -->
+		{{#if (ne test.type "passThroughDefense")}}
+	  		{{> systems/sr5/templates/rolls/rollDialogPartial/modifiers.hbs}}
+		{{/if}}
+
+		<!-- REMINDERS OF A MODULE (sr5.rollReminders) -->
+		{{#if reminders.length}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/reminders.hbs}}
+		{{/if}}
+		
+
+	  	<!-- ATTACK -->
+	  	{{#if (eq test.type "attack")}}
+			{{#if (eq test.typeSub "rangedWeapon")}}
+		  		<!-- ATTACK - FIRING MODIFIERS -->
+		  		{{> systems/sr5/templates/rolls/rollDialogPartial/firingModeModifier.hbs}}
+			{{/if}}
+			{{#if (eq test.typeSub "meleeWeapon")}}
+		  		<!-- ATTACK - MELEE MODIFIERS --> 
+		  		{{> systems/sr5/templates/rolls/rollDialogPartial/meleeOptions.hbs}}
+			{{/if}}
+			{{#if (or (eq test.typeSub "rangedWeapon") (eq test.typeSub "grenade") )}}
+		  		<!-- ATTACK - RANGE -->
+		  		{{> systems/sr5/templates/rolls/rollDialogPartial/attackRangeModifier.hbs}}
+			{{/if}}
+			{{#if (eq combat.weaponType "shotgun")}}
+		  		<!-- ATTACK - CHOKE -->
+		  		{{> systems/sr5/templates/rolls/rollDialogPartial/chokeSettingsModifier.hbs}}
+			{{/if}}
+			{{#if (eq test.typeSub "rangedWeapon")}}
+				<!-- ATTACK - RECOIL COMPENSATION -->
+				{{> systems/sr5/templates/rolls/rollDialogPartial/recoilModifier.hbs}}
+			{{/if}}
+			{{#if (and (or (eq test.typeSub "rangedWeapon") (eq test.typeSub "meleeWeapon")) (or systemRules.calledShots systemRules.grappling) )}}
+        		<!-- CALLED SHOTS -->
+        		{{> systems/sr5/templates/rolls/rollDialogPartial/calledShots.hbs}}
+        	{{/if}}
+			
+			<!-- ATTACK - AMMO -->
+			{{#if (and (eq test.type "attack") (eq test.typeSub "rangedWeapon") )}}
+		  		{{> systems/sr5/templates/rolls/rollDialogPartial/ammo.hbs}}
+			{{/if}}
+		{{/if}}
+
+		<!-- DEFENSES -->
+		{{#if (or (eq test.type "defense") (eq test.type "rammingDefense") (eq test.type "defenseSimple") (eq test.type "matrixDefenseSimple"))}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/defenseOptions.hbs}}
+		{{/if}}
+
+	  	<!-- SPELL -->
+	  	{{#if (eq test.type "spell")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/spellOptions.hbs}}
+	  	{{/if}}
+
+		<!-- PREPARATION FORMULA -->
+		{{#if (eq test.type "preparationFormula")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/preparationFormulaOptions.hbs}}
+	  	{{/if}}
+
+		<!-- RITUAL -->
+		{{#if (eq test.type "ritual")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/ritualOptions.hbs}}
+	  	{{/if}}
+
+		<!-- SUMMONING -->
+		{{#if (eq test.typeSub "summoning")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/summoningOptions.hbs}}
+		{{/if}}
+
+	  	<!-- DRAIN -->
+	  	{{#if (or (eq test.type "spell") (eq test.type "preparationFormula") )}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/drain.hbs}}
+	  	{{/if}}
+
+		<!-- MATRIX ACTION -->
+		{{#if (eq test.type "matrixAction")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/matrixActionsOptions.hbs}}
+		{{/if}}
+
+	  	<!-- COMPLEX FORM - LEVEL AND FADING -->
+	  	{{#if (eq test.type "complexForm")}}
+		  	{{> systems/sr5/templates/rolls/rollDialogPartial/complexFormOptions.hbs}}
+			<!-- FADING -->
+			{{> systems/sr5/templates/rolls/rollDialogPartial/fading.hbs}}
+	  	{{/if}}
+
+		<!-- RESONANCE ACTION -->
+		{{#if (eq test.type "resonanceAction")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/resonanceActionsOptions.hbs}}
+		{{/if}}
+
+		<!-- ASTRAL COMBAT DAMAGE CHOICE -->
+		{{#if dialogSwitch.chooseDamageType}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/astralDamageType.hbs}}
+		{{/if}}
+
+		<!-- MANA BARRIER RATING -->
+		{{#if (eq test.type "passThroughDefense")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/manaBarrierRating.hbs}}
+		{{/if}}
+	  	
+		<!-- COUNTER SPELL / DISENCHANTING - CHOOSE TARGET -->
+		{{#if (and (or (eq test.typeSub "counterspelling") (eq test.typeSub "disenchanting")) target.hasTarget)}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/chooseTargetEffect.hbs}}
+		{{/if}}
+
+		<!-- RAMMING TEST -->
+	  	{{#if (eq test.type "ramming")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/rammingOptions.hbs}}
+	  	{{/if}}
+
+	  	<!-- LIMIT -->
+	  	{{#if (gt limit.base 0)}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/limit.hbs}}
+	  	{{/if}}
+
+		<!-- REAGENTS -->
+		{{#if (and (and (ne test.typeSub 'summoning') (ne test.type 'preparationFormula') (ne test.type 'ritual') (ne test.type 'spell') ) dialogSwitch.reagents)}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/reagents.hbs}}
+  		{{/if}}
+
+		<!-- REAGENT HARVEST: THE AREA -->
+		{{#if (eq test.type "reagentHarvest")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/reagentHarvest.hbs}}
+		{{/if}}
+
+	  	<!-- GRAPPLE ESCAPE THRESHOLD-->
+	  	{{#if (eq test.type "grappleEscape")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/grappleEscapeThreshold.hbs}}
+	  	{{/if}}
+
+	  	<!-- TOXIN DOSES -->
+	  	{{#if (eq test.typeSub "toxinDamage")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/toxinDoses.hbs}}
+	  	{{/if}}
+
+	  	<!-- ESCAPE ARTIST THRESHOLD-->
+	  	{{#if (eq test.typeSub "escapeArtist")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/escapeArtistThreshold.hbs}}
+	  	{{/if}}
+
+	  	<!-- PERCEPTION THRESHOLD-->
+	  	{{#if (eq test.typeSub "perception")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/perceptionThreshold.hbs}}
+	  	{{/if}}
+
+	  	<!-- SURVIVAL THRESHOLD-->
+	  	{{#if (eq test.typeSub "survival")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/survivalThreshold.hbs}}
+	  	{{/if}}
+
+	  	<!-- MATRIX SEARCH THRESHOLD-->
+	  	{{#if (eq test.typeSub "matrixSearch")}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/matrixSearchThreshold.hbs}}
+	  	{{/if}}
+
+	  	<!-- THRESHOLD MODIFIER (Bliss, Purple Orchid) -->
+	  	{{#if thresholdModifier.value}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/thresholdModifier.hbs}}
+	  	{{/if}}
+
+	  	<!-- EXTENDED TEST -->
+	  	{{#if dialogSwitch.extended}}
+			{{> systems/sr5/templates/rolls/rollDialogPartial/extendedTest.hbs}}
+	  	{{/if}}
+	</ul>
+  </div>
+
+</div>

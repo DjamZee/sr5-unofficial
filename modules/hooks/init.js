@@ -1,0 +1,654 @@
+import {
+  installSystemMegapack
+} from "../system/megapack.js"
+import {
+  registerSheetSizeSetting
+} from "../interface/sheet-size.js"
+import {
+  initSpiritLedger
+} from "../system/spirit-ledger.js"
+import {
+  primaryLifestyle
+} from "../system/lifestyle-primary.js"
+import {
+  creationOverLimitItems
+} from "../system/creation-actor.js"
+import {
+  registerIndirectEffectSetting
+} from "../system/indirect-effects.js"
+import {
+  registerCalendarSettings
+} from "../system/calendar.js"
+import {
+  registerCalendarClockSettings
+} from "../interface/calendar-clock.js"
+import {
+  registerDeadlineSettings
+} from "../system/deadlines.js"
+import {
+  registerOrderSettings, registerOrderLedger
+} from "../interface/shop-orders.js"
+import {
+  registerRetryLedger
+} from "../interface/shop-retry.js"
+import {
+  registerAegisLedger
+} from "../system/aegis.js"
+import {
+  registerInfoBrokerLedger
+} from "../interface/info-broker.js"
+import {
+  SR5_MiscellaneousHelpers
+} from "../rolls/roll-helpers/miscellaneous.js"
+import {
+  registerExtendedClockSetting
+} from "../system/extended-clock.js"
+import {
+  registerDiseaseSettings
+} from "../system/diseases.js"
+import {
+  registerHungerSettings
+} from "../system/hunger.js"
+import {
+  registerInfectionSettings
+} from "../system/infection.js"
+import {
+  registerCfdSettings
+} from "../system/cfd-treatment.js"
+import {
+  registerRadiationSettings
+} from "../system/radiation.js"
+import {
+  registerIllusionSetting
+} from "../system/illusion.js"
+import {
+  registerHealLedger
+} from "../system/heal-ledger.js"
+import {
+  registerTacnetSetting
+} from "../system/tacnet.js"
+import {
+  registerManeuverSetting
+} from "../system/combat-maneuvers.js"
+import {
+  registerWoundResolveSetting
+} from "../system/wound-resolve.js"
+import {
+  SR5
+} from "../config.js"
+import {
+  SR5_SystemHelpers
+} from "../system/utilitySystem.js"
+import {
+  SR5_EntityHelpers
+} from "../entities/helpers.js"
+import {
+  registerHandlebarsHelpers
+} from "../handlebars.js"
+import {
+  preloadHandlebarsTemplates
+} from "../templates.js"
+import {
+  SR5_SocketHandler
+} from "../socket.js"
+import {
+  SR5Actor
+} from "../entities/actors/entityActor.js"
+import {
+  SR5ActorSheet
+} from "../entities/actors/characterSheet.js"
+import {
+  SR5SpiritSheet
+} from "../entities/actors/spiritSheet.js"
+import {
+  SR5GruntSheet
+} from "../entities/actors/gruntSheet.js"
+import {
+  SR5DroneSheet
+} from "../entities/actors/droneSheet.js"
+import {
+  SR5AppareilSheet
+} from "../entities/actors/deviceSheet.js"
+import {
+  SR5SpriteSheet
+} from "../entities/actors/spriteSheet.js"
+import {
+  SR5AgentSheet
+} from "../entities/actors/agentSheet.js"
+import {
+  SR5StorageSheet
+} from "../entities/actors/storageSheet.js"
+import {
+  SR5Item
+} from "../entities/items/entityItem.js"
+import {
+  SR5ItemSheet
+} from "../entities/items/itemSheet.js"
+import {
+  SR5Combat, _getInitiativeFormula
+} from "../system/srcombat.js"
+import {
+  SR5RollTable, SR5TableResult
+} from "../entities/rollTables/entityRollTable.js"
+import {
+  SR5Token
+} from "../interface/token.js"
+import * as SRVision from "../system/vision.js"
+import {
+  SR5CombatTracker
+} from "../interface/srcombat-tracker.js"
+import {
+  SR5ItemDirectory
+} from "../interface/sr-item-directory.js"
+import {
+  SR5_CompendiumUtility
+} from "../entities/actors/utilityCompendium.js"
+import SR5SceneConfig from "../interface/sceneConfig.js"
+import SR5MeasuredTemplateConfig from "../interface/measuredTemplateConfig.js"
+import * as macros from "../interface/macros.js"
+import Migration from "../migration.js"
+import {
+  SR5CompendiumBrowser
+} from "../interface/compendium-browser.js"
+import {
+  SR5TokenDefaultsApi
+} from "../system/token-defaults.js"
+import {
+  SR5ShopWindow, SR5ShopWorldSource
+} from "../interface/shop-window.js"
+import {
+  vendorsApi
+} from "../interface/shop-vendor.js"
+import {
+  SR5DealershipWindow
+} from "../interface/dealership-window.js"
+import {
+  SR5FactionsApp
+} from "../interface/factions-app.js"
+import {
+  factionRegistryApi
+} from "../interface/faction-registry.js"
+import {
+  commcodeApi, contactsApi
+} from "../interface/commcode-api.js"
+import {
+  SR5PanCrown
+} from "../canvas/pan-crown/pan-crown.js"
+import {
+  SR5CombatApi
+} from "../system/combat-api.js"
+import {
+  SR5MatrixApi
+} from "../system/matrix-api.js"
+import {
+  SR5PanCrownLayer
+} from "../canvas/pan-crown/pan-crown-layer.js"
+
+// Item DataModels
+import {
+  sr5ItemAdeptPowerDataModel
+} from "../datamodels/items/itemAdeptPower.js"
+import {
+  sr5ItemAmmunitionDataModel
+} from "../datamodels/items/itemAmmunition.js"
+import {
+  sr5ItemAmmunitionTypeDataModel
+} from "../datamodels/items/itemAmmunitionType.js"
+import {
+  sr5ItemArmorDataModel
+} from "../datamodels/items/itemArmor.js"
+import {
+  sr5ItemAugmentationDataModel
+} from "../datamodels/items/itemAugmentation.js"
+import {
+  sr5ItemComplexFormDataModel
+} from "../datamodels/items/itemComplexForm.js"
+import {
+  sr5ItemContactDataModel
+} from "../datamodels/items/itemContact.js"
+import {
+  sr5ItemDeviceDataModel
+} from "../datamodels/items/itemDevice.js"
+import {
+  sr5ItemDrugDataModel
+} from "../datamodels/items/itemDrug.js"
+import {
+  sr5ItemEchoDataModel
+} from "../datamodels/items/itemEcho.js"
+import {
+  sr5ItemEffectDataModel
+} from "../datamodels/items/itemEffect.js"
+import {
+  sr5ItemFocusDataModel
+} from "../datamodels/items/itemFocus.js"
+import {
+  sr5ItemGearDataModel
+} from "../datamodels/items/itemGear.js"
+import {
+  sr5ItemKarmaDataModel
+} from "../datamodels/items/itemKarma.js"
+import {
+  sr5ItemKnowledgeDataModel
+} from "../datamodels/items/itemKnowledge.js"
+import {
+  sr5ItemLanguageDataModel
+} from "../datamodels/items/itemLanguage.js"
+import {
+  sr5ItemLifestyleDataModel
+} from "../datamodels/items/itemLifestyle.js"
+import {
+  sr5ItemMarkDataModel
+} from "../datamodels/items/itemMark.js"
+import {
+  sr5ItemMartialArtDataModel
+} from "../datamodels/items/itemMartialArt.js"
+import {
+  sr5ItemMentorSpiritDataModel
+} from "../datamodels/items/itemMentorSpirit.js"
+import {
+  sr5ItemMetamagicDataModel
+} from "../datamodels/items/itemMetamagic.js"
+import {
+  sr5ItemNuyenDataModel
+} from "../datamodels/items/itemNuyen.js"
+import {
+  sr5ItemPowerDataModel
+} from "../datamodels/items/itemPower.js"
+import {
+  sr5ItemPreparationDataModel
+} from "../datamodels/items/itemPreparation.js"
+import {
+  sr5ItemProgramDataModel
+} from "../datamodels/items/itemProgram.js"
+import {
+  sr5ItemQualityDataModel
+} from "../datamodels/items/itemQuality.js"
+import {
+  sr5ItemReputationDataModel
+} from "../datamodels/items/itemReputation.js"
+import {
+  sr5ItemRitualDataModel
+} from "../datamodels/items/itemRitual.js"
+import {
+  sr5ItemSinDataModel
+} from "../datamodels/items/itemSin.js"
+import {
+  sr5ItemSpellDataModel
+} from "../datamodels/items/itemSpell.js"
+import {
+  sr5ItemSpiritDataModel
+} from "../datamodels/items/itemSpirit.js"
+import {
+  sr5ItemSpiritTypeDataModel
+} from "../datamodels/items/itemSpiritType.js"
+import {
+  sr5ItemFileDataModel
+} from "../datamodels/items/itemFile.js"
+import {
+  sr5ItemToxinDataModel
+} from "../datamodels/items/itemToxin.js"
+import {
+  SR5_Toxins
+} from "../entities/items/toxins.js"
+import {
+  SR5DrugDesigner
+} from "../interface/drug-designer.js"
+import {
+  sr5ItemSpriteDataModel
+} from "../datamodels/items/itemSprite.js"
+import {
+  sr5ItemSpritePowerDataModel
+} from "../datamodels/items/itemSpritePower.js"
+import {
+  sr5ItemStorageDataModel
+} from "../datamodels/items/itemStorage.js"
+import {
+  sr5ActorStorageDataModel
+} from "../datamodels/actors/actorStorage.js"
+import {
+  sr5ItemTraditionDataModel
+} from "../datamodels/items/itemTradition.js"
+import {
+  sr5ItemVehicleDataModel
+} from "../datamodels/items/itemVehicle.js"
+import {
+  sr5ItemVehicleModDataModel
+} from "../datamodels/items/itemVehicleMod.js"
+import {
+  sr5ItemWeaponDataModel
+} from "../datamodels/items/itemWeapon.js"
+
+// Actor DataModels
+import {
+  sr5ActorPcDataModel
+} from "../datamodels/actors/actorPc.js"
+import {
+  sr5ActorGruntDataModel
+} from "../datamodels/actors/actorGrunt.js"
+import {
+  sr5ActorSpiritDataModel
+} from "../datamodels/actors/actorSpirit.js"
+import {
+  sr5ActorDroneDataModel
+} from "../datamodels/actors/actorDrone.js"
+import {
+  sr5ActorDeviceDataModel
+} from "../datamodels/actors/actorDevice.js"
+import {
+  sr5ActorSpriteDataModel
+} from "../datamodels/actors/actorSprite.js"
+import {
+  sr5ActorAgentDataModel
+} from "../datamodels/actors/actorAgent.js"
+import {
+  sr5ExtendJournalHeadingLevels,
+  sr5DeepenJournalTableOfContents
+} from "../interface/journal-heading-levels.js"
+import {
+  SR5_GrappleHelpers
+} from "../rolls/roll-helpers/grapple.js"
+import {
+  registerRunningMovementActions, createRunningTokenRuler, runningStatusEffect
+} from "../system/running.js"
+import {
+  agilityZeroStatusEffect
+} from "../system/agility-zero.js"
+import {
+  convertMentorQualities, revertMentorConversion
+} from "../entities/items/mentor-conversion.js"
+import {
+  activateAutomaticPowers
+} from "../entities/items/always-active-macro.js"
+import {
+  registerPanArKey
+} from "../canvas/pan-crown/pan-openings.js"
+import {
+  registerSettingsWindow
+} from "../interface/settings-window.js"
+import {
+  installRuleReminders
+} from "../system/rule-reminders.js"
+import {
+  spriteTypesApi
+} from "../entities/actors/sprite-types.js"
+
+export async function sr5HookInit() {
+  //The Lite inside the system: its packs taken out when a Megapack module is active, the other editions' links sent
+  //to the active one; first, before the settings that name the active Megapack and before Foundry builds game.packs
+  installSystemMegapack()
+  SR5_SystemHelpers.registerSystemSettings()
+  //"Rappel des règles" unchecked: the page references leave the texts, before the actors are prepared (their
+  //modifiers' labels are written then)
+  installRuleReminders()
+  //The key of the AR view: every PAN crown (couronne du PAN, lot 8)
+  registerPanArKey()
+  SR5_CompendiumUtility.registerSettings()
+  registerSheetSizeSetting()
+  registerIndirectEffectSetting()
+  //Spirit ledger: values left on the sheets by the first version are moved once the world is ready
+  initSpiritLedger()
+  //Sixth World calendar and 3 s per Combat Turn (SR5 p. 51)
+  registerCalendarSettings()
+  //How each user shows the clock, and the GM's dated events
+  registerCalendarClockSettings()
+  registerDeadlineSettings()
+  registerOrderSettings()
+  registerOrderLedger()
+  //A new availability test after a failure (SR5 p. 420): the GM's ledger of failed cards
+  registerRetryLedger()
+  //Aegis (Kill Code p. 112): the shield boxes, kept by the active GM
+  registerAegisLedger()
+  //The information broker (Cutting Aces p. 148-149): the requests, kept by the active GM
+  registerInfoBrokerLedger()
+  //The cards spent through the generic sockets, once per use and target (security lot)
+  SR5_MiscellaneousHelpers.registerSettings()
+  registerExtendedClockSetting()
+  //Diseases (Run Faster p. 111-112): the GM's ledger of infections, and what the player is shown
+  registerDiseaseSettings()
+  //Essence Loss of the Infected (SR5 p. 403): the GM's ledger of their hunger, and the length of a lunar month
+  registerHungerSettings()
+  //Infection (SR5 p. 401): the GM's ledger of the comas
+  registerInfectionSettings()
+  //Treating CFD (Dark Terrors p. 86-87): the GM's ledger of the NanoScrub and Overwriters at work
+  registerCfdSettings()
+  //Radiation zones (Run & Gun p. 164-165): the GM's ledger of exposures
+  registerRadiationSettings()
+  //The GM's ledgers of the illusions seen through (SR5 p. 294) and of the RP-Tac rosters (Run & Gun p. 119)
+  registerIllusionSetting()
+  registerHealLedger()
+  registerTacnetSetting()
+  registerManeuverSetting()
+  registerWoundResolveSetting()
+  //Every visible system setting moves into the settings window, by tab (B10): keep this after the last registration
+  registerSettingsWindow()
+  //The grappling statuses exist only in a world that uses the grappling rules
+  if (SR5_GrappleHelpers.isActive()) CONFIG.statusEffects.push(...SR5_GrappleHelpers.statusEffects())
+  //Running (SR5 p. 163-164): the "running" status, "Course" and "Sprint" in the movement selector, a ruler colored by gait
+  CONFIG.statusEffects.push(runningStatusEffect)
+  //Agility brought to 0 (séance H, H8): "immobilized", laid and taken off by the active gamemaster (system/agility-zero.js)
+  CONFIG.statusEffects.push(agilityZeroStatusEffect)
+  registerRunningMovementActions(CONFIG.Token.movement)
+  CONFIG.Token.rulerClass = createRunningTokenRuler(CONFIG.Token.rulerClass)
+  sr5ExtendJournalHeadingLevels()
+  sr5DeepenJournalTableOfContents()
+  SR5_SystemHelpers.srLogPublic(`Welcome to the Sixth World, chummer!`)
+  SR5_SystemHelpers.srLogPublic(`Remember: Never, ever, cut a deal with a dragon!`)
+  SR5_SystemHelpers.srLog(2, `Initializing game system`)
+
+  // Create a namespace within the game global
+  game.sr5 = {
+    config: SR5_EntityHelpers.sortTranslations(SR5),
+    entities: {
+      SR5Actor,
+      SR5Item,
+    },
+    migration: Migration,
+    macros: macros,
+    rollItemMacro: macros.rollItemMacro,
+    rollMacro: macros.rollMacro,
+    compendiumBrowser: SR5CompendiumBrowser,
+    shop: SR5ShopWindow,
+    // The main lifestyle of an actor, the one the starting nuyen are rolled for (SR5 p. 97): read by the Concepteur
+    primaryLifestyle: actor => primaryLifestyle(actor?.items),
+    // The items bought past the creation limits where the table allows it: read by the Concepteur's summary (C3)
+    creationOverLimitItems,
+    // The dealership (lot R9): build a vehicle or a drone and buy it
+    dealership: SR5DealershipWindow,
+    // The factions window (lot 10), for the modules: topologie-sr5 opens it by game.sr5.factions.open() (lot 16b)
+    factions: SR5FactionsApp,
+    // The factions registry for the modules: reads are copies, update() is the active GM's (topologie-sr5, lot 1-bis)
+    factionRegistry: factionRegistryApi(),
+    // The shop against the till, item by item: should answer no difference
+    shopAudit: () => SR5ShopWorldSource.audit(),
+    // GM macro: old-style Mentor Spirit qualities -> quality linked to a mentor item (SR5 p. 76), and back
+    convertMentorQualities,
+    revertMentorConversion,
+    // GM macro: switch on the always active powers of the sheets made before (SR5 p. 396, H39)
+    activateAutomaticPowers,
+    // The crown of a PAN (lot 1: the graph and what the observer sees of it; lot 2: open and close it)
+    panCrown: SR5PanCrown,
+    // The combat for the modules: count an action (API pour Matrice v1, A4)
+    combat: SR5CombatApi,
+    // The Matrix for the modules: put marks, converge (API pour Matrice v1, A11, A12)
+    matrix: SR5MatrixApi,
+    // The GM's token of each family the system creates (lot 9): for a module that lays IC or sprites itself
+    tokenDefaults: SR5TokenDefaultsApi,
+    // The shop's vendors for the modules: the Concepteur's NPC generator creates one from a template (lot 43)
+    vendors: vendorsApi(),
+    // The sprite types for the modules: register a type of their own during init or setup (sprite-types.js).
+    // The Fading attribute has its hook, sr5.fadingResistance (fading-resistance.js)
+    spriteTypes: spriteTypesApi,
+    // The messaging between commcodes and the contacts for the modules (API pour CONTACTS, landing-metroplexes-sr5)
+    commcode: commcodeApi(),
+    contacts: contactsApi(),
+  }
+
+  // Register DataModels
+  Object.assign(CONFIG.Actor.dataModels, {
+    actorPc: sr5ActorPcDataModel,
+    actorGrunt: sr5ActorGruntDataModel,
+    actorSpirit: sr5ActorSpiritDataModel,
+    actorDrone: sr5ActorDroneDataModel,
+    actorDevice: sr5ActorDeviceDataModel,
+    actorSprite: sr5ActorSpriteDataModel,
+    actorAgent: sr5ActorAgentDataModel,
+    actorStorage: sr5ActorStorageDataModel,
+  })
+  Object.assign(CONFIG.Item.dataModels, {
+    itemAdeptPower: sr5ItemAdeptPowerDataModel,
+    itemAmmunition: sr5ItemAmmunitionDataModel,
+    itemAmmunitionType: sr5ItemAmmunitionTypeDataModel,
+    itemArmor: sr5ItemArmorDataModel,
+    itemAugmentation: sr5ItemAugmentationDataModel,
+    itemComplexForm: sr5ItemComplexFormDataModel,
+    itemContact: sr5ItemContactDataModel,
+    itemDevice: sr5ItemDeviceDataModel,
+    itemDrug: sr5ItemDrugDataModel,
+    itemEcho: sr5ItemEchoDataModel,
+    itemEffect: sr5ItemEffectDataModel,
+    itemFile: sr5ItemFileDataModel,
+    itemFocus: sr5ItemFocusDataModel,
+    itemGear: sr5ItemGearDataModel,
+    itemKarma: sr5ItemKarmaDataModel,
+    itemKnowledge: sr5ItemKnowledgeDataModel,
+    itemLanguage: sr5ItemLanguageDataModel,
+    itemLifestyle: sr5ItemLifestyleDataModel,
+    itemMark: sr5ItemMarkDataModel,
+    itemMartialArt: sr5ItemMartialArtDataModel,
+    itemMentorSpirit: sr5ItemMentorSpiritDataModel,
+    itemMetamagic: sr5ItemMetamagicDataModel,
+    itemNuyen: sr5ItemNuyenDataModel,
+    itemPower: sr5ItemPowerDataModel,
+    itemPreparation: sr5ItemPreparationDataModel,
+    itemProgram: sr5ItemProgramDataModel,
+    itemQuality: sr5ItemQualityDataModel,
+    itemReputation: sr5ItemReputationDataModel,
+    itemRitual: sr5ItemRitualDataModel,
+    itemSin: sr5ItemSinDataModel,
+    itemSpell: sr5ItemSpellDataModel,
+    itemSpirit: sr5ItemSpiritDataModel,
+    itemSpiritType: sr5ItemSpiritTypeDataModel,
+    itemToxin: sr5ItemToxinDataModel,
+    itemSprite: sr5ItemSpriteDataModel,
+    itemSpritePower: sr5ItemSpritePowerDataModel,
+    itemStorage: sr5ItemStorageDataModel,
+    itemTradition: sr5ItemTraditionDataModel,
+    itemVehicle: sr5ItemVehicleDataModel,
+    itemVehicleMod: sr5ItemVehicleModDataModel,
+    itemWeapon: sr5ItemWeaponDataModel,
+  })
+
+  // Record Configuration Values
+  CONFIG.SR5 = SR5_EntityHelpers.sortTranslations(SR5)
+  CONFIG.Actor.documentClass = SR5Actor
+  CONFIG.Item.documentClass = SR5Item
+  CONFIG.Combat.documentClass = SR5Combat
+  //Default turn marker: DjamZ's ouroboros (relecture djamz.13, R10); a marker chosen in Foundry's combat settings wins
+  CONFIG.Combat.fallbackTurnMarker = "systems/sr5/assets/img/ui/turn-marker-ouroboros.webp"
+  CONFIG.RollTable.documentClass = SR5RollTable
+  CONFIG.TableResult.documentClass = SR5TableResult
+  CONFIG.ui.combat = SR5CombatTracker
+  CONFIG.ui.items = SR5ItemDirectory
+  CONFIG.Token.objectClass = SR5Token
+  // The crowns of PANs: a layer of their own, above the tokens and under the HTML HUD (couronne du PAN, lot 2)
+  CONFIG.Canvas.layers.sr5PanCrown = {
+    layerClass: SR5PanCrownLayer, group: "interface"
+  }
+  SRVision.registerVisionModes()
+
+  // ACTIVATE HOOKS DEBUG
+  CONFIG.debug.hooks = false
+
+  // Patch Core Functions
+  foundry.documents.Combatant.prototype._getInitiativeFormula = _getInitiativeFormula
+
+  // Register sheet application classes
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5ActorSheet, {
+    types: ["actorPc"],
+    makeDefault: true,
+    label: "SR5.Sheet.Character"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5SpiritSheet, {
+    types: ["actorSpirit"],
+    makeDefault: true,
+    label: "SR5.Sheet.Spirit"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5GruntSheet, {
+    types: ["actorGrunt"],
+    makeDefault: true,
+    label: "SR5.Sheet.Grunt"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5DroneSheet, {
+    types: ["actorDrone"],
+    makeDefault: true,
+    label: "SR5.Sheet.Drone"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5AppareilSheet, {
+    types: ["actorDevice"],
+    makeDefault: true,
+    label: "SR5.Sheet.Device"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5SpriteSheet, {
+    types: ["actorSprite"],
+    makeDefault: true,
+    label: "SR5.Sheet.Sprite"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5AgentSheet, {
+    types: ["actorAgent"],
+    makeDefault: true,
+    label: "SR5.Sheet.Agent"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Actor, "SR5", SR5StorageSheet, {
+    types: ["actorStorage"],
+    makeDefault: true,
+    label: "SR5.Sheet.Storage"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Item, "SR5", SR5ItemSheet, {
+    makeDefault: true,
+    label: "SR5.Sheet.Item"
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.Scene, "SR5", SR5SceneConfig, {
+    makeDefault: true
+  })
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(foundry.documents.MeasuredTemplateDocument, "SR5", SR5MeasuredTemplateConfig, {
+    makeDefault: true
+  })
+
+  // Preload Handlebars Templates
+  await preloadHandlebarsTemplates()
+
+  //Socket
+  SR5_SocketHandler.registerSocketListeners()
+
+  //Book toxins button in the Items tab
+  SR5_Toxins.registerHooks()
+  //Drug designer button in the Items tab (Chrome Flesh p. 194-196)
+  SR5DrugDesigner.registerHooks()
+
+  // Patch creation dialog buttons with document-type icons
+  const docTypes = ["Actor", "Item", "Scene", "JournalEntry", "RollTable", "Cards", "Playlist", "Macro"]
+  for (const docName of docTypes) {
+    const cls = CONFIG[docName]?.documentClass
+    if (!cls?.createDialog) continue
+    const original = cls.createDialog
+    cls.createDialog = function(data={
+    }, createOptions={
+    }, options={
+    }) {
+      const icon = CONFIG[docName]?.sidebarIcon
+      if (icon && !options?.ok?.icon) {
+        options = foundry.utils.mergeObject({
+          ok: {
+            icon
+          }
+        }, options)
+      }
+      return original.call(this, data, createOptions, options)
+    }
+  }
+
+  // Register Handlebars helpers
+  registerHandlebarsHelpers()
+
+  SR5_SystemHelpers.srLog(2, `Finished initializing game system`)
+}

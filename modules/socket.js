@@ -1,0 +1,209 @@
+import {
+  SR5Combat 
+} from "./system/srcombat.js"
+import {
+  SR5_SystemHelpers 
+} from "./system/utilitySystem.js"
+import {
+  SR5Actor 
+} from "./entities/actors/entityActor.js"
+import {
+  SR5_RollMessage 
+} from "./rolls/roll-message.js"
+import {
+  SR5_MarkHelpers 
+} from "./rolls/roll-helpers/mark.js"
+import {
+  SR5_MiscellaneousHelpers 
+} from "./rolls/roll-helpers/miscellaneous.js"
+import {
+  SR5_ActorHelper 
+} from "./entities/actors/entityActor-helpers.js"
+import {
+  sr5SocketTablePayout
+} from "./interface/table-payout.js"
+import {
+  SR5ShopFence
+} from "./interface/shop-fence.js"
+import {
+  SR5_GrappleHelpers
+} from "./rolls/roll-helpers/grapple.js"
+import {
+  SR5SharedVision
+} from "./interface/shared-vision.js"
+import {
+  SR5StorageLock
+} from "./interface/storage-lock-actions.js"
+import {
+  trackRelay, relayDone
+} from "./system/relay-watch.js"
+// The gamemaster's vendor is loaded when one of its messages comes in: the socket is imported by
+// half the system, and the shop brings the other half (lot C)
+const vendor = method => async (message, senderId) => {
+  const {
+    SR5ShopVendor
+  } = await import("./interface/shop-vendor.js")
+  return SR5ShopVendor[method](message, senderId)
+}
+
+// A player asks the gamemaster to cancel a shop order (SR5 p. 420)
+const orderCancel = async (message, senderId) => {
+  const {
+    socketCancel
+  } = await import("./interface/shop-orders.js")
+  return socketCancel(message, senderId)
+}
+
+// A player asks for a new availability test after a failure (SR5 p. 420): the gamemaster checks and rolls
+const availabilityRetry = async (message, senderId) => {
+  const {
+    socketRetry
+  } = await import("./interface/shop-retry.js")
+  return socketRetry(message, senderId)
+}
+
+// A buyer's browser asks the active GM to enter its orders in his ledger (security lot, Sixtine)
+const orderLedger = async (message, senderId) => {
+  const {
+    socketRegister
+  } = await import("./interface/shop-orders.js")
+  return socketRegister(message, senderId)
+}
+
+export class SR5_SocketHandler {
+  static registerSocketListeners() {
+    const hooks = {
+      "doNextRound": [SR5Combat._socketDoNextRound],
+      "doInitPass": [SR5Combat._socketDoInitPass],
+      "updateCombat": [SR5Combat._socketUpdateCombat],
+      "rgAlternativeTurn": [SR5Combat._socketAlternativeTurn],
+      "changeInitInCombat": [SR5Combat._socketChangeInitInCombat],
+      "createSidekick": [SR5_ActorHelper._socketCreateSidekick],
+      "createDeadEffect": [SR5_ActorHelper._socketCreateDeadEffect],
+      "dismissSidekick": [SR5_ActorHelper._socketDismissSidekick],
+      "addItemToPan": [SR5_ActorHelper._socketAddItemToPan],
+      "deleteItemFromPan": [SR5_ActorHelper._socketDeleteItemFromPan],
+      "deleteMarksOnActor": [SR5_ActorHelper._socketDeleteMarksOnActor],
+      "deleteMarkInfo": [SR5_ActorHelper._socketDeleteMarkInfo],
+      "updateDeckMarkedItems": [SR5_MarkHelpers._socketUpdateDeckMarkedItems],
+      "markPanMaster": [SR5_MarkHelpers._socketMarkPanMaster],
+      "markItem": [SR5_MarkHelpers._socketMarkItem],
+      "eraseMark": [SR5_MarkHelpers._socketEraseMark],
+      "overwatchIncrease": [SR5_ActorHelper._socketOverwatchIncrease],
+      "linkEffectToSource": [SR5_ActorHelper._socketLinkEffectToSource],
+      "deleteSustainedEffect": [SR5_ActorHelper._socketDeleteSustainedEffect],
+      "deleteItem": [SR5_MiscellaneousHelpers._socketDeleteItem],
+      "updateItem": [SR5_MiscellaneousHelpers._socketUpdateItem],
+      "createItemEffect": [SR5_MiscellaneousHelpers._socketCreateItemEffect],
+      "updateChatButton": [SR5_RollMessage._socketUpdateChatButton],
+      "updateRollCard": [SR5_RollMessage._socketUpdateRollCard],
+      //The GM's browser is done with a request this browser relayed (system/relay-watch.js)
+      "relayDone": [relayDone],
+      "heal": [SR5_ActorHelper._socketHeal],
+      "applyHealEffect": [SR5_ActorHelper._socketApplyHealEffect],
+      "updateActorData": [SR5_MiscellaneousHelpers._socketUpdateActorData],
+      "takeDamage":[SR5_ActorHelper._socketTakeDamage],
+      "actorRoll": [SR5Actor._socketRollTest],
+      "tablePayout": [sr5SocketTablePayout],
+      "shopFenceCash": [SR5ShopFence.socketCash],
+      "grappleStartHold": [SR5_GrappleHelpers._socketStartHold],
+      "grappleReleaseHold": [SR5_GrappleHelpers._socketReleaseHold],
+      "grappleSetHold": [SR5_GrappleHelpers._socketSetHold],
+      "grappleWarn": [SR5_GrappleHelpers._socketWarn],
+      "grappleReverseHold": [SR5_GrappleHelpers._socketReverseHold],
+      "sharedVisionSetViewer": [SR5SharedVision._socketSetViewer],
+      "storageLockPick": [SR5StorageLock._socketPick],
+      "shopVendorBuy": [vendor('_socketBuy')],
+      "shopVendorNotice": [vendor('_socketNotice')],
+      "shopVendorOffer": [vendor('_socketOffer')],
+      "shopVendorAccept": [vendor('_socketAccept')],
+      "shopVendorDecline": [vendor('_socketDecline')],
+      "shopAvailabilityRetry": [availabilityRetry],
+      "shopOrderCancel": [orderCancel],
+      "shopOrderLedger": [orderLedger],
+      "claimChatButton": [async (message, senderId) => (await import("./rolls/roll-helpers/button-claim.js")).socketClaimChatButton(message, senderId)],
+      "claimChatButtonReply": [async (message, senderId) => (await import("./rolls/roll-helpers/button-claim.js")).socketClaimChatButtonReply(message, senderId)],
+      //Couronne du PAN, lot 5: the observer asks for her Matrix Perception, an owner makes the table lose sight
+      "matrixPerceptionInfo": [async (message, senderId) => (await import("./canvas/pan-crown/pan-perception-card.js"))._socketPerceptionInfo(message, senderId)],
+      "matrixPerceptionRefused": [async (message, senderId) => (await import("./canvas/pan-crown/pan-perception-card.js"))._socketPerceptionRefused(message, senderId)],
+      "matrixIntelForget": [async (message, senderId) => (await import("./canvas/pan-crown/pan-perception-card.js"))._socketForgetIntel(message, senderId)],
+      //B13: a lock lifted by the world, told to the gamemaster by his own browser, so the player does not read it
+      "ruleLockWhisper": [async (message, senderId) => (await import("./system/rule-locks.js")).socketRuleLockWhisper(message, senderId)],
+      //Objet Fichier: the attacker asks for an action on a file (SR5 p. 240-243), the active GM resolves it
+      "matrixFileAction": [async (message, senderId) => (await import("./rolls/roll-helpers/file-actions.js"))._socketFileAction(message, senderId)],
+      "matrixFileRefused": [async (message, senderId) => (await import("./rolls/roll-helpers/file-actions.js"))._socketFileRefused(message, senderId)],
+      "tacnetRoster": [async (message, senderId) => (await import("./system/tacnet.js"))._socketTacnetRoster(message, senderId)],
+      //Lot 37b: an explosive charge set off (Run & Gun p. 188), and a combat maneuver (Run & Gun p. 113), worked out by the active GM
+      "explosiveDetonate": [async (message, senderId) => (await import("./system/explosive-charge.js"))._socketExplosiveDetonate(message, senderId)],
+      "combatManeuver": [async (message, senderId) => (await import("./system/combat-maneuvers.js"))._socketCombatManeuver(message, senderId)],
+      //A player closed the resistance window of an area spell: the active GM asks again at her next move inside
+      "areaResistanceDeclined": [async (message) => (await import("./system/effectArea.js")).SR5_EffectArea._socketResistanceDeclined(message)],
+      //API pour Matrice v1 (A11, A12): a module on a player's browser asks the active GM to put marks, or to converge
+      "apiPlaceMarks": [async (message, senderId) => (await import("./system/matrix-api.js"))._socketPlaceMarks(message, senderId)],
+      "apiConverge": [async (message, senderId) => (await import("./system/matrix-api.js"))._socketConverge(message, senderId)],
+      //Sacrifice (Street Grimoire p. 90): the owner of a blood magician asks for the points of a wound, the GM grants them
+      "bloodSacrifice": [async (message, senderId) => (await import("./system/blood-magic.js"))._socketBloodSacrifice(message, senderId)],
+      //Lot 14: a message or a call between commcodes (SR5 p. 241), written by the active GM in his register
+      "commcodeRequest": [async (message, senderId) => (await import("./interface/commcode-traffic.js"))._socketCommcodeRequest(message, senderId)],
+      "commcodeRefused": [async (message, senderId) => (await import("./interface/commcode-traffic.js"))._socketCommcodeRefused(message, senderId)],
+      //Lot 37a: data bought from or sold to an information broker (Cutting Aces p. 148-149), written by the active GM
+      "infoBrokerRequest": [async (message, senderId) => (await import("./interface/info-broker.js"))._socketInfoBrokerRequest(message, senderId)],
+      "infoBrokerAnswer": [async (message, senderId) => (await import("./interface/info-broker.js"))._socketInfoBrokerAnswer(message, senderId)],
+    }
+
+    //senderId is added by the server to every custom socket message: a client cannot forge it
+    game.socket.on(`system.sr5`, async (message, senderId) => {
+      SR5_SystemHelpers.srLog(3,'Received Shadowrun 5 system socket message.', message)
+      const handlers = hooks[message.type]
+      if (!handlers || handlers.length === 0) return console.warn('System socket message without handler!', message)
+      //Every message of the system names the one user who handles it. One without a name, forged in a console, ran on
+      //every client: both GMs confirmed the same damage, which was applied twice (Marta's measure, security pass Petra)
+      if (!message?.userId) return SR5_SystemHelpers.srLog(1, `Socket ${message?.type} refused from ${senderId}: no recipient`)
+      if (game.user.id !== message.userId) return
+      if (message.userId && game.user.id) SR5_SystemHelpers.srLog(3,'GM is handling Shadowrun 5 system socket message')
+
+      try {
+        for (const handler of handlers) {
+          await handler(message, senderId)
+        }
+      } finally {
+        //A relayed request is done, the GM's answer included: its sender stops waiting on this GM (relay-watch.js)
+        if (message.relayId && senderId) SR5_SocketHandler.emitForPlayer("relayDone", {
+          relayId: message.relayId
+        }, senderId)
+      }
+    })
+  }
+
+  static _createMessage(type, data, userId) {
+    return {
+      type, data, userId
+    }
+  }
+
+  static async emit(type, data) {
+    const message = SR5_SocketHandler._createMessage(type, data)
+    await game.socket.emit(`system.sr5`, message)
+  }
+
+  static async emitForGM(type, data) {
+    if (game.user.isGM) return SR5_SystemHelpers.srLog(1, 'Active user is GM, abort')
+
+    //The active GM: the handlers that write a ledger only for him dropped a request sent to another GM
+    const gmUser = game.users.activeGM ?? game.users.find(user => user.isGM && user.active)
+    //Nobody can relay the action: say so instead of dropping it silently
+    if (!gmUser) {
+      ui.notifications.warn(game.i18n.localize("SR5.WARN_NoActiveGM"))
+      return SR5_SystemHelpers.srLog(1, 'No active GM user!')
+    }
+
+    const message = SR5_SocketHandler._createMessage(type, data, gmUser.id)
+    message.relayId = trackRelay(type, gmUser.id)
+    await game.socket.emit(`system.sr5`, message)
+  }
+
+  static async emitForPlayer(type, data, playerId) {
+    const message = SR5_SocketHandler._createMessage(type, data, playerId)
+    await game.socket.emit(`system.sr5`, message)
+  }
+}

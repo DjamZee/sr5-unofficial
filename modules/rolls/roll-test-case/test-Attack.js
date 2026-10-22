@@ -1,0 +1,68 @@
+import {
+  SR5_RollMessage 
+} from "../roll-message.js"
+import {
+  SR5 
+} from "../../config.js"
+import {
+  SR5_Toxins
+} from "../../entities/items/toxins.js"
+import {
+  WEAPON_MATRIX_DAMAGE
+} from "../roll-helpers/weapon-matrix-damage.js"
+import {
+  SR5_EntityHelpers
+} from "../../entities/helpers.js"
+import {
+  spellAuraOf, spellAuraDamageType
+} from "../roll-helpers/spell-aura.js"
+
+export default async function attackInfo(cardData){
+  cardData.damage.resistanceType = "physicalDamage"
+
+  //Aura of [element] (Street Grimoire p. 114): its elemental damage is Physical, whatever type the dialog let the
+  //attacker pick for a weapon that has none (the GM works it out the same way, attack-card.js)
+  if (cardData.test?.typeSub === "meleeWeapon" && cardData.owner?.actorId) {
+    const aura = spellAuraOf(SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids)?.system)
+    if (aura) cardData.damage.type = spellAuraDamageType(aura.element, cardData.damage.type)
+  }
+
+  // handle choke settings
+  if (cardData.combat.choke.damageModify) {
+    cardData.damage.base -= cardData.combat.choke.damageModify 
+    cardData.damage.value -= cardData.combat.choke.damageModify
+  }
+  // Laser weapons lose DV with range and visibility (Run & Gun p. 64), worked out by the roll dialog
+  if (cardData.combat.laser?.damageModify) {
+    cardData.damage.base = Math.max(0, cardData.damage.base - cardData.combat.laser.damageModify)
+    cardData.damage.value = Math.max(0, cardData.damage.value - cardData.combat.laser.damageModify)
+  }
+  // A launcher keeps typeSub "rangedWeapon" for its dialog (range and every usual modifier apply, SR5 p. 182),
+  // so a hand grenade, a grenade launcher and a missile launcher are all told apart by combat.grenade.isGrenade:
+  // a simple test against a spot, scattering under 3 hits, with no defense test (SR5 p. 182-183)
+  if (cardData.test.typeSub === "grenade" || cardData.combat.grenade?.isGrenade) {
+    cardData.damage.value = cardData.damage.base
+    // No defense card here: the attack is marked where it lands, so its blast can knock down (SR5 p. 195)
+    cardData.damage.isAttack = true
+    //Handle scatter
+    if (cardData.roll.hits < 3) cardData.chatCard.buttons.scatter = SR5_RollMessage.generateChatButton("nonOpposedTest","scatter",game.i18n.localize("SR5.Scatter"))
+    //Handle Grenade Resistant chat button
+    let label = `${game.i18n.localize("SR5.TakeOnDamageShort")} ${game.i18n.localize("SR5.DamageValueShort")}${game.i18n.localize("SR5.Colons")} ${cardData.damage.value}${game.i18n.localize(SR5.damageTypesShort[cardData.damage.type])}`
+    if (cardData.combat.armorPenetration) label += ` / ${game.i18n.localize("SR5.ArmorPenetrationShort")}${game.i18n.localize("SR5.Colons")} ${cardData.combat.armorPenetration}`
+    if (cardData.damage.element === "toxin") label = `${game.i18n.localize("SR5.TakeOnDamageShort")} ${game.i18n.localize("SR5.Toxin")}${game.i18n.localize("SR5.Colons")} ${SR5_Toxins.nameOf(cardData.damage.toxin, k => game.i18n.localize(k))}`
+    //A DSP grenade (Street Lethal p. 57): matrix damage, resisted by each device caught in the blast
+    if (cardData.damage.type === WEAPON_MATRIX_DAMAGE) {
+      cardData.damage.matrix.value = cardData.damage.value
+      cardData.damage.fromWeapon = true
+      if (cardData.damage.value > 0) cardData.chatCard.buttons.matrixResistance = SR5_RollMessage.generateChatButton("opposedTest","matrixResistance",`${game.i18n.localize("SR5.TakeOnDamageMatrix")} (${cardData.damage.value})`)
+    } else if (cardData.damage.value > 0) cardData.chatCard.buttons.resistanceCard = SR5_RollMessage.generateChatButton("opposedTest","resistanceCard",label)
+  } else if (cardData.roll.hits > 0) {
+    if (cardData.test.typeSub === "rangedWeapon") cardData.chatCard.buttons.defenseRangedWeapon = SR5_RollMessage.generateChatButton("opposedTest","defenseRangedWeapon",game.i18n.localize("SR5.Defend"))
+    //SR5 p. 170 and 182: under suppressive fire, going prone (free action, or "manger la poussière") instead of the test
+    if (cardData.test.typeSub === "rangedWeapon" && cardData.combat.firingMode?.selected === "SF") cardData.chatCard.buttons.dropProneUnderFire = SR5_RollMessage.generateChatButton("opposedTest","dropProneUnderFire",game.i18n.localize("SR5.EatDirtButton"))
+    else if (cardData.test.typeSub === "meleeWeapon") cardData.chatCard.buttons.defenseMeleeWeapon = SR5_RollMessage.generateChatButton("opposedTest","defenseMeleeWeapon",game.i18n.localize("SR5.Defend"))
+  } else {
+    if (cardData.test.type === "ramming") cardData.chatCard.buttons.defenseRamming = SR5_RollMessage.generateChatButton("opposedTest","defenseRamming",game.i18n.localize("SR5.Defend"))
+    cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest","",game.i18n.localize("SR5.AttackMissed"))
+  }
+}

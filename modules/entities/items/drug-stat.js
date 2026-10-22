@@ -1,0 +1,157 @@
+import {
+  effectPhase
+} from "./drug-phase.js"
+import {
+  drugHasCrashDamage, drugKeyOf
+} from "./drug-damage.js"
+
+// The quality of a drug changes the duration of its crash (Chrome Flesh p. 194): street drugs double it,
+// pharmaceutical ones halve it, custom ones divide it by four. Standard is the default
+export const DRUG_QUALITY_CRASH_FACTORS = {
+  street: 2,
+  standard: 1,
+  pharmaceutical: 0.5,
+  custom: 0.25,
+}
+
+// A fraction of a unit goes down to the smaller one (1.5 hours are 90 minutes), so that the sheet shows whole
+// numbers and the clock counts the same time; under a Combat Turn, it is rounded, one at least
+const SMALLER_UNIT = {
+  month: ["day", 30],
+  week: ["day", 7],
+  day: ["hour", 24],
+  hour: ["minute", 60],
+  minute: ["combatTurn", 20],
+}
+
+export function scaleDuration(value, unit, factor){
+  let n = Number(value) * factor
+  let type = unit
+  while (!Number.isInteger(n) && SMALLER_UNIT[type]){
+    const [smaller, ratio] = SMALLER_UNIT[type]
+    n *= ratio
+    type = smaller
+  }
+  if (!Number.isInteger(n)) n = Math.max(1, Math.round(n))
+  return {
+    value: n, unit: type
+  }
+}
+
+// A drug taken without a stat has no duration nor crash, so the calendar never warns: the GM is told by a
+// whisper, and whoever took it by a notification
+export async function warnDrugWithoutStat(actor, item){
+  const text = game.i18n.format("SR5.WARN_DrugWithoutStat", {
+    actor: actor.name, drug: item.name
+  })
+  ui.notifications.warn(text)
+  const gms = ChatMessage.getWhisperRecipients("GM").map(u => u.id)
+  if (gms.length) await ChatMessage.create({
+    content: `<p>${foundry.utils.escapeHTML?.(text) ?? text}</p>`, whisper: gms
+  })
+}
+
+// A custom drug made for someone else is a street drug for whoever takes it (Chrome Flesh p. 194: "Si quelqu'un
+// utilise une drogue sur mesure prévue pour quelqu'un d'autre, considérez-la comme ayant été préparée dans les
+// rues"). Nobody named: custom for anyone, as before the field existed
+export function effectiveDrugQuality(system, consumer){
+  const quality = system?.quality || "standard"
+  if (quality !== "custom" || !system?.preparedFor || !consumer?.id) return quality
+  return system.preparedFor === consumer.id ? quality : "street"
+}
+
+// Minutes of each unit a duration of the stat is given in (keys of SR5.extendedIntervals)
+const UNIT_MINUTES = {
+  combatTurn: 0.05, minute: 1, hour: 60, day: 1440, week: 10080, month: 43200
+}
+
+// A crash counted from the intake (Wudu'aku, Chrome Flesh p. 193: 24 hours "une fois la drogue ingérée"): what is left
+// of `sinceIntake` minutes once the speed and the effect are over, in minutes
+export function crashSinceIntake(shot){
+  const speed = Number(shot?.speed) || 0
+  const speedType = String(shot?.speedType ?? "").toLowerCase()
+  const speedMinutes = speedType.includes("combatturn") ? speed * UNIT_MINUTES.combatTurn :
+    speedType.includes("hour") ? speed * UNIT_MINUTES.hour : speedType.includes("minute") ? speed : 0
+  const effectMinutes = (Number(shot?.duration) || 0) * (UNIT_MINUTES[shot?.durationType] ?? 0)
+  return {
+    durationContrecoup: Math.max(Math.ceil((Number(shot?.sinceIntake) || 0) - speedMinutes - effectMinutes), 0),
+    durationContrecoupType: "minute"
+  }
+}
+
+// The drug stat (handleShot) with the crash duration of its quality, changed in place
+export function applyDrugQuality(shot, quality){
+  const factor = DRUG_QUALITY_CRASH_FACTORS[quality] ?? 1
+  if (!shot || factor === 1) return shot
+  const n = Number(shot.durationContrecoup)
+  if (Number.isFinite(n) && n > 0 && shot.durationContrecoupType){
+    const scaled = scaleDuration(n, shot.durationContrecoupType, factor)
+    shot.durationContrecoup = scaled.value
+    shot.durationContrecoupType = scaled.unit
+  }
+  //eX and galak: the -2 social Limit is part of the crash, its (Body) hours follow the quality too
+  const social = Number(shot.socialLimitContrecoup)
+  if (Number.isFinite(social) && social > 0){
+    const scaled = scaleDuration(social, shot.socialLimitContrecoupType ?? "hour", factor)
+    shot.socialLimitContrecoup = scaled.value
+    shot.socialLimitContrecoupType = scaled.unit
+  }
+  return shot
+}
+
+// Pharmaceutical drugs lower the addiction threshold by 1 (Chrome Flesh p. 194); at 0 the user is free of it
+// (SR5 p. 415), so it goes no lower
+export function drugAddictionThreshold(system){
+  const threshold = Number(system?.addiction?.threshold) || 0
+  return system?.quality === "pharmaceutical" ? Math.max(0, threshold - 1) : threshold
+}
+
+// The modifier of the interaction roll (Chrome Flesh p. 194, read on the table of p. 197): +1 for each street drug of the mix, -1 when all
+// of them are custom
+export function drugInteractionModifier(qualities){
+  const street = qualities.filter(q => q === "street").length
+  const allCustom = qualities.length > 0 && qualities.every(q => q === "custom")
+  return street - (allCustom ? 1 : 0)
+}
+
+// A crash that is only damage (Cram, "Crash: 6S", SR5 p. 412; Hurlg, Chrome Flesh p. 187): no duration, no effect
+// of the crash. The book gives it no length: it is over once its damage is taken (Liesel's D3, such a drug stayed
+// in its crash for ever and was rolled in every interaction after it, Chrome Flesh p. 196)
+export function drugCrashIsInstant(data){
+  const shot = data?.handleShot ?? {
+  }
+  if (Number(shot.durationContrecoup) > 0) return false
+  return !Object.values(data?.customEffects ?? {
+  }).some(e => e && typeof e === "object" && effectPhase(e) === "crash")
+}
+
+// A drug has a crash when its stat gives it a duration or damage, or when one of its effects applies then
+export function drugHasCrash(data){
+  const shot = data.handleShot ?? {
+  }
+  if (Number(shot.durationContrecoup) > 0 || drugHasCrashDamage(drugKeyOf(data), shot)) return true
+  return Object.values(data.customEffects ?? {
+  }).some(e => e && typeof e === "object" && effectPhase(e) === "crash")
+}
+
+// The key of a drug: the value of its "drug" system effect (jazz, cram…), "" when it has none
+const drugKey = system => Object.values(system?.systemEffects ?? {
+}).find(e => e?.category === "drug")?.value ?? ""
+
+// Two copies of the same drug are not a mix: the interaction comes from taking a drug under the effect of ANOTHER one
+// (Chrome Flesh p. 183). The same key is the same drug, whatever its quality; two custom drugs on the same base are
+// two drugs (their blocks differ, Chrome Flesh p. 194), told apart by their name. Taken again under its own effect, it
+// is an overdose (SR5 p. 417), not an interaction
+export function isSameDrug(a, b){
+  const key = drugKey(a?.system)
+  if (!key || key !== drugKey(b?.system)) return false
+  //Two drugs made with the designer share their key whatever their recipe: told apart by their name too
+  const custom = a.system?.quality === "custom" || b.system?.quality === "custom" || key === "customDrug"
+  return !custom || a.name === b.name
+}
+
+// The drugs of a mix, each counted once: the roll has one die per drug and the street modifier +1 per drug
+// (Chrome Flesh p. 197), however many copies of it are under effect. Every copy still undergoes the result
+export function distinctDrugs(drugs){
+  return drugs.filter((d, i) => !drugs.slice(0, i).some(o => isSameDrug(o, d)))
+}

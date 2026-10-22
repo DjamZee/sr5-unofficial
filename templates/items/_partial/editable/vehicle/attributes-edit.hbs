@@ -1,0 +1,60 @@
+<li class="SR-EnTete">
+    <p class="SR-TextUppercase">{{localize 'SR5.Attributes'}}</p>
+</li>
+{{#if system.offRoadMode}}
+<li class="grid">
+    <div class="col-3">{{localize 'SR5.VehicleStat_HandlingORShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter" ><input type="number" class="input" data-dtype="Number" name="system.attributes.handlingOffRoad" value="{{system.attributes.handlingOffRoad}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-3">{{localize 'SR5.VehicleStat_SpeedORShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.speedOffRoad" value="{{system.attributes.speedOffRoad}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-3">{{localize 'SR5.VehicleStat_AccelerationORShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.accelerationOffRoad" value="{{system.attributes.accelerationOffRoad}}" placeholder="0" onfocus="this.select()"/></div>
+</li>
+{{else}}
+<li class="grid">
+    <div class="col-2">{{localize 'SR5.VehicleStat_HandlingShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.handling" value="{{system.attributes.handling}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+    <div class="col-2">{{localize 'SR5.VehicleStat_SpeedShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.speed" value="{{system.attributes.speed}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+    <div class="col-2">{{localize 'SR5.VehicleStat_AccelerationShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.acceleration" value="{{system.attributes.acceleration}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+</li>
+{{/if}}
+<li class="grid">
+    <div class="col-2">{{localize 'SR5.VehicleStat_BodyShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.body" value="{{system.attributes.body}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+    <div class="col-2">{{localize 'SR5.VehicleStat_ArmorShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.armor" value="{{system.attributes.armor}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+    <div class="col-2">{{localize 'SR5.VehicleStat_PilotShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.pilot" value="{{system.attributes.pilot}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+</li>
+<li class="grid">
+    <div class="col-2">{{localize 'SR5.VehicleStat_SensorShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.attributes.sensor" value="{{system.attributes.sensor}}" placeholder="0" onfocus="this.select()"/></div>
+{{#ife system.type "vehicle"}}
+    <div class="col-1"></div>
+    <div class="col-2">{{localize 'SR5.Vehicle_SeatingShort'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.seating" value="{{system.seating}}" placeholder="0" onfocus="this.select()"/></div>
+    <div class="col-1"></div>
+</li>
+{{/ife}}
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.Vehicle_RI_F'}}{{localize 'SR5.Colons'}}</div>
+    {{#ife system.type "drone"}}
+    <div class="col-1" title="{{localize 'SR5.HELP_DroneRiggerInterfaceMsg'}}"><input type="checkbox" checked disabled /></div>
+    {{else}}
+    <div class="col-1"><input type="checkbox" name="system.riggerInterface" data-dtype="Boolean" {{checked system.riggerInterface}} /></div>
+    {{/ife}}
+</li>
+<li class="grid">
+<div class="col-5">{{localize 'SR5.Vehicle_ModExtraBody'}}{{localize 'SR5.Colons'}}</div>
+<div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.modificationSlots.extraBody" value="{{system.modificationSlots.extraBody}}" placeholder="0" onfocus="this.select()"/></div>
+<div class="col-5">{{localize 'SR5.Vehicle_ModExtraWeapons'}}{{localize 'SR5.Colons'}}</div>
+<div class="col-1 SR-TextCenter"><input type="number" class="input" data-dtype="Number" name="system.modificationSlots.extraWeapons" value="{{system.modificationSlots.extraWeapons}}" placeholder="0" onfocus="this.select()"/></div>
+</li>

@@ -1,0 +1,155 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.WeaponType'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+            {{#ife system.category "rangedWeapon"}}
+                {{valueOrDash (findTranslation "rangedWeaponTypes" system.type)}}
+            {{/ife}}
+            {{#ife system.category "meleeWeapon"}}
+                {{valueOrDash (findTranslation "meleeWeaponTypes" system.type)}}
+            {{/ife}}
+        </span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Accuracy'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.accuracy.value}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.DamageValue'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.damageValue.value}}{{findTranslation "damageTypesShort" system.damageType}}{{#if system.damageElement}} ({{findTranslation "specialDamageTypes" system.damageElement}}){{/if}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.ArmorPenetration'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.armorPenetration.value}}</span>
+    </p>
+
+</li>
+{{#ife system.type "grenadeLauncher"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Blast'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.blast.radius}}</span>
+    </p>
+</li>
+{{/ife}}
+  
+{{#ife system.category "meleeWeapon"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.WeaponReach'}} ({{localize 'SR5.MeterUnit'}}){{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.reach.value}}</span>
+    </p>
+</li>
+{{/ife}}
+
+{{#ife system.category "rangedWeapon"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.WeaponModes'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.firingMode.value}}</span>
+    </p>
+</li>
+
+{{#ife system.type "shotgun"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.ChokeSettingsCurrent'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{findTranslation "chokeSettings" system.choke.current}}</span>
+    </p>
+</li>
+{{/ife}}
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.RecoilCompensation'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.recoilCompensation.value}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.WeaponRange'}} ({{localize 'SR5.MeterUnit'}}){{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.range.short.value}}/{{valueOrDash system.range.medium.value}}/{{valueOrDash system.range.long.value}}/{{valueOrDash system.range.extreme.value}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Ammunition'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.ammunition.max}} ({{weaponAmmoTypeLabel}})</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.ReloadingMethodShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation "reloadingMethods" system.ammunition.casing)}}</span>
+    </p>
+</li>
+{{/ife}}
+
+{{#ife system.category "grenade"}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.WeaponRange'}} ({{localize 'SR5.MeterUnit'}}){{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.range.short.value}}/{{valueOrDash system.range.medium.value}}/{{valueOrDash system.range.long.value}}/{{valueOrDash system.range.extreme.value}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Blast'}} ({{localize 'SR5.MeterUnit'}}){{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.blast.radius}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Aerodynamic'}} {{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+            {{#if system.aerodynamic}}
+                {{localize 'SR5.Yes'}}
+            {{else}}
+                {{localize 'SR5.No'}}
+            {{/if}}
+        </span>
+    </p>
+</li>
+{{/ife}}
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.DeviceRating'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.deviceRating}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.ConcealabilityModifierShort'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.concealment.value}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.RequiredHands'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.requiredHands}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Quantity'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor"><input type="number" data-dtype="Number" name="system.quantity" value="{{system.quantity}}" placeholder="0" /></span>
+    </p>
+</li>

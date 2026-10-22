@@ -1,0 +1,40 @@
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.CS_CalledShots'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-7 SR-TextRight" id="calledShot">
+        <select class="SR-ModSelect" data-target="dicePoolModCalledShots" data-modifier="calledShot">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.calledShots selected=incomingCalledShots localize=false sort=true}}
+
+            <!--Ammo specifics called shots-->
+            {{#if (or (eq combat.ammo.type "injection")(eq combat.ammo.type "explosive")(eq combat.ammo.type "exExplosive")(eq combat.ammo.type "flechette") (eq combat.ammo.type "arrow") (eq combat.ammo.type "bolt")(eq combat.ammo.type "gel")(eq combat.ammo.type "hollowPoint")(eq combat.ammo.type "boltInjection")(eq combat.ammo.type "arrowInjection")(eq combat.ammo.type "apds")(eq combat.ammo.type "av")(eq combat.ammo.type "assaultCannon")(eq combat.ammo.type "capsule")(eq combat.ammo.type "flare")(eq combat.ammo.type "frangible")(eq combat.ammo.type "gauss")(eq combat.ammo.type "gyrojet")(eq combat.ammo.type "gyrojetTaser")(eq combat.ammo.type "tracer")(eq combat.ammo.type "tracker"))}}
+            <optgroup class="SR-TextRight" label="{{localize 'SR5.CS_AmmoSpecific'}}">
+                {{selectOptions lists.calledShotsSpecific selected=incomingCalledShots localize=false sort=true}}
+            </optgroup>
+            {{/if}}
+        </select>
+    </div>   
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" class="dicePoolModCalledShots" name="dicePoolModCalledShots" value="{{incomingCalledShots}}" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+
+<li class="grid" style="display: none;" id="calledShotSpecificTarget">
+    <div class="col-4">{{localize 'SR5.CS_Choice'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-7 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModCalledShots" data-modifier="calledShotSpecificTarget">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{#if (eq target.actorType "actorDrone")}}
+                {{selectOptions lists.calledShotsSpecificDroneTarget selected=calledShotSpecificTarget localize=false sort=true}}
+            {{else}}
+                {{selectOptions lists.calledShotsSpecificTarget selected=calledShotSpecificTarget localize=false sort=true}}
+            {{/if}}
+        </select>
+    </div>
+    <div class="col-1"></div>
+</li>
+{{#if combat.calledShot.aimForPerfection}}
+<!-- Aim for Perfection (Assassin's Primer p. 15): a reminder, the GM judges when a Called Shot does not fit -->
+<li class="grid">
+    <div class="col-11 SR-SubColor"><em>{{localize 'SR5.AimForPerfectionReminder'}}</em></div>
+</li>
+{{/if}}

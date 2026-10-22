@@ -1,0 +1,29 @@
+{{#if system.isRegistered}}
+<li class="SR-EnTete grid">
+    <div class="col-11 SR-TextUppercase">
+        {{localize 'SR5.SustainedComplexForm'}}
+    </div>
+    <div class="col-1 SR-TextRight">
+        {{#if owner}}
+        <a class="subItem" data-tooltip="{{localize 'SR5.Add'}}" data-binding="sustainedComplexForm" data-subaction="add"><em class="fas fa-plus"></em></a>
+        {{/if}}
+    </div>
+</li>
+{{#each system.sustainedComplexForm as |a i|}}
+<li class="subItemManagement grid" data-key="{{@key}}">
+    <div class="col-11">
+        <select name="system.sustainedComplexForm.{{i}}.name">
+        {{#select name}}
+            <option value="">{{localize 'SR5.None'}}</option>
+                {{#each ../document.actor.system.matrix.complexFormList}}
+                <option value="{{@key}}">{{this}}</option>
+                {{/each}}
+            {{/select}}
+        </select>
+    </div>
+        <div class="col-1 SR-TextRight">
+            <a class="subItem" data-tooltip="{{localize 'SR5.Delete'}}" data-index="{{@key}}" data-binding="sustainedComplexForm" data-subaction="delete"><i class="fas fa-trash"></i></a>
+        </div>
+</li>
+{{/each}}
+{{/if}}

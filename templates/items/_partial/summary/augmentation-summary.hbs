@@ -1,0 +1,30 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Type'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation 'augmentationTypes' system.type)}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Category'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+            {{#if (eq system.type 'genetech') }}
+                {{valueOrDash (findTranslation 'augmentationGeneCategories' system.category)}}
+            {{else}}
+                {{valueOrDash (findTranslation 'augmentationCategories' system.category)}}
+            {{/if}}
+        </span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.Grade'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash (findTranslation "augmentationGrades" system.grade)}}</span>
+    </p>
+</li>
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.EssenceCost'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.essenceCost.value}}</span>
+    </p>
+</li>

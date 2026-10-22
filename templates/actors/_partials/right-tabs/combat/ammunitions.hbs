@@ -1,0 +1,61 @@
+<!-- AMMUNITIONS -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete">
+			<div class="col-6 SR-TextUppercase">{{localize 'SR5.Ammunition'}}</div>
+			<div class="col-3 SR-TextCenter">{{localize 'SR5.WeaponType'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.QuantityShort'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.ItemRating'}}</div>
+			<div class="col-1">
+				{{#if owner}}
+				<p class="SR-TextRight add-item"
+				  data-helpTitle="{{localize 'SR5.HELP_ItemAdd' key=(findTranslation 'itemTypes' 'itemAmmunition')}}" 
+				  data-helpMessage="{{localize 'SR5.HELP_ItemAddMsg'}}">
+					<a class="item-create" data-tooltip="{{localize 'SR5.Add'}}" data-type="itemAmmunition">
+						<em class="fas fa-plus"></em>
+					</a>
+				</p>
+				{{/if}}
+			</div>
+		</li>
+		{{#each actor.ammunitions}}
+		<li class="item" data-item-id="{{_id}}" draggable="true">
+			<div class="grid">
+				<div class="col-6 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+					<p>{{name}}</p>
+				</div>
+				<div class="col-3 SR-SelectCenter SR-PaddingRight5"
+				  data-helpTitle="{{localize 'SR5.HELP_AmmoWeaponType' key=name}}"
+				  data-helpMessage="{{localize 'SR5.HELP_AmmoWeaponTypeMsg'}}"
+				>
+					<select data-item-id="{{_id}}" class="edit-value" data-binding="system.class" name="ammunitions.{{_id}}.class" data-dtype="String">
+						<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+						{{selectOptions ../system.lists.rangedWeaponTypes selected=system.class localize=true}}
+					</select>
+				</div>
+				<div class="col-1 SR-TextCenter changeValueByClick" data-binding="system.quantity"
+				  data-helpTitle="{{localize 'SR5.HELP_Quantity' key=name}}"
+				  data-helpMessage="{{localize 'SR5.HELP_QuantityMsg'}}">
+					{{system.quantity}}
+				</div>
+				{{#if (or (eq system.type "arrow") (eq system.type "arrowInjection") (eq system.type "arrowBarbedHead") (eq system.type "arrowExplosiveHead") (eq system.type "arrowHammerhead") (eq system.type "arrowIncendiaryHead") (eq system.type "arrowScreamerHead") (eq system.type "arrowStickNShock") (eq system.type "arrowStaticShaft"))}}
+				<div class="col-1 SR-TextCenter changeValueByClick" data-binding="system.itemRating"
+				  data-helpTitle="{{localize 'SR5.HELP_Rating' key=name}}"
+				  data-helpMessage="{{localize 'SR5.HELP_RatingMsg'}}">
+					{{system.itemRating}}
+				</div>
+				{{else}}
+				<div class="col-1"></div>
+				{{/if}}
+				<div class="col-1 SR-TextRight">
+					{{#if ../owner}}
+					<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
+						<em class="fas fa-sm fa-edit item-management"></em>
+					</a>
+					{{/if}}
+				</div>
+			</div>
+		</li>
+		{{/each}}
+	</ul>
+</div>

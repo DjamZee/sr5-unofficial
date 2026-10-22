@@ -1,0 +1,221 @@
+<!-- VARIOUS GEAR -->
+<div class="SRBlockSheet">
+	<ul>
+	  	<li class="SR-LigneEnTete grid">
+			<div class="col-4 SR-TextUppercase">{{localize 'SR5.Gear'}}</div>
+			<div class="col-2 SR-TextCenter">{{localize 'SR5.Quantity'}}</div>
+			<div class="col-2 SR-TextCenter">{{localize 'SR5.Capacity'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.Rating'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.DicePoolShort'}}</div>
+			<div class="col-1">
+				<div class="grid">
+					<div class="col-6">
+						<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.Equipped'}}"><em class="fas fa-sm fa-thumbtack"></em></p>
+					</div>
+					<div class="col-6">
+						<p class="SR-TextCenter" data-tooltip="{{localize 'SR5.WirelessMode'}}"><em class="fas fa-sm fa-wifi"></em><span class="sr-silent-slot" data-tooltip="{{localize 'SR5.PanMenuModeSilent'}}"><em class="fas fa-sm fa-user-secret"></em></span></p>
+					</div>
+				</div>
+			</div>
+			<div class="col-1">
+				{{#if owner}}
+				<p class="SR-TextRight add-item" data-helpTitle="{{localize 'SR5.HELP_ItemAdd' key=(findTranslation 'itemTypes' 'itemGear')}}" 
+				data-helpMessage="{{localize 'SR5.HELP_ItemAddMsg'}}">
+					<a class="item-create" data-tooltip="{{localize 'SR5.Add'}}" data-type="itemGear"><em class="fas fa-plus"></em></a>
+				</p>
+				{{/if}}
+			</div>
+	  	</li>
+	  	{{#each actor.gears as |item i|}}
+		{{#if (and (eq system.isAccessory true) (eq system.isPlugged false) )}}
+		<li class="item grid SR-LightGreyColor" data-item-id="{{_id}}" draggable="true">
+		  	<div class="col-4 deplie" data-helpTitle="{{localize 'SR5.HELP_Accessory' key=name}}" data-helpMessage="{{localize 'SR5.HELP_AccessoryMsg'}}">
+				<p>{{name}}</p>
+		  	</div>
+		  	<div class="col-2 SR-TextCenter changeValueByClick" data-binding="system.quantity"
+			  data-helpTitle="{{localize 'SR5.HELP_Accessory' key=name}}" 
+			  data-helpMessage="{{localize 'SR5.HELP_AccessoryMsg'}}">
+				{{system.quantity}}
+			</div>
+			<div class="col-2 SR-TextCenter">[{{valueOrDash system.capacityTaken.value}}]</div>
+			<div class="col-1 SR-TextCenter changeValueByClick" data-binding="system.itemRating" data-helpTitle="{{localize 'SR5.HELP_Rating' key=name}}" data-helpMessage="{{localize 'SR5.HELP_RatingMsg'}}">
+				{{valueOrDash system.itemRating}}
+			</div>
+			{{#if (and (eq system.canRollTest true) (gt system.test.dicePool 0) )}}
+				<div class="col-1 SR-TextCenter roll-logo sr-roll" data-rolltype="itemRoll" data-helpTitle="{{localize 'SR5.DicePool'}}" data-helpMessage="{{localize 'SR5.HELP_ItemRollMsg'}}" data-helpDetailsItem="system.test" data-helpItemId="{{_id}}">
+					{{system.test.dicePool}}
+				</div>
+			{{else}}
+				<div class="col-1 SR-TextCenter">-</div>
+			{{/if}}
+			<div class="col-1">
+				<div class="grid">
+					<div class="col-6" data-helpTitle="{{localize 'SR5.HELP_Accessory' key=name}}" data-helpMessage="{{localize 'SR5.HELP_AccessoryMsg'}}">
+						<p class="SR-TextCenter">
+							<em class="fas fa-sm fa-thumbtack SR-SubColor25"></em>
+						</p>
+					</div>
+					<div class="col-6" data-helpTitle="{{localize 'SR5.HELP_Accessory' key=name}}" data-helpMessage="{{localize 'SR5.HELP_AccessoryMsg'}}">
+						<p class="SR-TextCenter">
+							<em class="fas fa-sm fa-wifi SR-SubColor25"></em><span class="sr-silent-slot"></span>
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-1 grid SR-TextRight">
+				{{#if ../owner}}
+				<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
+					<em class="fas fa-sm fa-edit item-management"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+		{{else if (or (eq system.isPlugged false) (eq item.type 'itemDrug'))}}
+	  	<li class="item grid {{#if storedInName}}sr-stored{{/if}}" data-item-id="{{item._id}}" draggable="true">
+		  	<div class="col-4 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+				{{#if item.system.jammer.type}}{{#if item.system.jammer.isActive}}<a class="jammer-toggle" data-tooltip="{{localize 'SR5.JammerTurnOff'}}"><em class="fas fa-sm fa-tower-broadcast SR-SubColor"></em></a>{{else}}<a class="jammer-toggle" data-tooltip="{{localize 'SR5.JammerTurnOn'}}"><em class="fas fa-sm fa-tower-broadcast SR-SubColor25"></em></a>{{/if}} {{/if}}{{#if item.system.explosive.type}}<a class="explosive-detonate" data-tooltip="{{localize 'SR5.EXPLOSIVE_Open'}}"><em class="fas fa-sm fa-bomb SR-SubColor"></em></a> {{/if}}{{item.name}}{{#if storedInName}} <span class="sr-stored-note">({{localize 'SR5.StoredIn' storage=storedInName}})</span>{{/if}}
+		  	</div>
+			<div class="col-2 SR-TextCenter changeValueByClick" data-binding="system.quantity"
+			  data-helpTitle="{{localize 'SR5.HELP_Quantity' key=name}}"
+			  data-helpMessage="{{localize 'SR5.HELP_QuantityMsg'}}">
+				{{system.quantity}}
+			</div>
+			<div class="col-2 SR-TextCenter changeValueByClick" data-binding="system.capacity.base">
+				{{valueOrDash system.capacity.value}}
+			</div>
+			<div class="col-1 SR-TextCenter changeValueByClick" data-binding="system.itemRating"
+			  data-helpTitle="{{localize 'SR5.HELP_Rating' key=name}}"
+			  data-helpMessage="{{localize 'SR5.HELP_RatingMsg'}}">
+				{{valueOrDash system.itemRating}}
+			</div>
+			{{#if (and (eq system.canRollTest true) (gt system.test.dicePool 0) )}}
+				<div class="col-1 SR-TextCenter roll-logo sr-roll" data-rolltype="itemRoll" data-helpTitle="{{localize 'SR5.DicePool'}}" data-helpMessage="{{localize 'SR5.HELP_ItemRollMsg'}}" data-helpDetailsItem="system.test" data-helpItemId="{{_id}}">
+					{{system.test.dicePool}}
+				</div>
+			{{else}}
+				<div class="col-1 SR-TextCenter">-</div>
+			{{/if}}
+			<div class="col-1">
+				<div class="grid">
+					{{#if (eq item.type 'itemDrug')}}
+					<!-- One switch, three positions (entities/items/drug-phase.js): not taken, rise, crash. Each click
+					     goes through the take or the crash of the drug, as the two switches did -->
+					<div class="col-6 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_DrugPhase' key=name}}" data-helpMessage="{{localize 'SR5.HELP_DrugPhaseMsg'}}">
+						{{#if (eq system.phase 'rise')}}
+						<a class="toggle-value drug-phase" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.wirelessTurnedOn" data-tooltip="{{localize 'SR5.DrugPhaseToCrash'}}">
+							<em class="fas fa-cannabis SR-SubColor"></em>
+						</a>
+						{{else if (and (eq system.phase 'crash') (drugTakesDoseInCrash system))}}
+						<!-- Long Haul (SR5 p. 413): a click during the crash takes a further dose -->
+						<a class="toggle-value drug-phase" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.DrugLongHaulTakeInCrash'}}">
+							<em class="fas fa-virus SR-SubColor"></em>
+						</a>
+						{{else if (eq system.phase 'crash')}}
+						<a class="toggle-value drug-phase" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.wirelessTurnedOn" data-tooltip="{{localize 'SR5.DrugPhaseToNone'}}">
+							<em class="fas fa-virus SR-SubColor"></em>
+						</a>
+						{{else}}
+						<a class="toggle-value drug-phase" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.DrugPhaseToRise'}}">
+							<em class="fas fa-cannabis"></em>
+						</a>
+						{{/if}}
+					</div>
+					{{else}}
+					<div class="col-6 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_EquipToggle' key=name}}" data-helpMessage="{{localize 'SR5.HELP_EquipToggleMsg'}}">
+						{{#if system.isActive}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.Unequip'}}">
+							<em class="fas fa-sm fa-thumbtack SR-SubColor"></em>
+						</a>
+						{{else}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.Equip'}}">
+							<em class="fas fa-sm fa-thumbtack"></em>
+						</a>
+						{{/if}}
+					</div>
+					{{/if}}
+					{{#if (eq item.type 'itemDrug')}}
+					{{else}}
+					{{#if (gte system.conditionMonitors.matrix.actual.value system.conditionMonitors.matrix.value)}}
+					<div class="col-6 SR-TextCenter"
+					  data-helpTitle="{{localize 'SR5.HELP_BrickedItem' key=name}}"
+					  data-helpMessage="{{localize 'SR5.HELP_BrickedItemMsg'}}"
+					>
+					<em class="fas fa-sm fa-exclamation-triangle SR-popColor"></em>
+					</div>
+					{{else}}
+					<div class="col-6 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_WifiToggle' key=name}}" data-helpMessage="{{localize 'SR5.HELP_WifiToggleMsg'}}">
+						{{#if system.wirelessTurnedOn}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.wirelessTurnedOn" data-tooltip="{{localize 'SR5.DisableWirelessMode'}}">
+							<em class="fas fa-sm fa-wifi SR-SubColor"></em>
+						</a>
+						{{else}}
+						<a class="toggle-value" data-dtype="Boolean" data-item-id="{{item._id}}" data-binding="system.wirelessTurnedOn" data-tooltip="{{localize 'SR5.EnableWirelessMode'}}">
+							<em class="fas fa-sm fa-wifi SR-SubColor25"></em>
+						</a>
+						{{/if}}
+						{{~> systems/sr5/templates/actors/_partials/right-tabs/_common/device-silent.hbs deviceMode=(lookup @root.deviceModes item._id) itemId=item._id}}
+					</div>
+					{{/if}}
+					{{/if}}
+				</div>
+			</div>
+			<div class="col-1 grid SR-TextRight">
+				{{#if ../owner}}
+				<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
+					<em class="fas fa-sm fa-edit item-management"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+		{{#each system.accessory as |accessory a|}}
+		<li class="item grid" data-item-id="{{_id}}">
+			<div class="col-4 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+				<p class="SR-MarginLeft10">{{accessory.name}}</p></div>
+			<div class="col-2 SR-TextCenter"></div>
+			<div class="col-2"><p class="SR-TextCenter">[{{valueOrDash accessory.system.capacityTaken.value}}]</p></div>
+			<div class="col-1 SR-TextCenter">{{valueOrDash accessory.system.itemRating}}</div>
+			{{#if (and (eq system.canRollTest true) (gt system.test.dicePool 0) )}}
+				<div class="col-1 SR-TextCenter roll-logo sr-roll" data-rolltype="itemRoll" data-helpTitle="{{localize 'SR5.DicePool'}}" data-helpMessage="{{localize 'SR5.HELP_ItemRollMsg'}}" data-helpDetailsItem="system.test" data-helpItemId="{{_id}}">
+					{{system.test.dicePool}}
+				</div>
+			{{else}}
+				<div class="col-1 SR-TextCenter">-</div>
+			{{/if}}
+			<div class="col-1">
+				<div class="grid">
+					<div class="col-6">
+						<p class="SR-TextCenter">
+							<em class="fas fa-sm fa-thumbtack {{#if accessory.system.isActive}}SR-SubColor{{else}}SR-SubColor25{{/if}}"></em>
+						</p>
+					</div>
+					{{#if (gte ../system.conditionMonitors.matrix.actual.value ../system.conditionMonitors.matrix.value)}}
+					<div class="col-6 SR-TextCenter"
+					  data-helpTitle="{{localize 'SR5.HELP_BrickedItem' key=name}}"
+					  data-helpMessage="{{localize 'SR5.HELP_BrickedItemMsg'}}"
+					>
+					<em class="fas fa-sm fa-exclamation-triangle SR-popColor"></em>
+					</div>
+					{{else}}
+					<div class="col-6">
+						<p class="SR-TextCenter">
+							<em class="fas fa-sm fa-wifi {{#if accessory.system.wirelessTurnedOn}}SR-SubColor{{else}}SR-SubColor25{{/if}}"></em><span class="sr-silent-slot"></span>
+						</p>
+					</div>
+					{{/if}}
+				</div>
+			</div>
+			<div class="col-1">
+				{{#if ../../owner}}
+				<p class="SR-TextRight">
+					<a class="item-edit" data-tooltip="{{localize 'SR5.Edit'}}" data-helpTitle="{{localize 'SR5.HELP_ItemEdit' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemEditMsg'}}">
+						<em class="fas fa-sm fa-edit"></em>
+					</a>
+				</p>
+				{{/if}}
+			</div>
+		</li>
+		{{/each}}
+		{{/if}}
+		{{/each}}
+	</ul>
+</div>

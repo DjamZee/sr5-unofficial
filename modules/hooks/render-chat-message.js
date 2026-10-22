@@ -1,0 +1,182 @@
+import {
+  SR5_RollMessage
+} from "../rolls/roll-message.js"
+import {
+  SR5ShopAvailability
+} from "../interface/shop-availability.js"
+import {
+  SR5ShopFence
+} from "../interface/shop-fence.js"
+import {
+  sr5DressTableDraw
+} from "../interface/table-draw.js"
+import {
+  SR5_RitualCircle
+} from "../rolls/roll-helpers/ritualCircle.js"
+import {
+  activateExpiryCardListeners
+} from "../system/effect-expiry.js"
+import {
+  activateDeadlineCardListeners
+} from "../system/deadlines.js"
+import {
+  activateDrugCardListeners
+} from "../system/drug-clock.js"
+import {
+  SR5DrugDesigner
+} from "../interface/drug-designer.js"
+import {
+  addExtendedClockButton
+} from "../system/extended-clock.js"
+import {
+  activateDiseaseDueListeners, activateDiseaseRequestListeners, addDiseaseApplyButton
+} from "../system/diseases.js"
+import {
+  activateHungerListeners
+} from "../system/hunger.js"
+import {
+  activateInfectionListeners
+} from "../system/infection.js"
+import {
+  activateCfdListeners
+} from "../system/cfd-treatment.js"
+import {
+  activateDeactivationListeners
+} from "../system/deactivation.js"
+import {
+  activateAIDissipationListeners
+} from "../system/ai-dissipation.js"
+import {
+  addMonadCoreButton, activateMonadListeners
+} from "../system/monad-matrix.js"
+import {
+  activateRadiationDueListeners, activateRadiationRequestListeners, addRadiationApplyButton
+} from "../system/radiation.js"
+import {
+  activateBleedCardListeners
+} from "../system/bb-healing.js"
+import {
+  activateWoundResolveListeners
+} from "../system/wound-resolve.js"
+import {
+  activateAttunementCardListeners, activateTransmutationCardListeners
+} from "../system/magic-supplements.js"
+
+/**
+ * A card posted by the system or a module, as opposed to a line typed in the chat (/w): flags of its own,
+ * or markup that a typed message does not carry. A paragraph too: the GM's notices are bare <p> lines without flags
+ * (convergence, blood magic, tacnet…), and Foundry keeps a typed line as plain text (manual 5.2.4, DjamZ 21/10).
+ */
+export function isSystemCard(message) {
+  const flags = Object.keys(message.flags ?? {
+  }).filter(k => k !== "core")
+  if (flags.length) return true
+  return /<(div|section|table|button|header|h[1-6]|p)\b/i.test(message.content ?? "")
+}
+
+export function sr5HookRenderChatMessageHTML(message, html, _data) {
+  // Arbitrage de DjamZ (relecture djamz.13) : no card shows the line of its recipients; a typed whisper keeps it
+  if (isSystemCard(message)) html.querySelectorAll(".whisper-to").forEach(el => el.remove())
+
+  // A table draw is rendered by core and wears no SR5 header of its own
+  sr5DressTableDraw(html, message)
+
+  // Apply SR5 custom styling for messages with SR5 roll data
+  if (message.flags?.sr5data) {
+    html.classList.add("SRCustomMessage")
+    const borderColor = message.flags?.sr5data?.owner?.borderColor
+    if (borderColor && typeof borderColor === "string") html.style.borderColor = borderColor
+
+    // Inject actor thumbnail into Foundry's default message header
+    const msgHeader = html.querySelector(":scope > header")
+    if (msgHeader) {
+      const imgSrc = message.flags?.sr5data?.owner?.speakerImg || "systems/sr5/assets/img/ui/embleme-dragon.webp"
+      const img = document.createElement("img")
+      img.classList.add("SRAuthorIcon")
+      img.src = imgSrc
+      img.title = message.speaker?.alias || ""
+      msgHeader.prepend(img)
+    }
+  }
+
+  // Attach SR5 chat card listeners for messages with roll card content
+  const hasSr5Card = html.querySelector(".SR-CardHeader")
+  if (hasSr5Card) SR5_RollMessage.chatListeners(html, message)
+
+  // Availability cards carry their own data and their own button
+  if (message.flags?.sr5shop) SR5ShopAvailability.chatListeners(html, message)
+  if (message.flags?.sr5fence) SR5ShopFence.chatListeners(html, message)
+  // A vendor's buy-back offer (shop lot C, part 2): loaded on demand, the vendor brings the socket
+  if (message.flags?.sr5vendorOffer) import("../interface/shop-vendor.js").then(({
+    SR5ShopVendor
+  }) => SR5ShopVendor.chatListeners(html, message))
+  // Ritual circle card: join and seal (SR5 p. 298-299)
+  if (message.flags?.sr5?.ritualCircle) SR5_RitualCircle.activateListeners(html, message)
+  // Lot 37b: an explosion to resist (Run & Gun p. 188), a combat maneuver to join and roll (Run & Gun p. 113)
+  if (message.flags?.sr5?.explosion) import("../system/explosive-charge.js").then(m => m.activateExplosionListeners(html, message))
+  if (message.flags?.sr5?.combatManeuver) import("../system/combat-maneuvers.js").then(m => m.activateManeuverListeners(html, message))
+  // Effects run out on the world clock: the GM removes them
+  if (message.flags?.sr5?.effectExpiry) activateExpiryCardListeners(html, message)
+  // Withdrawal tests and rent fall due: the GM acts
+  if (message.flags?.sr5?.deadlines) activateDeadlineCardListeners(html, message)
+  // A drug a player designed: the GM reviews it (Chrome Flesh p. 194-196)
+  if (message.flags?.sr5?.drugDesign) SR5DrugDesigner.activateCardListeners(html, message)
+  // Drugs whose effect or crash is over on the clock: the GM moves them on
+  if (message.flags?.sr5?.drugClock) activateDrugCardListeners(html, message)
+  // Wounds that bleed (Bullets & Bandages p. 14): the GM adds the box
+  if (message.flags?.sr5?.bbBleed) activateBleedCardListeners(html, message)
+  // Harmonie élémentaire (Better Than Bad p. 145) and Transmutation (Aetherologie p. 39): the GM applies
+  if (message.flags?.sr5?.elementalAttunement) activateAttunementCardListeners(html, message)
+  if (message.flags?.sr5?.transmutation) activateTransmutationCardListeners(html, message)
+  // Deus vult ! / Mon pays (Manuel de l'assassin p. 14-15): the owner rolls the test the GM's card asks for
+  if (message.flags?.sr5?.woundResolve) activateWoundResolveListeners(html, message)
+  // Extended tests and healing (SR5 p. 50, 207-208): the GM moves the clock on by the time spent
+  if (message.flags?.sr5data?.test?.extended?.intervalValue) addExtendedClockButton(message, html)
+  // Diseases (Run Faster p. 111-112): the GM's due card, the roll asked of the player, the GM applies the roll
+  if (message.flags?.sr5?.diseaseDue) activateDiseaseDueListeners(html, message)
+  // Essence Loss of the Infected (SR5 p. 403): the GM's card of losses and powers used
+  if (message.flags?.sr5?.hungerDue) activateHungerListeners(html, message)
+  // Infection (SR5 p. 401): the GM's card to try it, and the end of the coma
+  if (message.flags?.sr5?.infectionCard) activateInfectionListeners(html, message)
+  // Treating CFD (Dark Terrors p. 87): the GM destroys the implants a NanoScrub glitch reached
+  if (message.flags?.sr5?.cfdTreatment) activateCfdListeners(html, message)
+  // A player asks the GM for the commcode of his character (relecture djamz.13): Accept or Refuse, the active GM
+  if (message.flags?.sr5?.commcodeRequest) import("../interface/commcode-request.js").then(m => m.activateCommcodeRequestListeners(html, message))
+  // Deactivation (Dark Terrors p. 90): the GM confirms a player's roll, then opens the technomancer's Fading test
+  if (message.flags?.sr5?.deactivation || message.flags?.sr5?.deactivationRequest) activateDeactivationListeners(html, message)
+  // Dissipation of an AI (Data Trails p. 161): the GM confirms the overflow and rolls the resistance
+  if (message.flags?.sr5?.aiDissipationCard) activateAIDissipationListeners(html, message)
+  // Monad of the original strain (Dark Terrors p. 88): the GM puts a matrix damage on its Core
+  if (message.flags?.sr5data?.chatCard?.buttons?.takeMatrixDamage) addMonadCoreButton(message, html)
+  // and resolves the card offered when its Core or its swarm fills
+  if (message.flags?.sr5?.monadMatrixCard) activateMonadListeners(html, message)
+  if (message.flags?.sr5?.diseaseRequest) activateDiseaseRequestListeners(html, message)
+  if (message.flags?.sr5data?.disease) addDiseaseApplyButton(message, html)
+  // Radiation zones (Run & Gun p. 164-165): same three steps
+  if (message.flags?.sr5?.radiationDue) activateRadiationDueListeners(html, message)
+  if (message.flags?.sr5?.radiationRequest) activateRadiationRequestListeners(html, message)
+  if (message.flags?.sr5data?.radiation) addRadiationApplyButton(message, html)
+}
+
+// v13: keep chat scrolled to bottom when SR5 roll messages change height.
+// Track whether the user is at the bottom; when chat content resizes
+// (message updates, card expand/collapse), snap back to bottom instantly.
+// This doesn't interfere with smooth "Jump to Bottom" animations because
+// wasAtBottom is false while the user is scrolled up.
+export function sr5HookRenderChatLog(app) {
+  const scroll = app.element.querySelector(".chat-scroll")
+  if (!scroll) return
+  const log = scroll.querySelector(".chat-log")
+  if (!log) return
+  let wasAtBottom = true
+  scroll.addEventListener("scroll", () => {
+    wasAtBottom = (scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight) < 5
+  })
+  new ResizeObserver(() => {
+    if (wasAtBottom) {
+      scroll.scrollTo({
+        top: scroll.scrollHeight, behavior: "instant"
+      })
+    }
+  }).observe(log)
+}

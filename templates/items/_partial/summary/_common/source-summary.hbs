@@ -1,0 +1,14 @@
+<div class="SR-PaddingTop10">
+    <li class="SR-EnTete">
+        <p class="SR-TextUppercase">{{localize 'SR5.Source'}}</p>
+    </li>
+    <li class="grid">
+        <div class="col-9">
+            <select name="system.source" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.sourceList selected=system.source localize=true}}
+            </select>
+        </div>
+        <div class="col-3"><input type="number" data-dtype="Number" name="system.page" value="{{system.page}}" placeholder="page" onfocus="this.select()"/></div>
+	</li>
+</div>

@@ -1,0 +1,18 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">
+            {{#if system.isAccessory}}
+            {{localize 'SR5.CapacityUsed'}}
+            {{else}}
+            {{localize 'SR5.Capacity'}}
+            {{/if}}
+        </span>
+        <span class="col-auto SR-GreyColor">
+            {{#if system.isAccessory}}
+            [{{valueOrDash system.capacityTaken.value}}]
+            {{else}}
+            {{valueOrDash system.capacity.value}}
+            {{/if}}
+        </span>
+    </p>
+</li>

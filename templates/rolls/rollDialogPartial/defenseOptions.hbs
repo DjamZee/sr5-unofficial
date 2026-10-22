@@ -1,0 +1,34 @@
+<li class="SR-PaddingTop5 grid">
+    <div class="col-11 SR-DialogOption">{{localize 'SR5.DefenseOptions'}}</div>
+</li>
+
+<!-- DEFENSE - FIRING MODE -->
+{{#if (eq test.typeSub "rangedWeapon")}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/defenseRangedModifier.hbs}}
+{{/if}}
+
+<!-- ACTIVE DEFENSE -->
+{{#if (or (eq test.typeSub "meleeWeapon") (and (eq test.typeSub "ramming") combat.activeDefenses.canDodge))}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/defenseActiveModifier.hbs}}
+{{/if}}
+
+<!-- SPECIAL CASE FOR SPELL WITH AREA EFFECT-->
+{{#if (eq spellRange "area")}}
+    <li class="grid">
+        <div class="col-10">{{localize 'SR5.DefenseModTargetedByAreaEffect'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextRight"><input type="checkbox" class="SR-ModCheckbox SR-ModCheckboxFilled" data-target="dicePoolModDefenseTargetedByArea" data-modifier="defenseTargetedByArea"></div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" name="dicePoolModDefenseTargetedByArea" value="0" placeholder="0" data-dtype="Number" />
+        </div>
+    </li>
+{{/if}}
+
+<!-- COVERS -->
+{{#if dialogSwitch.cover}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/coverModifier.hbs}}
+{{/if}}
+
+<!-- FULL DEFENSE -->
+{{#if (gt combat.activeDefenses.full 0)}}
+    {{> systems/sr5/templates/rolls/rollDialogPartial/defenseFullModifier.hbs}}
+{{/if}}

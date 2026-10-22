@@ -1,0 +1,101 @@
+import {
+  ActorSheetSR5 
+} from "./baseSheet.js"
+
+/**
+ * An Actor sheet for sprite type actors in the Shadowrun 5 system.
+ */
+export class SR5SpriteSheet extends ActorSheetSR5 {
+  constructor(...args) {
+    super(...args)
+
+    this._shownUntrainedSkills = false
+    this._shownNonRollableMatrixActions = false
+    this._filters = {
+      skills: "",
+      matrixActions: "",
+    }
+  }
+
+  static DEFAULT_OPTIONS = {
+    classes: ["app", "window-app", "sr5", "actor", "sprite"],
+    position: {
+      width: 900, height: 618 
+    },
+    window: {
+      resizable: true 
+    },
+  }
+
+  static PARTS = {
+    sheet: {
+      template: "systems/sr5/templates/actors/sprite-sheet.hbs",
+      root: true,
+      scrollable: [".sr-panel"],
+    },
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options)
+
+    this._prepareItems(context.actor)
+    this._prepareSkills(context.actor)
+    this._prepareMatrixActions(context.actor)
+
+    context.rulesMatrixGrid = game.settings.get("sr5", "sr5MatrixGridRules")
+    context.rulesCalledShot = game.settings.get("sr5", "sr5CalledShotsRules")
+    context.rulesKillCode = game.settings.get("sr5", "sr5KillCodeRules")
+    context.matrixActionsRigger5 = game.settings.get("sr5", "sr5Rigger5Actions")
+
+    return context
+  }
+
+  _prepareSkills(actor) {
+    const activeSkills = {
+    }
+    for (let [key, skill] of Object.entries(actor.system.skills)) {
+      if (skill.rating.value > 0 || this._shownUntrainedSkills)
+        activeSkills[key] = skill
+    }
+    actor.system.skills = activeSkills
+  }
+
+  _prepareMatrixActions(actor) {
+    const activeMatrixActions = {
+    }
+    let killCodeRules = game.settings.get("sr5", "sr5KillCodeRules")
+    let rigger5Actions = game.settings.get("sr5", "sr5Rigger5Actions")
+
+    for (let [key, matrixAction] of Object.entries(actor.system.matrix.actions)) {
+      if ((matrixAction.source === "core" || (killCodeRules && matrixAction.source === "killCode") || (rigger5Actions && matrixAction.source === "rigger5")) && matrixAction.test?.dicePool > 0 || matrixAction.defense?.dicePool > 0 || this._shownNonRollableMatrixActions) activeMatrixActions[key] = matrixAction
+    }
+    actor.system.matrix.actions = activeMatrixActions
+  }
+
+  _prepareItems(actor) {
+    const spritePowers = []
+    const externalEffects = []
+
+    // Iterate through items, allocating to containers
+    for (let i of actor.items) {
+      if (i.type === "itemSpritePower") spritePowers.push(i)
+      else if (i.type === "itemEffect") externalEffects.push(i)
+    }
+
+    actor.spritePowers = spritePowers
+    actor.externalEffects = externalEffects
+  }
+
+  /** @override */
+  async _onDropItemCreate(itemData) {
+    switch(itemData.type){
+      case "itemSpritePower":
+      case "itemEffect":
+        return super._onDropItemCreate(itemData)
+      default:
+        ui.notifications.info(game.i18n.localize('SR5.INFO_ForbiddenItemType'))
+        return
+    }
+  }
+
+}

@@ -1,0 +1,27 @@
+javascript:
+  - changed-files:
+      - any-glob-to-any-file: 'modules/**/*.js'
+
+templates:
+  - changed-files:
+      - any-glob-to-any-file: 'templates/**'
+
+i18n:
+  - changed-files:
+      - any-glob-to-any-file: 'lang/**'
+
+styles:
+  - changed-files:
+      - any-glob-to-any-file: 'styles/**'
+
+assets:
+  - changed-files:
+      - any-glob-to-any-file: 'assets/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+data-models:
+  - changed-files:
+      - any-glob-to-any-file: 'modules/datamodels/**'

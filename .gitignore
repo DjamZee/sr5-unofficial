@@ -1,0 +1,24 @@
+/node_modules
+/scripts/push_to_discord/node_modules
+/.vscode/launch.json
+/.vscode/extensions.json
+.env*
+.sync.ffs_db
+/sr5.lock
+/.trunk
+*.md
+!README.md
+!CREDITS.md
+!CONTRIBUTING.md
+!BUG_REPORT.md
+!RELEASE.md
+!docs/*.md
+!.github/**/*.md
+/css
+/coverage
+/drk-doc
+# Compendiums compilés (LevelDB) : Foundry y écrit dès qu'il les sert ; sources suivies dans src/packs, compilées par
+# npm run build:packs (et npm run check). Les captures du manuel (manuel/captures) sont suivies.
+/packs
+# La Lite du Mégapack dans le système : sources et médias construits par npm run build:megapack (hors Git)
+/megapack/

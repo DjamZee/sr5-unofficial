@@ -1,0 +1,125 @@
+import {
+  SR5_SystemHelpers, SR5_UiModifications
+} from "../system/utilitySystem.js"
+import {
+  enhanceSelects
+} from "../helpers/enhance-selects.js"
+import {
+  arrangePlayersPanel
+} from "../interface/scene-indicators.js"
+import {
+  isForeignWindow, windowElement
+} from "./window-scope.js"
+
+/** Merge aside footer buttons into a single full-width footer */
+function _promoteAsideFooter(html) {
+  const root = html.nodeType === 1 ? html : html
+  const aside = root.querySelector('aside')
+  if (!aside) return
+  const asideFooter = aside.querySelector('footer')
+  if (!asideFooter) return
+  const windowContent = aside.closest('.window-content')
+  if (!windowContent) return
+
+  // Collect aside footer buttons
+  const asideButtons = [...asideFooter.querySelectorAll('button')]
+  asideFooter.remove()
+
+  // Find existing main footer — check direct children first, then inside .main
+  let mainFooter = windowContent.querySelector(':scope > footer, :scope > .form-footer')
+  if (!mainFooter) {
+    const mainDiv = windowContent.querySelector('.main')
+    if (mainDiv) mainFooter = mainDiv.querySelector('footer')
+  }
+
+  // Switch to grid so the footer gets its own row below aside + main.
+  // Fixed aside width (core category-browser uses 220px): an `auto` column
+  // grows to the aside's max-content and squeezes .main down to nothing.
+  windowContent.style.display = 'grid'
+  windowContent.style.gridTemplateColumns = '220px minmax(0, 1fr)'
+  windowContent.style.gridTemplateRows = 'minmax(0, 1fr) auto'
+  windowContent.style.overflow = 'hidden'
+
+  // Ensure aside and main scroll their own content within the grid row
+  aside.style.overflow = 'hidden auto'
+  const mainDiv = windowContent.querySelector('.main')
+  if (mainDiv) mainDiv.style.overflow = 'hidden auto'
+
+  if (mainFooter) {
+    // Prepend aside buttons to existing footer
+    for (const btn of asideButtons.reverse()) {
+      mainFooter.insertBefore(btn, mainFooter.firstChild)
+    }
+    // Move footer to be direct child of window-content
+    if (mainFooter.parentElement !== windowContent) {
+      windowContent.appendChild(mainFooter)
+    }
+  } else {
+    // Create a new footer with all buttons
+    const newFooter = document.createElement('footer')
+    newFooter.classList.add('form-footer')
+    for (const btn of asideButtons) newFooter.appendChild(btn)
+    windowContent.appendChild(newFooter)
+  }
+
+  // Ensure the promoted footer spans both grid columns
+  const finalFooter = windowContent.querySelector(':scope > footer, :scope > .form-footer')
+  if (finalFooter) {
+    finalFooter.style.gridColumn = '1 / -1'
+  }
+}
+
+export function sr5HookRenderPlayers() {
+  SR5_SystemHelpers.srLog(3, `Renderering Shadowrun 5 Help Window`)
+  SR5_UiModifications.addHelpWindow()
+  arrangePlayersPanel()
+}
+
+export function sr5HookRenderFolderConfig(_app, html) {
+  enhanceSelects(html)
+  const input = html.querySelector(`input[type=text]`)
+  if (input && !input.value) {
+    input.value = input.placeholder
+    input.focus()
+  }
+}
+
+export function sr5HookRenderDialog(app, html) {
+  // renderDialog is a V1 hook: Foundry gives a jQuery object (16/10, error on every module dialog, P2)
+  html = windowElement(html)
+  if (!html?.querySelector) return
+  // A module's dialog keeps its fields as the module wrote them (no placeholder copied into the value)
+  if (isForeignWindow(app, windowElement(app?.element) ?? html)) return
+  enhanceSelects(html)
+  const input = html.querySelector(`input[type=text]`)
+  if (input && !input.value) {
+    input.value = input.placeholder
+    input.focus()
+  }
+}
+
+// The classes a dialog of Foundry carries by itself (renderDialogV2 below)
+const DIALOG_CORE_CLASSES = new Set(["application", "dialog", "themed", "minimized", "maximized", "sr-skin-dialog"])
+export function sr5HookRenderDialogV2(app, html) {
+  enhanceSelects(html)
+  // Relecture djamz.13, R1: the dialogs wear the Concepteur's look (window-skin.less), as the system's windows; the
+  // roll window keeps its own (dialog.less, .SR5jet), and so does a module's dialog that brings its own classes (the
+  // Matrice module's dark dialogs): only Foundry's classes and the system's (sr…) take the dress
+  const element = app?.element ?? html
+  if (!element?.classList || app?.id === "jet" || element.querySelector(".SR5jet")) return
+  const own = [...element.classList].filter(c => !DIALOG_CORE_CLASSES.has(c) && !/^theme-/.test(c) && !/^sr/i.test(c))
+  if (!own.length) element.classList.add("sr-skin-dialog")
+}
+export function sr5HookRenderSettingsConfig(_app, html) {
+  enhanceSelects(html)
+  _promoteAsideFooter(html)
+}
+export function sr5HookRenderControlsConfig(_app, html) {
+  enhanceSelects(html)
+  _promoteAsideFooter(html)
+}
+export function sr5HookRenderDocumentOwnershipConfig(_app, html) { enhanceSelects(html) }
+export function sr5HookRenderDocumentSheetConfig(_app, html) { enhanceSelects(html) }
+export function sr5HookRenderWorldConfig(_app, html) { enhanceSelects(html) }
+export function sr5HookRenderCombatTrackerConfig(_app, html) { enhanceSelects(html) }
+export function sr5HookRenderMacroConfig(_app, html) { enhanceSelects(html) }

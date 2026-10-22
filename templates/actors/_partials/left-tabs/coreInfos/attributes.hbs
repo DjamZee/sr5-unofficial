@@ -1,0 +1,307 @@
+<!-- ATTRIBUTES -->
+<div class="SRBlockSheet" id="SR-Attributs">
+	<ul>
+	  	<li class="grid SR-LigneEnTete">
+			<div class="col-6"><p class="SR-TextUppercase SR-TextOverflow">{{localize 'SR5.Attributes'}}</p></div>
+			<div class="col-2">
+		  	{{#ife actor.type 'actorGrunt'}}
+				<p class="SR-TextCenter">{{localize 'SR5.RatingShort'}}</p>
+			{{/ife}}
+			</div>
+			<div class="col-2"><p class="SR-TextCenter">{{localize 'SR5.NaturalShort'}}</p></div>
+			<div class="col-2"><p class="SR-TextCenterOverflow">{{localize 'SR5.AugmentedShort'}}</p></div>
+	  	</li>
+
+	  	{{#each system.attributes}}
+		<li class="grid">
+		  	{{#ife ../actor.type 'actorPc'}}
+			{{#if (and (eq ../system.activeSpecialAttribute 'depth') (or (eq @key 'body') (eq @key 'agility') (eq @key 'reaction') (eq @key 'strength')))}}
+				{{!-- AI (Data Trails p. 152): no physical attributes --}}
+				<div class="col-6 SR-SubColor50">{{findTranslation 'characterAttributes' @key}}</div>
+				<div class="col-2 SR-TextCenter SR-SubColor50"></div>
+				<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" data-helpMessage="{{localize 'SR5.HELP_AIPhysicalAttributeMsg'}}">{{natural.value}}</div>
+				<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" data-helpMessage="{{localize 'SR5.HELP_AIPhysicalAttributeMsg'}}">{{augmented.value}}</div>
+			{{else}}
+				<div class="col-6">{{findTranslation 'characterAttributes' @key}}</div>
+			  	<div class="col-2 SR-TextCenter"></div>
+			  	<div class="col-2 SR-TextCenter" 
+			  	  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" 
+			      data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}"
+			  	>
+			  		<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+				</div>
+			  	<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}" 
+			      data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" 
+			      data-helpDetails="system.attributes.{{@key}}.augmented"
+			      data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+			  	>
+			  		{{augmented.value}}
+				</div>
+			{{/if}}
+		  	{{else ife ../actor.type 'actorGrunt'}}
+			{{#if (and (eq ../system.activeSpecialAttribute 'depth') (or (eq @key 'body') (eq @key 'agility') (eq @key 'reaction') (eq @key 'strength')))}}
+				{{!-- AI (Data Trails p. 152): no physical attributes --}}
+				<div class="col-6 SR-SubColor50">{{findTranslation 'characterAttributes' @key}}</div>
+				<div class="col-2 SR-TextCenter SR-SubColor50"></div>
+				<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" data-helpMessage="{{localize 'SR5.HELP_AIPhysicalAttributeMsg'}}">{{natural.value}}</div>
+				<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" data-helpMessage="{{localize 'SR5.HELP_AIPhysicalAttributeMsg'}}">{{augmented.value}}</div>
+			{{else}}
+				<div class="col-6">{{findTranslation 'characterAttributes' @key}}</div>
+				<div class="col-2 SR-TextCenter" 
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" 
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}"
+				>
+					<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+				</div>
+				<div class="col-2 SR-TextCenter" 
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" 
+				  data-helpDetails="system.attributes.{{@key}}.natural"
+				>
+					{{natural.value}}
+				</div>		
+				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}" 
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" 
+				  data-helpDetails="system.attributes.{{@key}}.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+				  >
+				  	{{augmented.value}}
+				</div>
+			{{/if}}
+		  	{{else ife ../actor.type 'actorSpirit'}}
+				{{#if (or (and ../system.isMaterializing (or (eq @key 'body') (eq @key 'agility') (eq @key 'reaction') (eq @key 'strength'))) (or (eq @key 'willpower') (eq @key 'logic') (eq @key 'intuition') (eq @key 'charisma')))}}
+			  	<div class="col-6">{{findTranslation 'characterAttributes' @key}}</div>
+			  	<div class="col-2 SR-TextCenter"></div>
+			  	<div class="col-2 SR-TextCenter" 
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" 
+				  data-helpDetails="system.attributes.{{@key}}.natural"
+				  >
+				  	{{natural.value}}
+				</div>
+			  	<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}" 
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" 
+				  data-helpDetails="system.attributes.{{@key}}.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+				  >
+				  	{{augmented.value}}
+				</div>
+				{{else}}
+			  	<div class="col-6 SR-SubColor50">{{findTranslation 'characterAttributes' @key}}</div>
+			  	<div class="col-2 SR-TextCenter SR-SubColor50"></div>
+			  	<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'characterAttributes' @key)}}" data-helpDetails="system.attributes.{{@key}}.natural">{{natural.value}}</div>
+			  	<div class="col-2 SR-TextCenter SR-SubColor50" data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}" data-helpDetails="system.attributes.{{@key}}.augmented">{{augmented.value}}</div>
+				{{/if}}
+			{{else ife ../actor.type 'actorDrone'}}
+				{{#if ../system.isSecondaryPropulsionActivate}}
+					{{#if ../system.offRoadMode}}
+						{{#if (or (eq @key 'handling') (eq @key 'speed') (eq @key 'acceleration') (eq @key 'handlingOffRoad') (eq @key 'speedOffRoad') (eq @key 'accelerationOffRoad') (eq @key 'secondaryPropulsionHandling'))}}
+						{{else}}
+							<div class="col-6">{{findTranslation 'vehicleAttributes' @key}}</div>
+							<div class="col-2 SR-TextCenter"></div>
+							<div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'vehicleAttributes' @key)}}" 
+							  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+								<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+							</div>
+							<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}"
+				  			  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'vehicleAttributes' @key)}}"
+				              data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+				  			  data-helpDetails="system.attributes.{{@key}}.augmented">
+								{{augmented.value}}
+							</div>
+						{{/if}}
+					{{else}}
+						{{#if (or (eq @key 'handling') (eq @key 'speed') (eq @key 'acceleration') (eq @key 'handlingOffRoad') (eq @key 'speedOffRoad') (eq @key 'accelerationOffRoad') (eq @key 'secondaryPropulsionHandlingOffRoad'))}}
+						{{else}}
+							<div class="col-6">{{findTranslation 'vehicleAttributes' @key}}</div>
+							<div class="col-2 SR-TextCenter"></div>
+							<div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'vehicleAttributes' @key)}}" 
+			      			  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+								<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+							</div>
+							<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}" 
+							  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'vehicleAttributes' @key)}}"
+							  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+				    		  data-helpDetails="system.attributes.{{@key}}.augmented">
+								{{augmented.value}}
+							</div>
+						{{/if}}
+					{{/if}}
+				{{else}}
+					{{#if ../system.offRoadMode}}
+						{{#if (or (eq @key 'handling') (eq @key 'speed') (eq @key 'acceleration') (eq @key 'secondaryPropulsionHandling') (eq @key 'secondaryPropulsionHandlingOffRoad') (eq @key 'secondaryPropulsionSpeed') (eq @key 'secondaryPropulsionAcceleration'))}}
+						{{else}}
+							<div class="col-6">{{findTranslation 'vehicleAttributes' @key}}</div>
+							<div class="col-2 SR-TextCenter"></div>
+							<div class="col-2 SR-TextCenter"data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'vehicleAttributes' @key)}}" 
+		  					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+								<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+							</div>
+							<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}"
+		  					  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'vehicleAttributes' @key)}}"
+		  					  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+		  					  data-helpDetails="system.attributes.{{@key}}.augmented">
+								{{augmented.value}}
+							</div>
+						{{/if}}
+					{{else}}
+						{{#if (or (eq @key 'handlingOffRoad') (eq @key 'speedOffRoad') (eq @key 'accelerationOffRoad') (eq @key 'secondaryPropulsionHandling') (eq @key 'secondaryPropulsionHandlingOffRoad') (eq @key 'secondaryPropulsionSpeed') (eq @key 'secondaryPropulsionAcceleration'))}}
+						{{else}}
+						<div class="col-6">{{findTranslation 'vehicleAttributes' @key}}</div>
+						<div class="col-2 SR-TextCenter"></div>
+						<div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(findTranslation 'vehicleAttributes' @key)}}" 
+		  				  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+							<input type="text" data-dtype="Number" class="input" name="system.attributes.{{@key}}.natural.base" value="{{natural.base}}" onfocus="this.select()">
+						</div>
+						<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}"
+						  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'vehicleAttributes' @key)}}"
+		  				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}"
+		  				  data-helpDetails="system.attributes.{{@key}}.augmented">
+							{{augmented.value}}
+						</div>
+						{{/if}}
+					{{/if}}
+				{{/if}}
+		  	{{/ife}}
+		</li>
+	  	{{/each}}
+		
+	  	<!-- SPECIAL ATTRIBUTES -->
+		<!-- Handling Magic / Resonance / Nanite Volume / Depth display -->
+		<li class="grid">
+			<div class="col-6" data-helpTitle="{{localize 'SR5.HELP_ActiveSpecialAttribute' key=(localize 'SR5.Edge')}}" data-helpMessage="{{localize 'SR5.HELP_ActiveSpecialAttributeMsg'}}">
+				{{#if (or (eq actor.type 'actorPc') (eq actor.type 'actorGrunt'))}}
+					{{#selectWrapper}}
+					<select name="system.activeSpecialAttribute" data-dtype="String">
+						{{selectOptions lists.magicOrResonance selected=system.activeSpecialAttribute localize=true}}
+					</select>
+				{{/selectWrapper}}
+				{{else if (eq actor.type 'actorSpirit')}}
+					{{localize 'SR5.Magic'}}
+				{{else if (eq actor.type 'actorSprite')}}
+					{{localize 'SR5.Resonance'}}
+				{{/if}}
+			</div>
+			{{#ife system.activeSpecialAttribute 'magic'}}
+				{{#ife actor.type 'actorPc'}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Magic')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.magic.natural.base" value="{{system.specialAttributes.magic.natural.base}}" onfocus="this.select()">
+					</div>
+				{{else ife actor.type 'actorGrunt'}}
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Magic')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.magic.natural.base" value="{{system.specialAttributes.magic.natural.base}}" onfocus="this.select()">
+					</div>
+					<div class="col-2 SR-TextCenter">{{system.specialAttributes.magic.natural.value}}</div>			
+				{{else ife actor.type 'actorSpirit'}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter">{{system.specialAttributes.magic.natural.value}}</div>
+				{{/ife}}
+				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="magic"
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Magic')}}"
+				  data-helpDetails="system.specialAttributes.magic.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+					{{system.specialAttributes.magic.augmented.value}}
+				</div>
+			{{else ife system.activeSpecialAttribute 'resonance'}}
+				{{#ife actor.type 'actorPc'}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Resonance')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.resonance.natural.base" value="{{system.specialAttributes.resonance.natural.base}}" onfocus="this.select()">
+					</div>
+				{{else ife actor.type 'actorGrunt'}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Resonance')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.resonance.natural.base" value="{{system.specialAttributes.resonance.natural.base}}" onfocus="this.select()">
+					</div>
+				{{else ife actor.type 'actorSprite'}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter">{{system.specialAttributes.resonance.natural.value}}</div>
+				{{/ife}}
+				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="resonance"
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Resonance')}}"
+				  data-helpDetails="system.specialAttributes.resonance.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+					{{system.specialAttributes.resonance.augmented.value}}
+				</div>
+			{{else ife system.activeSpecialAttribute 'nanite'}}
+				{{#if (or (eq actor.type 'actorPc') (eq actor.type 'actorGrunt'))}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.NaniteVolume')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.nanite.natural.base" value="{{system.specialAttributes.nanite.natural.base}}" onfocus="this.select()">
+					</div>
+				{{/if}}
+				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="nanite"
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.NaniteVolume')}}"
+				  data-helpDetails="system.specialAttributes.nanite.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+					{{system.specialAttributes.nanite.augmented.value}}
+				</div>
+			{{else ife system.activeSpecialAttribute 'depth'}}
+				{{#if (or (eq actor.type 'actorPc') (eq actor.type 'actorGrunt'))}}
+					<div class="col-2 SR-TextCenter"></div>
+					<div class="col-2 SR-TextCenter" 
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Depth')}}" 
+					  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+						<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.depth.natural.base" value="{{system.specialAttributes.depth.natural.base}}" onfocus="this.select()">
+					</div>
+				{{/if}}
+				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="depth"
+				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Depth')}}"
+				  data-helpDetails="system.specialAttributes.depth.augmented"
+				  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+					{{system.specialAttributes.depth.augmented.value}}
+				</div>
+			{{/ife}}
+		</li>
+
+		<!-- Matrix Entity Concentration of a Monad, set by the GM (Lockdown p. 203) -->
+		{{#if (and (eq system.activeSpecialAttribute 'nanite') (or (eq actor.type 'actorPc') (eq actor.type 'actorGrunt')))}}
+		<li class="grid">
+			<div class="col-6">{{localize 'SR5.DEFRAG_Cem'}}</div>
+			<div class="col-2 SR-TextCenter"></div>
+			<div class="col-2 SR-TextCenter"
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.DEFRAG_Cem')}}"
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+				<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.cem.natural.base" value="{{system.specialAttributes.cem.natural.base}}" onfocus="this.select()">
+			</div>
+			<div class="col-2 SR-TextCenter"
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.DEFRAG_Cem')}}"
+			  data-helpDetails="system.specialAttributes.cem.augmented"
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+				{{system.specialAttributes.cem.augmented.value}}
+			</div>
+		</li>
+		{{/if}}
+
+		<!-- Edge -->
+		{{#if (isdefined system.specialAttributes.edge)}}
+		<li class="grid">
+			<div class="col-6">{{#if (eq actor.type 'actorGrunt')}}{{localize 'SR5.ProfessionalRating'}}{{else}}{{localize 'SR5.Edge'}}{{/if}}</div>
+			<div class="col-2 SR-TextCenter"></div>
+			<div class="col-2 SR-TextCenter" 
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Edge')}}" 
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeNatMsg'}}">
+				{{!-- A free spirit's Edge comes from its Force or the gamemaster's ledger, never from the sheet --}}
+				{{#if (eq actor.type 'actorSpirit')}}{{system.specialAttributes.edge.natural.value}}{{else}}
+				<input type="text" data-dtype="Number" class="input" name="system.specialAttributes.edge.natural.base" value="{{system.specialAttributes.edge.natural.base}}" onfocus="this.select()">
+				{{/if}}
+			</div>
+			<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="edge"
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Edge')}}"
+			  data-helpDetails="system.specialAttributes.edge.augmented"
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+				{{system.specialAttributes.edge.augmented.value}}
+			</div>
+		</li>
+		{{/if}}
+	</ul>
+</div>

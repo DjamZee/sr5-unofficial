@@ -1,0 +1,125 @@
+import {
+  descriptionPartialModel 
+} from './partial/description.js'
+import {
+  storablePartialModel 
+} from './partial/storable.js'
+import {
+  ratingPartialModel 
+} from './partial/rating.js'
+import {
+  boughtOrSoldPartialModel 
+} from './partial/boughtOrSold.js'
+import {
+  wirelessPartialModel 
+} from './partial/wireless.js'
+import {
+  activationPartialModel 
+} from './partial/activation.js'
+import {
+  concealmentPartialModel 
+} from './partial/concealment.js'
+import {
+  effectsPartialModel 
+} from './partial/effects.js'
+import {
+  capacityPartialModel 
+} from './partial/capacity.js'
+
+export class sr5ItemGearDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+    return {
+      ...descriptionPartialModel.defineSchema(),
+      ...storablePartialModel.defineSchema(),
+      ...ratingPartialModel.defineSchema(),
+      ...boughtOrSoldPartialModel.defineSchema(),
+      ...wirelessPartialModel.defineSchema(),
+      ...activationPartialModel.defineSchema(),
+      ...concealmentPartialModel.defineSchema(),
+      ...effectsPartialModel.defineSchema(),
+      ...capacityPartialModel.defineSchema(),
+      quantity: new fields.NumberField({
+        initial: 1
+      }),
+      // A DocWagon contract, a licence, a subscription: owned, but not a
+      // thing that can be left in a stash.
+      isIntangible: new fields.BooleanField({
+        initial: false
+      }),
+      // Not made for its holder's size: -2 dice (SR5 p. 423), lifted for a troll with Doigts délicats (The Complete
+      // Trog p. 179). Unticked, the lifestyle paid for the fitted gear (SR5 p. 423)
+      notSizeAdapted: new fields.BooleanField({
+        initial: false
+      }),
+      charge: new fields.NumberField({
+        initial: 0
+      }),
+      isMedkit: new fields.BooleanField({
+        initial: false
+      }),
+      // An RP-Tac unit (Run & Gun p. 118-119): its level, 0 for none. Its members are in the GM's ledger
+      tacnetLevel: new fields.NumberField({
+        initial: 0
+      }),
+      // An explosive (Run & Gun p. 202-206, SR5 p. 438): its compound, "" for none; the quantity is its kilos (or
+      // litres), the rating its rating. A homemade lot carries the gamemaster's secret change of rating (RG p. 189)
+      explosive: new fields.SchemaField({
+        type: new fields.StringField({
+          initial: "", blank: true
+        }),
+        homemade: new fields.BooleanField({
+          initial: false
+        }),
+        gmOffset: new fields.NumberField({
+          initial: 0, integer: true, min: -15, max: 15
+        }),
+      }),
+      // A physical jammer (SR5 p. 443): area, directional or cranial, turned on from the actor's sheet. In
+      // wireless mode it spares the actors listed here.
+      jammer: new fields.SchemaField({
+        type: new fields.StringField({
+          initial: "", blank: true
+        }),
+        isActive: new fields.BooleanField({
+          initial: false
+        }),
+        spared: new fields.ArrayField(new fields.StringField()),
+      }),
+      // A certified credstick carries money the way a magazine carries rounds:
+      // it is bearer cash, so it moves with the item (SR5 p. 445).
+      isCredstick: new fields.BooleanField({
+        initial: false
+      }),
+      funds: new fields.SchemaField({
+        // Nuyens currently loaded on the stick
+        value: new fields.NumberField({
+          initial: 0
+        }),
+        // Most it can be certified for. 0 means no ceiling.
+        max: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      isPlugged: new fields.BooleanField({
+        initial: false
+      }),
+      accessory: new fields.ArrayField(new fields.ObjectField()),
+      canRollTest: new fields.BooleanField({
+        initial: false
+      }),
+      test: new fields.SchemaField({
+        dicePool: new fields.NumberField({
+          initial: 0
+        }),
+        base: new fields.NumberField({
+          initial: 0
+        }),
+        modifiers: new fields.ArrayField(new fields.ObjectField()),
+        type: new fields.StringField({
+          initial: ''
+        }),
+      }),
+    }
+  }
+}

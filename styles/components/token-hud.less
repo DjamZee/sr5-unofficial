@@ -1,0 +1,61 @@
+/* === Token HUD === */
+#token-hud {
+  // Way into a storage on the ground. It sits under the token because the
+  // two side columns are already full.
+  .col.middle {
+    justify-content: flex-end;
+  }
+
+  .sr-hud-storage {
+    align-self: center;
+  }
+
+  /* The crown of the PAN: a word rather than a glyph, as on the mock-up */
+  .sr-hud-pan {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  /* The SR5 drawings take the place of the Font Awesome glyphs: they have to
+     fill the button the same way, with no frame of their own. */
+  .control-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border: none;
+    filter: drop-shadow(0 0 3px var(--sr-text-color-dark));
+  }
+
+  /* Posed over the map, which can be bright: keep a near-white icon and a dark
+     halo, the way Foundry's own placeable HUD does. */
+  --control-icon-color: var(--sr-text-color-grey-dark);
+  --control-hover-icon-color: var(--sr-ui-color-active);
+  --control-active-icon-color: var(--sr-ui-color-active);
+
+  /* The palettes (movement, effects) have their own background: in the light theme Foundry makes it a white veil,
+     where the near-white text above vanished (pack 5, manual 3.7.4). Keep it dark, as in the dark theme. */
+  .palette {
+    --control-bg-color: var(--color-cool-5-75);
+  }
+
+  /* The movement palette (DjamZ, 21/10, manual 3.7.4): Foundry's icons are white drawings that its light theme turns
+     black (--hud-icon-filter), unreadable on the dark ground kept above: white in both themes; and the box takes the
+     width of its longest line (« Clignement (Téléportation) » ran out of it) */
+  .palette.movement-actions {
+    width: max-content;
+
+    img {
+      filter: none;
+    }
+  }
+
+  button {
+    color: var(--sr-text-color-grey-dark);
+    text-shadow: 0 0 3px var(--sr-text-color-dark);
+
+    &:hover {
+      color: var(--sr-ui-color-active);
+    }
+  }
+}

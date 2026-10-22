@@ -1,0 +1,115 @@
+/**
+ * What a character may leave in a storage, and what a garage asks for.
+ *
+ * Kept free of Foundry globals so the rules can be read — and tested — on
+ * their own, away from a running game.
+ */
+
+/**
+ * What a garage costs and asks for, per vehicle (Run Faster p. 216). A garage
+ * is a lifestyle Asset holding a single vehicle, bought again for each one.
+ * `level` is the minimum lifestyle rank, as numbered in _handleLifeStyle().
+ *
+ * It lives here rather than in config.js because that file holds translation
+ * tables, which sortTranslations() walks expecting a string behind every key.
+ */
+export const GARAGE_REQUIREMENTS = {
+  motorcycle: {
+    lifestyle: 'medium', level: 4, points: 1, cost: 50 
+  },
+  carLight: {
+    lifestyle: 'medium', level: 4, points: 1, cost: 50 
+  },
+  carHeavy: {
+    lifestyle: 'medium', level: 4, points: 2, cost: 100 
+  },
+  boat: {
+    lifestyle: 'high', level: 5, points: 3, cost: 5000 
+  },
+  plane: {
+    lifestyle: 'luxury', level: 6, points: 4, cost: 20000 
+  },
+  helicopter: {
+    lifestyle: 'luxury', level: 6, points: 4, cost: 10000 
+  },
+}
+
+// Item types a character can leave behind in a storage.
+export const STORABLE_TYPES = [
+  "itemGear", "itemWeapon", "itemArmor", "itemAmmunition",
+  "itemDevice", "itemDrug", "itemFocus", "itemToxin", "itemVehicle",
+  "itemAugmentation",
+]
+
+/**
+ * Whether an item can be put away, and whether this storage will take it.
+ * A fitted mod follows the item it is on, bare hands and natural weapons are
+ * part of the body, an implant has to come out first, and a contract or a
+ * licence is not a thing you can leave in a box.
+ * A garage holds vehicles and drones; every other storage holds the rest.
+ */
+// What a vendor's stock takes on top: goods with nothing to leave in a box elsewhere (shop lot C)
+export const SHOP_EXTRA_TYPES = ["itemProgram", "itemSin", "itemVehicleMod"]
+
+export function isStorable(item, storage) {
+  const data = item?.system ?? {
+  }
+  const isShop = storage?.system?.type === "shop"
+  if (!STORABLE_TYPES.includes(item?.type) && !(isShop && SHOP_EXTRA_TYPES.includes(item?.type))) return false
+  if (data.isAccessory && data.isPlugged) return false
+  if (item.type === "itemWeapon" && data.type === "unarmedCombat") return false
+  if (item.type === "itemGear" && data.isIntangible) return false
+  if (item.type === "itemAugmentation" && data.isActive) return false
+
+  if (!storage) return true
+  const isVehicle = item.type === "itemVehicle"
+  // A vendor's counter holds cars as well as pistols
+  if (isShop) return true
+  return storage.system?.type === "garage" ? isVehicle : !isVehicle
+}
+
+/**
+ * Whether an item sits in one of this actor's storages. Only a storage still
+ * there counts: an item whose storage was deleted, or that came from another
+ * actor with its old `storedIn`, is back in the character's hands rather than
+ * lost between the two.
+ */
+export function isStoredAway(item, actor) {
+  const storageId = item?.system?.storedIn
+  if (!storageId) return false
+  const items = actor?.items
+  const storage = items?.get?.(storageId) ?? items?.find?.(i => (i.id ?? i._id) === storageId)
+  return storage?.type === "itemStorage"
+}
+
+/**
+ * Actors with nothing to take gear out of a bag with: another storage, a
+ * device (a piece of equipment working as part of a network, SR5 p. 215),
+ * and the Matrix entities that have no body in the physical world, agents
+ * (SR5 p. 215) and sprites (SR5 p. 216).
+ */
+export const NOT_LOOTERS = ["actorStorage", "actorDevice", "actorSprite", "actorAgent"]
+
+/** Whether this actor can go through a storage put down on the map. */
+export function canLoot(actor) {
+  return Boolean(actor) && !NOT_LOOTERS.includes(actor.type)
+}
+
+/**
+ * What the rule asks of this garage, from the vehicle it is meant to hold:
+ * a minimum lifestyle, a monthly cost and a cost in lifestyle points
+ * (Run Faster p. 216). Null when the storage asks nothing.
+ */
+export function garageRequirement(storage) {
+  if (storage?.system?.type !== "garage") return null
+  return GARAGE_REQUIREMENTS[storage.system.vehicleType] ?? null
+}
+
+/**
+ * Whether any of these lifestyle ranks reaches what the garage asks for.
+ * Ranks are the numbers _handleLifeStyle() writes on a lifestyle.
+ */
+export function meetsGarageLifestyle(requirement, lifestyleLevels) {
+  if (!requirement) return true
+  return lifestyleLevels.some(level => (Number(level) || 0) >= requirement.level)
+}

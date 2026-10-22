@@ -1,0 +1,62 @@
+<li class="SR-LigneEnTete SR-PaddingTop10 grid SR-TextUppercase">
+    <div class="col-11">
+        {{localize 'SR5.FinalDrain'}}
+        <a class="SR-DialogToggle" data-target="drainDetail" data-action="show"><i class="fas fa-angle-down SR-SubColor"></i></a>
+		<a class="SR-DialogToggle" data-target="drainDetail" data-action="hide" style="display: none;"><i class="fas fa-angle-up SR-SubColor"></i></a>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="drainValue" value="{{magic.drain.value}}" data-dtype="Number" placeholder="0" />
+    </div>
+</li>
+
+<div id="drainDetail" style="display: none;">
+    <li class="grid">
+        <div class="col-11">{{localize 'SR5.Force'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disable type="number" id="force" name="force" value="{{magic.force}}" data-dtype="Number" placeholder="0" />
+        </div>
+    </li>
+
+    {{> systems/sr5/templates/rolls/rollDialogPartial/drainBase.hbs}}
+    
+    {{#if (and (eq test.type "spell") (not magic.structured))}}
+    <!--RECKLESS SPELLCASTING: none for Structured Spellcasting (Forbidden Arcana p. 43)-->
+    <li class="grid">
+        <div class="col-11">{{localize 'SR5.RecklessSpellcasting'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" name="dicePoolModRecklessSpellcasting" value="" placeholder="0" data-dtype="Number" />
+        </div>
+    </li>
+    {{/if}}
+
+    {{#if magic.drain.modifiers.deathSower}}
+    <!-- DEATH SOWER (Forbidden Arcana p. 40) -->
+    <li class="grid">
+        <div class="col-11">{{localize 'SR5.MagicMasteryDeathSower'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" value="{{magic.drain.modifiers.deathSower.value}}" data-dtype="Number" placeholder="0" />
+        </div>
+    </li>
+    {{/if}}
+
+    {{#if dialogSwitch.mageHunter}}
+    <!-- MAGE HUNTER (Forbidden Arcana p. 34): filled when its box is ticked -->
+    <li class="grid">
+        <div class="col-11">{{localize 'SR5.MagicMasteryMageHunter'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number" name="dicePoolModMageHunter" value="" placeholder="0" data-dtype="Number" />
+        </div>
+    </li>
+    {{/if}}
+
+    {{#if (eq test.type "preparationFormula")}}
+    <!-- PREPARATION TRIGGER -->
+    <li class="grid">
+        <div class="col-11">{{localize 'SR5.PreparationTrigger'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-1 SR-TextCenter">
+            <input disabled type="number"  name="dicePoolModTrigger" value="2" placeholder="0" data-dtype="Number" />
+        </div>
+    </li>
+    {{/if}}
+    
+</div>

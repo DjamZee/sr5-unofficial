@@ -1,0 +1,153 @@
+@import "../commons/layout-mixin.less";
+
+/* === Custom Dropdown (progressive enhancement over native <select>) === */
+
+.sr-dropdown {
+  position: relative;
+  width: 100%;
+  vertical-align: bottom;
+  align-self: end;
+  letter-spacing: normal;
+  word-spacing: normal;
+
+  // Hidden native select — still in form for value/submission
+  select {
+    position: absolute !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  // Trigger bar — mimics native select appearance
+  .sr-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0 2px;
+    border: none;
+    border-bottom: 1px solid var(--sr-ui-border-color-idle);
+    color: inherit;
+    background: none;
+    width: 100%;
+    box-sizing: border-box;
+    user-select: none;
+
+    .sr-dropdown-label {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sr-dropdown-chevron {
+      font-size: 10px;
+      color: color-mix(in srgb, var(--sr-ui-border-color) 50%, transparent);
+      margin-left: 4px;
+      flex-shrink: 0;
+      transition: transform 0.15s ease, color 0.15s ease;
+    }
+
+    &:hover {
+      border-bottom-color: var(--sr-ui-border-color);
+
+      .sr-dropdown-chevron {
+        color: var(--sr-ui-border-color);
+      }
+    }
+  }
+
+  // Open state
+  &.sr-dropdown-open {
+    .sr-dropdown-trigger {
+      border-bottom-color: var(--sr-ui-border-color-active);
+
+      .sr-dropdown-chevron {
+        transform: rotate(180deg);
+        color: var(--sr-ui-border-color-active);
+      }
+    }
+  }
+
+  // Disabled state
+  &.sr-dropdown-disabled {
+    .sr-dropdown-trigger {
+      cursor: default;
+      opacity: 0.5;
+    }
+  }
+}
+
+// Dropdown menu — portaled to document.body, positioned with JS
+.sr-dropdown-menu {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  background-color: var(--sr-text-color-light);
+  border: 1px solid var(--sr-ui-border-color-idle);
+  max-height: 250px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-color: var(--sr-ui-scrollbar-thumb) var(--sr-ui-scrollbar-track);
+  scrollbar-width: thin;
+  box-sizing: border-box;
+
+  &.sr-dropdown-menu-visible {
+    display: block;
+  }
+
+  // Option items
+  .sr-dropdown-item {
+    padding: 2px 6px;
+    line-height: 1.4em;
+    cursor: pointer;
+    color: var(--sr-text-color-dark);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &.selected {
+      color: var(--sr-ui-border-color-active);
+      font-weight: bold;
+    }
+
+    &:hover,
+    &.sr-dropdown-focused {
+      background-color: var(--sr-ui-border-color-active);
+      border-color: var(--sr-ui-border-color-active);
+      color: var(--sr-text-color-light);
+      text-shadow: none;
+    }
+
+    // Placeholder / empty value
+    &[data-value=""] {
+      color: color-mix(in srgb, var(--sr-text-color-dark) 40%, transparent);
+    }
+  }
+
+  // Separator (disabled options)
+  .sr-dropdown-separator {
+    height: 1px;
+    margin: 4px 6px;
+    background-color: var(--sr-ui-border-color-idle);
+    pointer-events: none;
+  }
+
+  // Optgroup headers
+  .sr-dropdown-group {
+    padding: 2px 6px;
+    font-size: 0.8em;
+    cursor: default;
+    pointer-events: none;
+    color: var(--sr-ui-color-active);
+    background-color: var(--sr-ui-border-color);
+    border-bottom: 1px solid var(--sr-ui-border-color);
+  }
+}

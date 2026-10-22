@@ -1,0 +1,88 @@
+.SR5iconActor {
+  height: 32px;
+  width: 32px;
+  padding: 0 0 0 1px;
+  display: inline-block;
+  stroke: color-mix(in srgb, var(--sr-ui-border-color) 40%, transparent);
+  fill: color-mix(in srgb, var(--sr-text-color-dark) 80%, transparent);
+  transition: all 0.2s ease-out;
+  &:hover {
+    fill: var(--sr-text-color-dark);
+    stroke: var(--sr-ui-border-color);
+    transition: all 0.2s ease-out;
+  }
+  #icon-symbol {
+    fill: var(--sr-text-color-light);
+  }
+  #icon-border {
+    fill: none;
+  }
+  #icon-symbol {
+    transform: scale(0.8) translate(12.5%, 12.5%);
+  }
+}
+
+.SR5iconAttribut #icon-symbol {
+    transform: scale(0.95) translate(3.12%, 3.12%);
+}
+.SR5iconMagie #icon-symbol {
+    transform: scale(0.95) translate(3.12%, 3.12%);
+}
+.SR5iconTrait #icon-symbol {
+    transform: scale(0.90) translate(6.25%, 6.25%);
+}
+.SR5iconCompetence #icon-symbol {
+    transform: scale(1);
+}
+.SR5iconEquipement #icon-symbol {
+    transform: scale(1);
+}
+.SR5iconAugmentation #icon-symbol {
+    transform: scale(0.85) translate(9.3%, 9.3%);
+}
+.SR5iconAMagie #icon-symbol {
+    transform: scale(0.95) translate(3.12%, 3.12%);
+}
+.SR5iconAMatrice #icon-symbol {
+    transform: scale(0.85) translate(9.3%, 9.3%);
+}
+.SR5iconContact #icon-symbol {
+    transform: scale(0.95) translate(3.12%, 3.12%);
+}
+.SR5iconBio #icon-symbol {
+    transform: scale(0.95) translate(3.12%, 3.12%);
+}
+.SR5iconMod #icon-symbol {
+    transform: scale(0.85) translate(9.3%, 9.3%);
+}
+
+.tabs .SR5iconActor {
+  padding: 0 0 0 4px;
+}
+
+.active {
+  .SR5iconActor {
+    stroke: var(--sr-ui-border-color);
+    fill: var(--sr-ui-border-color);
+    #icon-symbol {
+      fill: var(--sr-text-color-light);
+    }
+    #icon-border {
+      fill: none;
+    }
+  }
+}
+
+.SRemptyBox {
+  background-color  : var(--sr-ui-border-color-active);
+  border            : 2px solid var(--sr-text-color-dark);
+  outline           : solid var(--sr-ui-border-color-active) 1px;
+  height            : 30px;
+  width             : 32px;
+  padding           : 0 0 0 1px;
+  display           : inline-block;
+  stroke            : color-mix(in srgb, var(--sr-ui-border-color) 80%, transparent);
+  fill              : color-mix(in srgb, var(--sr-ui-border-color) 80%, transparent);
+  transition        : all 0.2s ease-out;
+  margin-top        : 1px;
+}

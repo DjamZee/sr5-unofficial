@@ -1,0 +1,228 @@
+import {
+  drainShown
+} from "../roll-helpers/mentorMaskDrain.js"
+import {
+  SR5 
+} from "../../config.js"
+import {
+  SR5_RollMessage 
+} from "../roll-message.js"
+import {
+  SR5_RollTestHelper 
+} from "../roll-test-helper.js"
+import {
+  SR5_EntityHelpers 
+} from "../../entities/helpers.js"
+import {
+  ritualDrainRecipients, ritualDrainKey, ritualDrainType
+} from "../roll-helpers/ritualTeam.js"
+import {
+  magicForDrainType
+} from "../../entities/items/magic-masteries.js"
+import {
+  isRapidNecroSummoning, RAPID_NECRO_DRAIN_FLOOR
+} from "../roll-helpers/arcana-metamagics.js"
+import {
+  manaShiftKind
+} from "../../system/background-count.js"
+import {
+  applyReagentDrainReduction
+} from "../../system/reagents.js"
+import {
+  streamOf, compilingFading
+} from "../../entities/actors/technomancer-streams.js"
+
+export default async function defenseResultInfo(cardData, type){
+  let key, label, labelEnd, successTestType = "nonOpposedTest", failedTestType = "SR-CardButtonHit endTest", failedKey = ""
+  let originalMessage, prevData
+  if (cardData.previousMessage.messageId){
+    originalMessage = game.messages.get(cardData.previousMessage.messageId)
+    prevData = originalMessage.flags?.sr5data
+  }
+
+  switch (type){
+    case "jackOutDefense":
+      label = game.i18n.localize("SR5.MatrixActionJackOutSuccess")
+      labelEnd = game.i18n.localize("SR5.MatrixActionJackOutFailed")
+      key = "jackOutSuccess"
+      break
+    case "sensorDefense":
+      label = game.i18n.localize("SR5.SensorLockedTarget")
+      labelEnd = game.i18n.localize("SR5.SuccessfulDefense")
+      key = "targetLocked"
+      break
+    case "preparationResistance":
+      label = game.i18n.localize("SR5.PreparationCreate")
+      labelEnd = game.i18n.localize("SR5.PreparationCreateFailed")
+      key = "createPreparation"
+      break
+    case "compilingResistance":
+      label = game.i18n.localize("SR5.CompileSprite")
+      labelEnd = game.i18n.localize("SR5.FailedCompiling")
+      key = "compileSprite"
+      //Technoshaman: compiling costs 2 less fading, down to 1, and a major form doubles it (Kill Code p. 102, SR5 p. 254)
+      {
+        const compiler = prevData?.owner?.actorId ? SR5_EntityHelpers.getRealActorFromID(prevData.owner.actorId, prevData.actorUuids) : null
+        cardData.matrix.fading.value = compilingFading(cardData.roll.hits, streamOf(compiler), cardData.matrix.majorForm)
+      }
+      cardData.chatCard.buttons.fadingResistance = SR5_RollMessage.generateChatButton("nonOpposedTest", "fading", `${game.i18n.localize("SR5.ResistFading")} (${cardData.matrix.fading.value})`)
+      break
+    case "summoningResistance":
+      label = game.i18n.localize("SR5.SummonSpirit")
+      labelEnd = game.i18n.localize("SR5.FailedSummon")
+      key = "summonSpirit"
+      cardData.magic.drain.value = cardData.roll.hits * 2
+      applyReagentDrainReduction(cardData.magic, prevData?.magic?.reagentDrainReduction, prevData?.magic?.reagentTier)
+      if (cardData.magic.drain.value < 2) cardData.magic.drain.value = 2
+      //Rapid Necro-Summoning (Forbidden Arcana p. 44): the same Drain, at least 4
+      {
+        const summoner = prevData?.owner?.actorId ? SR5_EntityHelpers.getRealActorFromID(prevData.owner.actorId, prevData.actorUuids) : null
+        if (isRapidNecroSummoning(summoner?.system?.magic)) cardData.magic.drain.value = Math.max(cardData.magic.drain.value, RAPID_NECRO_DRAIN_FLOOR)
+      }
+      cardData.chatCard.buttons.drain = SR5_RollMessage.generateChatButton("nonOpposedTest", "drain", `${game.i18n.localize("SR5.ResistDrain")} (${drainShown(cardData, cardData.owner.actorId)})`)
+      break
+    case "ritualResistance": {
+      label = game.i18n.localize("SR5.RitualSuccess")
+      labelEnd = game.i18n.localize("SR5.RitualFailed")
+      cardData.magic.drain.value = cardData.roll.hits * 2
+      //SR5 p. 299 (errata): the leader's hits against the leader's Magic, from the sheet. The fields read before
+      //(test.realHits, actorMagic) were written by nothing: the Drain stayed stun (M5 D2)
+      {
+        const leader = SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids)
+        const magic = leader?.system?.specialAttributes?.magic?.augmented?.value ?? 0
+        const masteries = leader?.system?.magic?.masteries
+        cardData.magic.drain.type = ritualDrainType(prevData?.roll?.hits,
+          magicForDrainType(magic, masteries?.archivist?.value, masteries?.conjuringSpecialist?.value, false))
+      }
+      //Another tradition's reagents count for half (SR5 p. 320); cards made before keep their drachms spent
+      const reagents = cardData.magic.reagentsEffective ?? cardData.magic.reagentsSpent
+      if (reagents > cardData.magic.force) {
+        cardData.magic.drain.modifiers.hits = {
+          value: cardData.roll.hits * 2,
+          label: game.i18n.localize(SR5.drainModTypes["hits"]),
+        }
+        let reagentsMod = Math.floor(reagents / cardData.magic.force) - 1
+        if (reagentsMod > 0) {
+          cardData.magic.drain.value -= reagentsMod
+          cardData.magic.drain.modifiers.reagents = {
+            value: -reagentsMod,
+            label: game.i18n.localize(SR5.drainModTypes["reagents"]),
+          }
+        }
+      }
+      applyReagentDrainReduction(cardData.magic, cardData.magic.reagentDrainReduction, cardData.magic.reagentTier)
+      key = "ritualSealed"
+      if (cardData.magic.drain.value < 2) cardData.magic.drain.value = 2
+      //SR5 p. 299: with participants, each of them takes the Drain, one button per name
+      if (cardData.magic.ritualParticipants?.length) {
+        let leader = SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids)
+        for (let recipient of ritualDrainRecipients({
+          actorId: cardData.owner.actorId, name: leader?.name
+        }, cardData.magic.ritualParticipants)) {
+          cardData.chatCard.buttons[ritualDrainKey(recipient.actorId)] = SR5_RollMessage.generateChatButton("opposedTest ritualDrain", ritualDrainKey(recipient.actorId), `${game.i18n.localize("SR5.ResistDrain")} ${recipient.name} (${drainShown(cardData, recipient.actorId)})`)
+        }
+      } else cardData.chatCard.buttons.drain = SR5_RollMessage.generateChatButton("opposedTest", "drain", `${game.i18n.localize("SR5.ResistDrain")} (${drainShown(cardData, cardData.owner.actorId)})`)
+
+      let item = await fromUuid(cardData.owner.itemUuid)
+      if (item.system.durationMultiplier === "netHits"){
+        let realActor = SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids)
+        SR5_RollTestHelper.updateItemAfterRoll(cardData, realActor)
+      }
+      break
+    }
+    case "eraseMark":
+      label = game.i18n.localize("SR5.MatrixActionEraseMark")
+      labelEnd = game.i18n.localize("SR5.MatrixActionEraseMarkFailed")
+      key = "eraseMarkSuccess"
+      if (prevData.chatCard.buttons?.eraseMark) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "eraseMark")
+      break
+    case "passThroughDefense":
+      label = game.i18n.localize("SR5.PassThroughBarrierSuccess")
+      labelEnd = game.i18n.localize("SR5.PassThroughBarrierFailed")
+      successTestType = "SR-CardButtonHit endTest"
+      if (prevData.chatCard.buttons?.passThroughDefense) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "passThroughDefense")
+      break
+    case "intimidationResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.CS_AS_ExtremeIntimidation")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "applyFearEffect"
+      if (prevData.chatCard.buttons?.fear) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "fear")
+      break
+    case "ricochetResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.STATUSES_Shaked")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "calledShotEffect"
+      if (prevData.chatCard.buttons?.fear) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "fear")
+      break
+    case "warningResistance":
+      label = `${game.i18n.localize("SR5.ShiftAttitude")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      successTestType = "SR-CardButtonHit endTest"
+      key = "warningShotEnd"
+      if (prevData.chatCard.buttons?.fear) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "fear")
+      break
+    case "stunnedResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.STATUSES_Stunned")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "applyStunnedEffect"
+      if (prevData.chatCard.buttons?.stunned) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "stunned")
+      break
+    case "buckledResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.STATUSES_Buckled")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "calledShotEffect"
+      if (prevData.chatCard.buttons?.buckled) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "buckled")
+      break
+    case "nauseousResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.STATUSES_Nauseous")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "calledShotEffect"
+      if (prevData.chatCard.buttons?.nauseous) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "nauseous")
+      break
+    case "knockdownResistance":
+      label = `${game.i18n.localize("SR5.ApplyEffect")}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.STATUSES_Knockdown")}`
+      labelEnd = game.i18n.localize("SR5.Resisted")
+      key = "calledShotEffect"
+      if (prevData.chatCard.buttons?.knockdown) SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, "knockdown")
+      break
+    case "engulfResistance":
+      label = game.i18n.localize("SR5.EscapeEngulfSuccess")
+      labelEnd = game.i18n.localize("SR5.EscapeEngulfFailed")
+      successTestType = "SR-CardButtonHit endTest"
+      //An end label, as a failure has: the button had no key and was stored as "undefined" (Victoire's review)
+      key = "actionEnd"
+      if (cardData.roll.hits < cardData.previousMessage.hits) {
+        //A plain chat message has no sr5data: it is skipped, it stopped the search (and the escape) before
+        let parentMessage = game.messages.find(m => m.flags?.sr5data?.chatCard?.buttons?.escapeEngulf && m.flags.sr5data.owner?.actorId === cardData.owner.actorId)
+        if (parentMessage) prevData = parentMessage.flags?.sr5data
+        if (parentMessage && prevData?.chatCard?.buttons?.escapeEngulf) {
+          SR5_RollMessage.updateChatButtonHelper(parentMessage.id, "escapeEngulf")
+          SR5_RollMessage.updateChatButtonHelper(parentMessage.id, "resistanceCard")
+        }
+        //Broken free (SR5 p. 399): the active GM forgets the attack card kept for the victim
+        const {
+          SR5_ActorHelper
+        } = await import("../../entities/actors/entityActor-helpers.js")
+        await SR5_ActorHelper.forgetEngulf(SR5_EntityHelpers.getRealActorFromID(cardData.owner.speakerId ?? cardData.owner.actorId, cardData.actorUuids))
+      }
+      break
+  }
+
+  //An end label does nothing when clicked, as the failure's (its action stays empty)
+  if (cardData.roll.hits < cardData.previousMessage.hits) cardData.chatCard.buttons[key] = SR5_RollMessage.generateChatButton(successTestType, key === "actionEnd" ? failedKey : key, label)
+  else cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton(failedTestType, failedKey, labelEnd)
+
+  //Shadow Spells p. 25: a sealed Mana Flux / Mana Ebb shifts the scene's background count, applied by the GM
+  if (type === "ritualResistance" && cardData.roll.hits < cardData.previousMessage.hits){
+    const ritual = await fromUuid(cardData.owner.itemUuid)
+    const kind = manaShiftKind(ritual?.name)
+    if (kind){
+      cardData.magic.manaShift = {
+        kind, force: cardData.magic.force, name: ritual.name
+      }
+      cardData.chatCard.buttons.manaShift = SR5_RollMessage.generateChatButton("nonOpposedTest", "manaShift", game.i18n.format(`SR5.ManaShiftApply_${kind}`, {
+        hours: cardData.magic.force
+      }), true)
+    }
+  }
+}

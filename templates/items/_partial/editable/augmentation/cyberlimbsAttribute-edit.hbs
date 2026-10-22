@@ -1,0 +1,42 @@
+{{#if (eq system.category "cyberlimbs")}}
+<div class="SR-PaddingTop10">
+    <ul>
+        <li class="SR-EnTete">
+            <p class="SR-TextUppercase">{{localize 'SR5.CyberlimbsAttributes'}}</p>
+        </li>
+        <li class="grid">
+            <div class="col-5">{{localize 'SR5.CutomCyberlimb'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1"><input type="checkbox" name="system.cyberlimbs.isCustom" data-dtype="Boolean" {{checked system.cyberlimbs.isCustom}} /></div>
+        </li>
+        <li class="grid">
+            <div class="col-5">{{localize 'SR5.Strength'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1">{{system.cyberlimbs.strength.value}}</div>
+            {{#if system.cyberlimbs.isCustom}}
+            <div class="col-1"></div>
+            <div class="col-4 SR-TextRight">{{localize 'SR5.CutomCyberlimbStrength'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1 SR-TextCenter"><input type="number" data-dtype="Number" name="system.cyberlimbs.strength.customization" value="{{system.cyberlimbs.strength.customization}}" onfocus="this.select()"/></div>
+            {{/if}}
+        </li>
+        <li class="grid">
+            <div class="col-5">{{localize 'SR5.Agility'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1">{{system.cyberlimbs.agility.value}}</div>
+            {{#if system.cyberlimbs.isCustom}}
+            <div class="col-1"></div>
+            <div class="col-4 SR-TextRight">{{localize 'SR5.CutomCyberlimbAgility'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1 SR-TextCenter"><input type="number" data-dtype="Number" name="system.cyberlimbs.agility.customization" value="{{system.cyberlimbs.agility.customization}}" onfocus="this.select()"/></div>
+            {{/if}}
+        </li>
+        {{#if (or limbAttributes.strength.enhancement limbAttributes.agility.enhancement)}}
+        {{#each limbAttributes as |attribute key|}}
+        {{#if attribute.enhancement}}
+        <li class="grid" title="{{attribute.enhancement.name}}">
+            <div class="col-5">{{localize (concat 'SR5.CyberlimbWith' key)}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1">{{attribute.value}}</div>
+            <div class="col-6 SR-TextRight">+{{attribute.enhancement.value}} ({{attribute.enhancement.name}})</div>
+        </li>
+        {{/if}}
+        {{/each}}
+        {{/if}}
+    </ul>
+</div>
+{{/if}}

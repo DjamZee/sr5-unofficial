@@ -1,0 +1,85 @@
+import {
+  SR5_RollMessage 
+} from "../roll-message.js"
+import {
+  SR5_EntityHelpers
+} from "../../entities/helpers.js"
+import {
+  applyReagentDrainReduction
+} from "../../system/reagents.js"
+import {
+  streamOf, streamSpriteFadingReduction, reducedFading
+} from "../../entities/actors/technomancer-streams.js"
+
+export default async function sidekickResistanceInfo(cardData, type){
+  let originalMessage = game.messages.get(cardData.previousMessage.messageId)
+  let newMessage = originalMessage.flags?.sr5data
+  let key, label, labelEnd, buttonToRemove, resistType
+  cardData.roll.netHits = cardData.previousMessage.hits - cardData.roll.hits
+
+  switch (type){
+    case "decompilingResistance":
+      key = "reduceTask"
+      label = `${game.i18n.localize("SR5.ReduceTask")} (${cardData.roll.netHits})`
+      labelEnd = game.i18n.localize("SR5.ResistDecompilingSuccess")
+      buttonToRemove = "decompilingResistance"
+      resistType = "fading"
+      break
+    case "registeringResistance":
+      key = "registerSprite"
+      label = game.i18n.localize("SR5.HELP_RegisterButton")
+      labelEnd = game.i18n.localize("SR5.RegisteringFailed")
+      buttonToRemove = "registeringResistance"
+      resistType = "fading"
+      break
+    case "bindingResistance":
+      key = "bindSpirit"
+      label = game.i18n.localize("SR5.BindSpirit")
+      labelEnd = game.i18n.localize("SR5.BindingFailed")
+      buttonToRemove = "bindingResistance"
+      resistType = "drain"
+      break
+    case "banishingResistance":
+      key = "reduceService"
+      label = `${game.i18n.localize("SR5.ReduceService")} (${cardData.roll.netHits})`
+      labelEnd = game.i18n.localize("SR5.BanishingFailed")
+      buttonToRemove = "banishingResistance"
+      resistType = "drain"
+      break
+  }
+
+  //A wild spirit (Forbidden Arcana p. 172) owes no service: the banisher's net hits add up until Force x 2, and the
+  //Drain is the spirit's hits, minimum 2. The gamemaster's button recounts both sides before writing anything
+  const spirit = type === "banishingResistance" ? SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids) : null
+  if (spirit?.system?.isWild){
+    key = "wildBanish"
+    //No count on the button: the card's figures are not the ones the gamemaster will keep
+    label = game.i18n.localize("SR5.WildBanishAdd")
+  }
+
+  if (cardData.roll.hits < cardData.previousMessage.hits) cardData.chatCard.buttons[key] = SR5_RollMessage.generateChatButton("nonOpposedTest", key, label)
+  else cardData.chatCard.buttons.actionEnd = SR5_RollMessage.generateChatButton("SR-CardButtonHit endTest", "", labelEnd)
+
+  //Manage Drain or Fading
+  if (resistType === "fading"){
+    // SR5 p. 254: the fading is physical when the sprite Level exceeds the technomancer's Resonance
+    newMessage.matrix.fadingLevel = cardData.matrix.spriteLevel
+    //Technoshaman: decompiling costs 2 less fading, never under 2 (Kill Code p. 102, SR5 p. 254); registering does not
+    const technomancer = (type === "decompilingResistance" && newMessage.owner?.actorId) ? SR5_EntityHelpers.getRealActorFromID(newMessage.owner.actorId, newMessage.actorUuids) : null
+    newMessage.matrix.fading.value = reducedFading(cardData.roll.hits * 2, streamSpriteFadingReduction(streamOf(technomancer)))
+    newMessage.chatCard.buttons.fadingResistance = SR5_RollMessage.generateChatButton("nonOpposedTest", "fading", `${game.i18n.localize("SR5.ResistFading")} (${newMessage.matrix.fading.value})`)
+  } else if (resistType === "drain"){
+    // Keep the spirit's Force on the card: it decides if the drain is physical (banishing SR5 p. 304, binding
+    // FRAG p. 83 — SR5 p. 304 does not say it for binding)
+    newMessage.magic.force = SR5_EntityHelpers.getRealActorFromID(cardData.owner.actorId, cardData.actorUuids)?.system.force.value
+    //A spirit that cannot be found leaves no Force to compare: the drain would be stun without a word
+    if (newMessage.magic.force === undefined) ui.notifications.warn(game.i18n.localize("SR5.WARN_SpiritForceUnknownDrain"))
+    newMessage.magic.drain.value = spirit?.system?.isWild ? cardData.roll.hits : cardData.roll.hits * 2
+    applyReagentDrainReduction(newMessage.magic, newMessage.magic.reagentDrainReduction, newMessage.magic.reagentTier)
+    if (newMessage.magic.drain.value < 2) newMessage.magic.drain.value = 2
+    newMessage.chatCard.buttons.drain = SR5_RollMessage.generateChatButton("nonOpposedTest", "drain", `${game.i18n.localize("SR5.ResistDrain")} (${newMessage.magic.drain.value})`)
+  }
+
+  await SR5_RollMessage.updateRollCardHelper(cardData.previousMessage.messageId, newMessage)
+  SR5_RollMessage.updateChatButtonHelper(cardData.previousMessage.messageId, buttonToRemove)
+}

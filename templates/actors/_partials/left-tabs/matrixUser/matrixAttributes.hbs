@@ -1,0 +1,50 @@
+<!-- DEVICE ATTRIBUTES -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="item grid SR-LigneEnTete SR-TextUppercase">
+			<div class="col-12">{{localize 'SR5.MatrixAttributes'}}</div>
+		</li>
+
+		<!-- Unconfigured deck warning (SR5 p. 229) -->
+		{{#if deckUnconfigured}}
+		<li class="SR-DeckUnconfigured">{{localize 'SR5.DeckUnconfigured'}}</li>
+		{{/if}}
+
+		<!-- Attributes collection -->
+		{{#if (or (eq system.matrix.deviceType "cyberdeck") 
+		(and (eq actor.type "actorDevice") (eq system.matrix.deviceType "host"))
+		)}}
+			{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/collection.hbs}}
+		{{/if}}
+
+		<!-- Noise Reduction & Sharing -->
+		{{#if actsAsRcc}}
+			{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/noiseReduction.hbs}}
+			{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/sharing.hbs}}
+		{{/if}}
+
+		<!-- Attack / Sleaze -->
+		{{#if (or (eq system.matrix.deviceType "cyberdeck") 
+		(eq system.matrix.deviceType "livingPersona") 
+		(eq system.matrix.deviceType "headcase") 
+		(eq actor.type "actorSprite") 
+		(eq actor.type "actorAgent")
+		(and (eq actor.type "actorDevice") (eq system.matrix.deviceType "host"))
+		(and (eq actor.type "actorDevice") (eq system.matrix.deviceType "ice"))
+		)}}
+			{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/attack.hbs}}
+			{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/sleaze.hbs}}
+		{{/if}}
+
+		<!-- Data processing / Firewall -->
+		{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/dataProcessing.hbs}}
+		{{> systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/firewall.hbs}}
+
+		<!-- The values swap by drag and drop (SR5 p. 228, 247-248): said on the sheet, not only in a bubble -->
+		{{#if (or (eq system.matrix.deviceType "cyberdeck")
+		(and (eq actor.type "actorDevice") (eq system.matrix.deviceType "host"))
+		)}}
+		<li class="SR-MatrixSwapHint"><i class="fa-solid fa-grip-vertical"></i> {{localize 'SR5.MatrixAttributeSwapHint'}}</li>
+		{{/if}}
+	</ul>
+</div>

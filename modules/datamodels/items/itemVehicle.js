@@ -1,0 +1,175 @@
+import {
+  sidekickPartialModel 
+} from './partial/sidekick.js'
+import {
+  descriptionPartialModel 
+} from './partial/description.js'
+import {
+  storablePartialModel 
+} from './partial/storable.js'
+import {
+  boughtOrSoldPartialModel 
+} from './partial/boughtOrSold.js'
+import {
+  wirelessPartialModel 
+} from './partial/wireless.js'
+import {
+  sr5ModsPartialModel 
+} from '../common/mods.js'
+
+export class sr5ItemVehicleDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+    return {
+      ...descriptionPartialModel.defineSchema(),
+      ...sidekickPartialModel.defineSchema(),
+      ...storablePartialModel.defineSchema(),
+      ...boughtOrSoldPartialModel.defineSchema(),
+      ...wirelessPartialModel.defineSchema(),
+      type: new fields.StringField({
+        initial: ''
+      }),
+      category: new fields.StringField({
+        initial: ''
+      }),
+      model: new fields.StringField({
+        initial: ''
+      }),
+      attributes: new fields.SchemaField({
+        handling: new fields.NumberField({
+          initial: 0
+        }),
+        handlingOffRoad: new fields.NumberField({
+          initial: 0
+        }),
+        speed: new fields.NumberField({
+          initial: 0
+        }),
+        speedOffRoad: new fields.NumberField({
+          initial: 0
+        }),
+        acceleration: new fields.NumberField({
+          initial: 0
+        }),
+        accelerationOffRoad: new fields.NumberField({
+          initial: 0
+        }),
+        body: new fields.NumberField({
+          initial: 0
+        }),
+        armor: new fields.NumberField({
+          initial: 0
+        }),
+        pilot: new fields.NumberField({
+          initial: 0
+        }),
+        sensor: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      //The Y of Structure X(Y), the Modification Points a drone has left (Rigger 5.0 p. 126); empty: its Structure
+      modPoints: new fields.NumberField({
+        initial: null, nullable: true, integer: true, min: 0
+      }),
+      modificationSlots: new fields.SchemaField({
+        powerTrain: new fields.NumberField({
+          initial: 0
+        }),
+        protection: new fields.NumberField({
+          initial: 0
+        }),
+        weapons: new fields.NumberField({
+          initial: 0
+        }),
+        extraWeapons: new fields.NumberField({
+          initial: 0
+        }),
+        body: new fields.NumberField({
+          initial: 0
+        }),
+        extraBody: new fields.NumberField({
+          initial: 0
+        }),
+        electromagnetic: new fields.NumberField({
+          initial: 0
+        }),
+        cosmetic: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      seating: new fields.NumberField({
+        initial: 0
+      }),
+      controlMode: new fields.StringField({
+        initial: 'autopilot'
+      }),
+      offRoadMode: new fields.BooleanField({
+        initial: false
+      }),
+      riggerInterface: new fields.BooleanField({
+        initial: false
+      }),
+      autosoft: new fields.ArrayField(new fields.ObjectField()),
+      weapons: new fields.ArrayField(new fields.ObjectField()),
+      ammunitions: new fields.ArrayField(new fields.ObjectField()),
+      armors: new fields.ArrayField(new fields.ObjectField()),
+      decks: new fields.ArrayField(new fields.ObjectField()),
+      vehiclesMod: new fields.ArrayField(new fields.ObjectField()),
+      //Vehicle equipment, which is not a mod (Rigger 5.0 p. 154-156): kits, scanners, jammers, commlinks
+      gears: new fields.ArrayField(new fields.ObjectField()),
+      secondaryPropulsion: new fields.SchemaField({
+        isSecondaryPropulsion: new fields.BooleanField({
+          initial: false
+        }),
+        //The drone sheet's "secondary propulsion activated" box, kept while the drone is recalled
+        isActivated: new fields.BooleanField({
+          initial: false
+        }),
+        type: new fields.StringField({
+          initial: ''
+        }),
+        handling: new fields.NumberField({
+          initial: 0
+        }),
+        handlingOffRoad: new fields.NumberField({
+          initial: 0
+        }),
+        speed: new fields.NumberField({
+          initial: 0
+        }),
+        acceleration: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      pilotSkill: new fields.StringField({
+        initial: ''
+      }),
+      isCreated: new fields.BooleanField({
+        initial: false
+      }),
+      slaved: new fields.BooleanField({
+        initial: false
+      }),
+      //The swarm number the drone keeps between two deployments (Rigger 5.0 p. 35)
+      swarm: new fields.NumberField({
+        initial: 0, min: 0, integer: true
+      }),
+      conditionMonitors: new fields.SchemaField({
+        condition: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          boxes: new fields.ArrayField(new fields.ObjectField()),
+        }),
+        matrix: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          boxes: new fields.ArrayField(new fields.ObjectField()),
+        }),
+      }),
+    }
+  }
+}

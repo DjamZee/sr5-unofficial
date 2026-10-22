@@ -1,0 +1,143 @@
+import {
+  matrixPartialModel 
+} from './partial/matrix.js'
+import {
+  penaltiesPartialModel 
+} from './partial/penalties.js'
+import {
+  visionPartialModel 
+} from './partial/vision.js'
+import {
+  specialPropertiesPartialModel 
+} from './partial/specialProperties.js'
+import {
+  itemsPropertiesPartialModel 
+} from './partial/itemsProperties.js'
+import {
+  sr5ModsPartialModel 
+} from '../common/mods.js'
+
+export class sr5ActorDeviceDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+
+    return {
+      matrix: new fields.SchemaField({
+        ...matrixPartialModel.matrixFields(),
+        // The master this device is slaved to (SR5 p. 234): the uuid of a host (a WAN, no ceiling), or of the master
+        // item of a PAN; empty when it is slaved to nothing (couronne du PAN, lot 7)
+        panMaster: new fields.StringField({
+          initial: ''
+        }),
+        // The host an IC runs in (SR5 p. 247-248: the IC are programs of the host): the uuid of a host actorDevice,
+        // set by the gamemaster on the sheet; empty for no host (API pour Matrice v1, A6)
+        hostUuid: new fields.StringField({
+          initial: ''
+        }),
+        // Host type (Kill Code p. 48-52): empty = no type, the attributes stay as entered
+        hostType: new fields.StringField({
+          initial: ''
+        }),
+        ice: new fields.SchemaField({
+          attackDicepool: new fields.NumberField({
+            initial: 0
+          }),
+          defenseFirstAttribute: new fields.StringField({
+            initial: ''
+          }),
+          defenseSecondAttribute: new fields.StringField({
+            initial: ''
+          }),
+        }),
+        // The recipe of an IC put together from the effects of the book's IC (system/ice-design.js), written by a
+        // module: the IC whose defense it takes, and its blocks ("matrixDamage", "reduce:firewall"...). Empty, the IC
+        // is the book's IC of its type, as before. The system only reads it
+        iceDesign: new fields.SchemaField({
+          defense: new fields.StringField({
+            initial: ''
+          }),
+          blocks: new fields.ArrayField(new fields.StringField(), {
+            initial: []
+          }),
+        }),
+      }),
+      ...penaltiesPartialModel.defineSchema(),
+      ...visionPartialModel.defineSchema(),
+      ...specialPropertiesPartialModel.defineSchema(),
+      ...itemsPropertiesPartialModel.defineSchema(),
+      isDirectlyConnected: new fields.BooleanField({
+        initial: false
+      }),
+      conditionMonitors: new fields.SchemaField({
+        matrix: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          boxes: new fields.ArrayField(new fields.ObjectField()),
+        }),
+      }),
+      statusBars: new fields.SchemaField({
+        matrix: new fields.SchemaField({
+          value: new fields.NumberField({
+            initial: 0
+          }),
+          max: new fields.NumberField({
+            initial: 0
+          }),
+        }),
+      }),
+      initiatives: new fields.SchemaField({
+        matrixInit: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          dice: new fields.SchemaField({
+            value: new fields.NumberField({
+              initial: 0
+            }),
+            base: new fields.NumberField({
+              initial: 0
+            }),
+            modifiers: new fields.ArrayField(new fields.ObjectField()),
+          }),
+          isActive: new fields.BooleanField({
+            initial: true
+          }),
+        }),
+      }),
+      maglock: new fields.SchemaField({
+        hasAntiTamper: new fields.BooleanField({
+          initial: false
+        }),
+        antiTamperRating: new fields.NumberField({
+          initial: 0
+        }),
+        caseRemoved: new fields.BooleanField({
+          initial: false
+        }),
+        type: new fields.SchemaField({
+          cardReader: new fields.BooleanField({
+            initial: false
+          }),
+          keyPads: new fields.BooleanField({
+            initial: false
+          }),
+          facialRecognition: new fields.BooleanField({
+            initial: false
+          }),
+          voiceRecognition: new fields.BooleanField({
+            initial: false
+          }),
+          printScanner: new fields.BooleanField({
+            initial: false
+          }),
+          dnaScanner: new fields.BooleanField({
+            initial: false
+          }),
+        }),
+      }),
+      description: new fields.StringField({
+        initial: ''
+      }),
+    }
+  }
+}

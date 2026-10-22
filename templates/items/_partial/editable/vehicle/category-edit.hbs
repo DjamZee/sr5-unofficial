@@ -1,0 +1,30 @@
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.VehicleTypeFull'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.type" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.vehicleTypes selected=system.type localize=true}}
+        </select>
+    </div>
+</li>
+{{#if (eq system.type 'drone')}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.VehicleCategoryFull'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.category" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.droneCategories selected=system.category localize=true}}
+        </select>
+    </div>
+</li>
+{{else}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.VehicleCategoryFull'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.category" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.vehicleCategories selected=system.category localize=true}}
+        </select>
+    </div>
+</li>
+{{/if}}

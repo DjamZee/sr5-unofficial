@@ -1,0 +1,21 @@
+<!-- MODIFIED DICE POOL -->
+<li class="SR-LigneEnTete">
+	<div class="grid SR-TextUppercase">
+		<div class="col-11">{{localize 'SR5.ModifiedDicePool'}}</div>
+	  	<div class="col-1 SR-TextCenter">
+			<input disabled type="number"  name="modifiedDicePool" value="{{dicePool.base}}" placeholder="0" data-dtype="Number" />
+	  	</div>
+	</div>
+</li>
+
+<!-- BASE DICE POOL -->
+<li class="grid">
+	<div class="col-3">{{localize 'SR5.ObjectType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select class="SR-ModSelect" data-target="baseDicePool" data-modifier="objectType">
+            {{selectOptions lists.objectTypes selected=objectType localize=true sort=false}}
+        </select>
+    </div>
+
+	<div class="col-1 SR-TextCenter"><input disabled type="number"  name="baseDicePool" value="{{dicePool.base}}" placeholder="0" data-dtype="Number" /></div>
+</li>

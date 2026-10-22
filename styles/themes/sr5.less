@@ -1,0 +1,256 @@
+// SR5 Theme
+//
+// LESS scoping note: this file uses a .theme-sr5() mixin wrapper with .theme-vars()
+// inside it. This works only because the LESS variables defined here (@red, @teal, etc.)
+// happen to have the same values as the globals in colorSR5.less, so the scoping
+// ambiguity is harmless. New themes should NOT copy this pattern — use the flat
+// rule-set approach from themes/sr6.less instead.
+
+@import "../theme-mixins.less";
+
+.theme-sr5() {
+
+  // Fonts
+  @font-face {
+    font-family: "srfoundry_primary";
+    src: url("../assets/fonts/barlow/BarlowCondensed-Bold-Capitales.ttf");
+  }
+  @font-face {
+    font-family: "srfoundry_secondary";
+    src: url("../assets/fonts/bruno-ace/bruno-ace-sc.woff2");
+  }
+  @font-face {
+    font-family: "srfoundry_regular";
+    src: url("../assets/fonts/barlow/Barlow-Regular.ttf");
+  }
+  @font-face {
+    font-family: "srfoundry_bold";
+    font-weight: bold;
+    src: url("../assets/fonts/barlow/Barlow-SemiBold.ttf");
+  }
+  // Journal text: PT Serif (SIL Open Font License 1.1)
+  @font-face {
+    font-family: "srfoundry_journal";
+    src: url("../assets/fonts/pt-serif/PT_Serif-Web-Regular.ttf");
+  }
+  @font-face {
+    font-family: "srfoundry_journal";
+    font-style: italic;
+    src: url("../assets/fonts/pt-serif/PT_Serif-Web-Italic.ttf");
+  }
+  @font-face {
+    font-family: "srfoundry_journal";
+    font-weight: bold;
+    src: url("../assets/fonts/pt-serif/PT_Serif-Web-Bold.ttf");
+  }
+  @font-face {
+    font-family: "srfoundry_journal";
+    font-style: italic;
+    font-weight: bold;
+    src: url("../assets/fonts/pt-serif/PT_Serif-Web-BoldItalic.ttf");
+  }
+
+  @font-body: "srfoundry_regular";
+  @font-body-bold: "srfoundry_bold";
+  @font-title: "srfoundry_primary";
+  @font-title-alt: "srfoundry_secondary";
+  @font-journal: "srfoundry_journal";
+  // Optional: used when the reader has this font installed, otherwise the title font is used
+  @font-journal-title: "Armadura Solid", @font-title;
+
+  // Font sizes
+  @font-size-h0: 30px;
+  @font-size-h1: 24px;
+  @font-size-h4: 16px;
+  @font-size-small: 0.9em;
+  @font-size-normal: 1em;
+  @font-size-sheet-character-name: 38px;
+  @font-size-sheet-text: 0.875rem;
+  @font-size-sheet-header: 0.875rem;
+  @font-size-sheet-tag: 0.825rem;
+  @font-spacing-sheet-text: 0px;
+  @font-size-sheet-item-name: 20px;
+
+  // Main colors
+  @red: rgb(147, 16, 4);
+  @teal: rgba(12, 147, 148, 1);
+  @tealDark: rgba(0, 95, 96, 1);      // Darkened teal for light-surface accent text (WCAG AA on white)
+  @blue: rgb(0, 189, 202);
+  @orange: rgb(175, 108, 6);
+  @white: rgb(255, 255, 254);
+  @black: rgb(0, 0, 1);
+  @darkRed: rgb(60, 5, 2);
+
+  // UI colors
+  @ui-color: fade(@teal, 75%);          // idle text/icon — teal 75%
+  @ui-color-active: @white;             // active text/icon — white
+  @ui-bg-color: fade(@darkRed, 50%);    // default surface
+  @ui-bg-color-dark: @black;            // deep dark surface
+  @ui-bg-color-hover: fade(@red, 50%);  // hover state background
+  @ui-bg-color-active: fade(@red, 75%); // active (pressed) state — darker than hover
+  @ui-bg-color-selected: fade(@teal, 20%); // persistent on/selected state
+  @ui-border-color: @red;               // idle border — full red
+  @ui-border-color-idle: fade(@red, 35%); // subtle idle border — red 35%
+  @ui-border-color-active: @teal;       // active/selected/focused border — teal
+  @ui-pop-color: @blue;
+  @ui-scrollbar-track: fade(@red, 25%);
+  @ui-scrollbar-thumb: fade(@red, 50%);
+  @window-header-border: @red;
+
+  @header-bg: fade(@red, 75%);
+  @header-border: @teal;
+  @table-bg-even: fade(@red, 25%);
+
+  // Pause
+  @ui-pause-color: @red;
+  @ui-pause-color-effect-1: @teal;
+  @ui-pause-color-effect-2: @red;
+
+  // Journal
+  @jounal-bg-color: @black;
+
+  // Text colors
+  @text-color-light: @white;
+  @text-color-grey: fade(@white, 50%);
+  @text-color-grey-dark: fade(@white, 75%);
+  @text-color-dark: @black;
+  @text-color-flash: @teal;
+  @text-color-alert: @red;
+  @text-color-input: @teal;
+  @text-color-calculated: fade(@teal, 75%);
+
+  // Sheet colors
+  @text-sheet-button: fade(@teal, 25%);
+  @text-sheet-button-hover: @white;
+  @text-sheet-button-active: @white;
+  @sheet-input-border-color: fade(@red, 35%);
+  @sheet-icon: fade(@red, 75%);
+  @sheet-icon-hover: @white;
+  @sheet-tag-bg: fade(@red, 75%);
+  @sheet-tag-border: @teal;
+  @sheet-monitor-border: fade(@teal, 75%);
+  @sheet-monitor-border-hover: @white;
+  @sheet-monitor-border-active: @white;
+  @sheet-monitor-bg: fade(@teal, 25%);
+  @sheet-monitor-bg-hover: @teal;
+  @sheet-monitor-bg-active: fade(@red, 75%);
+
+  // Chat message colors
+  @chat-result-background: fade(@red, 50%);
+  @chat-result-border: @teal;
+  @chat-button-background-opposed-test: fade(@teal, 10%);
+  @chat-button-background-non-opposed-test: fade(@teal, 25%);
+  @chat-button-border-opposed-test: @teal;
+  @chat-button-border-non-opposed-test: fade(@teal, 50%);
+  @chat-button-border-active: @white;
+  @chat-button-color-opposed-test: fade(@teal, 75%);
+  @chat-button-color-opposed-test-hover: @white;
+  @chat-button-color-non-opposed-test: fade(@teal, 75%);
+  @chat-button-color-non-opposed-test-hover: @white;
+  @chat-die-background: fade(@red, 10%);
+  @chat-die-border: fade(@red, 75%);
+  @chat-die-color: fade(@red, 75%);
+  @chat-die-background-success: fade(@teal, 75%);
+  @chat-die-border-success: @white;
+  @chat-die-color-success: @white;
+  @chat-detail-color: fade(@teal, 75%);
+  @chat-detail-sub-color: fade(@teal, 50%);
+  @chat-detail-header-color: @white;
+  @chat-detail-header-border: @teal;
+
+  // Combat tracker
+  @font-size-combat-sidebar: 11px;
+  @font-size-combat-action: 16px;
+  @ui-combatant-bg-hover: fade(@red, 25%);
+  @ui-combatant-bg-active: fade(@red, 50%);
+
+  // Token bar colors
+  @token-bar-stun-background: @teal;
+  @token-bar-stun-border: @black;
+  @token-bar-physical-background: @red;
+  @token-bar-physical-border: @black;
+
+  // Images
+  @sr-logo: "../assets/img/ui/embleme-dragon.webp";
+  @sidebar-background: "../assets/img/ui/SR5_BG_Sidebar.jpg";
+  @window-background: "../assets/img/ui/SR5_BG_Sidebar.jpg";
+  @sheet-background: "../assets/img/ui/SR5_BG_Dialog.png";
+  @img-bg-white50: "../assets/img/ui/SR5_BG_Blanc50.png";
+  @img-actor-sheet-top: "../assets/img/ui/SR5_BG_ActorTop.png";
+  @img-actor-sheet-bottom: "../assets/img/ui/SR5_BG_ActorBottom.png";
+  @img-window-header: "../assets/img/ui/SR5_BG_ActorTop.png";
+  @img-chat-message: "../assets/img/ui/SR5_BG_ChatMessage.png";
+  @initiative-icon: "/systems/sr5/assets/img/icons/SR5_InitDicesOff.svg";
+  @initiative-icon-hover: "/systems/sr5/assets/img/icons/SR5_InitDicesOn.svg";
+
+  // Apply theme
+  body.sr-theme-sr5 {
+    .theme-vars();
+    --sr-logo-color: rgb(147, 16, 4);
+    --sr-pause-stripe-color: rgba(147, 16, 4, 0.1);
+
+    // ---- Foundry native CSS variable overrides ----
+    // Setting Foundry's own variables here gives broad coverage of Foundry-owned
+    // elements (config windows, file picker, compendium, etc.) without needing
+    // individual selector rules for each. SR5's component files handle deviations.
+
+    color-scheme: dark; // tell browser to use dark native UI (scrollbars, date pickers)
+
+    // Button system — replaces Foundry's warm-orange defaults
+    --button-background-color:        var(--sr-ui-bg-color);
+    --button-border-color:            var(--sr-ui-border-color-idle);
+    --button-text-color:              var(--sr-ui-color);
+    --button-focus-outline-color:     var(--sr-ui-border-color-active);
+    --button-hover-background-color:  var(--sr-ui-bg-color-hover);
+    --button-hover-border-color:      var(--sr-ui-border-color);
+    --button-hover-text-color:        var(--sr-ui-color-active);
+
+    // Input / select / textarea system
+    --input-background-color:         transparent;
+    --input-border-color:             var(--sr-ui-border-color-idle);
+    --input-text-color:               var(--sr-ui-color);
+    --input-placeholder-color:        var(--sr-text-color-grey);
+    --input-focus-outline-color:      var(--sr-ui-border-color-active);
+
+    // Form labels and hints
+    --color-form-label:               var(--sr-ui-color);
+    --color-form-label-hover:         var(--sr-ui-color-active);
+    --color-form-hint:                var(--sr-text-color-grey);
+    --color-form-hint-hover:          var(--sr-text-color-grey-dark);
+    --color-fieldset-border:          var(--sr-ui-border-color-idle);
+
+    // Application window borders and tab strips
+    --color-border:                   var(--sr-ui-border-color-idle);
+    --color-tabs-border:              var(--sr-ui-border-color-idle);
+
+    // Scrollbars
+    --color-scrollbar:                var(--sr-ui-scrollbar-thumb);
+    --color-scrollbar-track:          var(--sr-ui-scrollbar-track);
+
+    // Foundry warm-orange accent — replace with SR5 red/teal
+    --color-warm-2:                   var(--sr-ui-border-color);
+    --color-text-hyperlink:           var(--sr-ui-color);
+    --color-text-accent:              var(--sr-ui-color);
+
+    // Sidebar entries
+    --sidebar-entry-hover-bg:         var(--sr-ui-bg-color-hover);
+    --sidebar-folder-color:           var(--sr-ui-color);
+    --sidebar-separator:              1px solid var(--sr-ui-border-color-idle);
+
+    // @UUID inline content links (journals, chat)
+    --content-link-background:        var(--sr-ui-bg-color);
+    --content-link-border-color:      var(--sr-ui-border-color-idle);
+    --content-link-icon-color:        var(--sr-ui-color);
+    --content-link-text-color:        var(--sr-ui-color);
+
+    // Tables in Foundry-owned config windows
+    --table-background-color:         var(--sr-ui-bg-color);
+    --table-header-bg-color:          var(--sr-ui-bg-color-dark);
+    --table-header-border-color:      var(--sr-ui-border-color-idle);
+    --table-row-color-even:           fade(@red, 8%);
+    --table-row-color-highlight:      var(--sr-ui-bg-color-hover);
+  }
+}
+
+// Activate the SR5 theme
+.theme-sr5();

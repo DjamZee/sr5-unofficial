@@ -1,0 +1,280 @@
+import {
+  sheetPreferencesPartialModel 
+} from './partial/sheetPreferences.js'
+import {
+  characterAttributesPartialModel 
+} from './partial/attributes.js'
+import {
+  characterInitiativesPartialModel 
+} from './partial/initiatives.js'
+import {
+  characterLimitsPartialModel 
+} from './partial/limits.js'
+import {
+  characterDefensesPartialModel 
+} from './partial/defenses.js'
+import {
+  characterResistancesPartialModel 
+} from './partial/resistances.js'
+import {
+  characterDerivedAttributesPartialModel 
+} from './partial/derivedAttributes.js'
+import {
+  characterEssencePartialModel 
+} from './partial/essence.js'
+import {
+  characterMovementsPartialModel 
+} from './partial/movements.js'
+import {
+  characterWeightActionsPartialModel 
+} from './partial/weightActions.js'
+import {
+  characterReachPartialModel 
+} from './partial/reach.js'
+import {
+  skillGroupsPartialModel 
+} from './partial/skillGroups.js'
+import {
+  allSkillFields, baseSkillSchema 
+} from './partial/skills.js'
+import {
+  penaltiesPartialModel 
+} from './partial/penalties.js'
+import {
+  visionPartialModel 
+} from './partial/vision.js'
+import {
+  specialPropertiesPartialModel 
+} from './partial/specialProperties.js'
+import {
+  recoilPartialModel 
+} from './partial/recoil.js'
+import {
+  itemsPropertiesPartialModel 
+} from './partial/itemsProperties.js'
+import {
+  matrixPartialModel 
+} from './partial/matrix.js'
+import {
+  magicPartialModel 
+} from './partial/magic.js'
+import {
+  sr5ModsPartialModel 
+} from '../common/mods.js'
+import {
+  migrateLegacyBiographyKeys 
+} from '../common/biographyMigration.js'
+
+export class sr5ActorGruntDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+
+    return {
+      ...sheetPreferencesPartialModel.defineSchema(),
+      ...characterAttributesPartialModel.defineSchema(),
+      ...characterInitiativesPartialModel.defineSchema(),
+      ...characterLimitsPartialModel.defineSchema(),
+      ...characterDefensesPartialModel.defineSchema(),
+      ...characterResistancesPartialModel.defineSchema(),
+      ...characterDerivedAttributesPartialModel.defineSchema(),
+      ...characterEssencePartialModel.defineSchema(),
+      ...characterMovementsPartialModel.defineSchema(),
+      ...characterWeightActionsPartialModel.defineSchema(),
+      ...characterReachPartialModel.defineSchema(),
+      ...skillGroupsPartialModel.defineSchema(),
+      ...penaltiesPartialModel.defineSchema(),
+      ...visionPartialModel.defineSchema(),
+      ...specialPropertiesPartialModel.defineSchema(),
+      ...recoilPartialModel.defineSchema(),
+      ...itemsPropertiesPartialModel.defineSchema(),
+      ...matrixPartialModel.defineSchema(),
+      ...magicPartialModel.defineSchema(),
+      //Wired to a direct neural interface (DNI): switching a connected device is then a free action (SR5 p. 165)
+      hasDNI: new fields.BooleanField({
+        initial: false
+      }),
+      //Initiative bonus printed in the profile (SR5 p. 381), outside the initiatives that are reset at each preparation
+      profileInitiative: new fields.SchemaField({
+        score: new fields.NumberField({
+          initial: 0
+        }),
+        dice: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      specialAttributes: new fields.SchemaField({
+        edge: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        magic: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        resonance: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        // Nanite Volume (head cases, Stolen Souls p. 199) and Depth (AIs, Data Trails p. 152)
+        nanite: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        // Matrix Entity Concentration of a Monad, set by the GM (Stolen Souls p. 199, Lockdown p. 203)
+        cem: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        depth: new fields.SchemaField({
+          natural: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          augmented: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+      }),
+      skills: new fields.SchemaField({
+        ...allSkillFields(),
+        flight: new fields.SchemaField({
+          ...baseSkillSchema('agility', 'physicalLimit', '', 'physicalSkills', true)
+        }),
+        compiling: new fields.SchemaField({
+          ...baseSkillSchema('resonance', 'spriteLevel', 'taskingGroup', 'resonanceSkills', false)
+        }),
+        decompiling: new fields.SchemaField({
+          ...baseSkillSchema('resonance', 'socialLimit', 'taskingGroup', 'resonanceSkills', false)
+        }),
+        registering: new fields.SchemaField({
+          ...baseSkillSchema('resonance', 'spriteLevel', 'taskingGroup', 'resonanceSkills', false)
+        }),
+      }),
+      languageSkills: new fields.SchemaField({
+        ...sr5ModsPartialModel.defineSchema()
+      }),
+      knowledgeSkills: new fields.SchemaField({
+        ...sr5ModsPartialModel.defineSchema()
+      }),
+      conditionMonitors: new fields.SchemaField({
+        condition: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          boxes: new fields.ArrayField(new fields.ObjectField()),
+          // Aggravated wounds (Howling Shadows p. 213): number of boxes that count double for healing
+          aggravated: new fields.NumberField({
+            initial: 0
+          }),
+        }),
+        // Core monitor of a Monad of the original strain (Dark Terrors p. 88), removed from every other grunt
+        core: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+        }),
+        edge: new fields.SchemaField({
+          ...sr5ModsPartialModel.defineSchema(),
+          actual: new fields.SchemaField({
+            ...sr5ModsPartialModel.defineSchema()
+          }),
+          boxes: new fields.ArrayField(new fields.ObjectField()),
+        }),
+      }),
+      statusBars: new fields.SchemaField({
+        condition: new fields.SchemaField({
+          value: new fields.NumberField({
+            initial: 0
+          }),
+          max: new fields.NumberField({
+            initial: 0
+          }),
+        }),
+        edge: new fields.SchemaField({
+          value: new fields.NumberField({
+            initial: 0
+          }),
+          max: new fields.NumberField({
+            initial: 0
+          }),
+        }),
+      }),
+      biography: new fields.SchemaField({
+        metatype: new fields.StringField({
+          initial: ''
+        }),
+        nickname: new fields.StringField({
+          initial: ''
+        }),
+        description: new fields.StringField({
+          initial: ''
+        }),
+        metatypeVariant: new fields.StringField({
+          initial: ''
+        }),
+        ethnicalGroup: new fields.StringField({
+          initial: ''
+        }),
+        gender: new fields.StringField({
+          initial: ''
+        }),
+        nationality: new fields.StringField({
+          initial: ''
+        }),
+        age: new fields.StringField({
+          initial: ''
+        }),
+        paymentMethod: new fields.StringField({
+          initial: ''
+        }),
+        hobby: new fields.StringField({
+          initial: ''
+        }),
+        familySituation: new fields.StringField({
+          initial: ''
+        }),
+        background: new fields.StringField({
+          initial: ''
+        }),
+      }),
+      addictions: new fields.ArrayField(new fields.ObjectField()),
+      activeSpecialAttribute: new fields.StringField({
+        initial: 'magic'
+      }),
+      // A contact brought to life from its item (createSidekick): who holds the item, and which one, so that
+      // findSidekick finds it and the dismissal sends it back to its item, as a spirit's does
+      creatorId: new fields.StringField({
+        initial: ''
+      }),
+      creatorItemId: new fields.StringField({
+        initial: ''
+      }),
+    }
+  }
+
+  static migrateData(source) {
+    migrateLegacyBiographyKeys(source)
+    return super.migrateData(source)
+  }
+}

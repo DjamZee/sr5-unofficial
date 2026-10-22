@@ -1,0 +1,260 @@
+import {
+  electronicAddedToVintage
+} from '../entities/items/weaponTraits.js'
+import {
+  GM_ONLY_ITEM_PATHS, stripGMOnlyChanges
+} from '../entities/items/spirit-bonds.js'
+import {
+  carriesItemEffects, gmOnlyItemEffects, isSystemEffectWrite, stripEffectChanges, touchesItemEffects
+} from '../system/effect-editor.js'
+import {
+  GM_ONLY_PREPARATION_PATHS
+} from '../system/preparation-potency.js'
+import {
+  GM_ONLY_DRUG_PATHS
+} from '../entities/items/drug-designer.js'
+import {
+  WEAPON_ACCESSORY_CATALOG
+} from '../data/weaponAccessoryCatalog.js'
+import {
+  SR5
+} from '../config.js'
+import {
+  SR5Combat
+} from "../system/srcombat.js"
+import {
+  SR5_ActorHelper
+} from "../entities/actors/entityActor-helpers.js"
+import {
+  SR5_EffectArea
+} from "../system/effectArea.js"
+import {
+  SR5_Jammer
+} from "../system/jammer.js"
+import {
+  SR5_CharacterUtility
+} from "../entities/actors/utilityActor.js"
+import {
+  forgetKnowledgeAttribute
+} from "../rolls/roll-helpers/skillAttribute.js"
+import {
+  controllerOf, scheduleVehicleOwnerSync, syncsHere
+} from "../entities/actors/vehicle-owner-sync.js"
+
+// An item of a rigger added, changed or deleted (an autosoft installed on the console) reaches the copy its drones
+// carry: no updateActor is sent for it (vehicle-owner-sync.js)
+function followController(item, userId) {
+  const controller = controllerOf(item)
+  if (controller && syncsHere(game.users, game.user, userId)) scheduleVehicleOwnerSync(controller, a => SR5_CharacterUtility.updateControledVehicle(a))
+}
+
+// An item can take the vision in use away, or give it back (cybereyes, goggles) : the tokens of
+// its actor follow, served by the user who made the change.
+export async function sr5HookItemVision(item, userId) {
+  if (userId !== game.user?.id || !item.isOwned) return
+  await SR5_CharacterUtility.refreshVisionOfTokens(item.parent)
+}
+
+//Any owned item created, changed or deleted can move the initiative (a sustained spell, wired reflexes switched from the
+//item sheet, added or removed): the active GM alone compares, each fighter of the actor once
+async function moveInitiativeOf(item) {
+  if (item.isOwned && game.combat && game.user?.isGM && game.users?.activeGM?.id === game.user.id) {
+    for (const id of SR5Combat.initTargetsOfActor(item.actor)) await SR5Combat.changeInitInCombatHelper(id)
+  }
+}
+
+export async function sr5HookCreateItem(item, options, userId) {
+  followController(item, userId)
+  await sr5HookItemVision(item, userId)
+  await moveInitiativeOf(item)
+  //Séance H, H3 (decision of DjamZ): a player may still add an item that carries effects to a sheet (a drop from a
+  //compendium, createEmbeddedDocuments), but the active gamemaster is told with the lasting warning, an itemEffect
+  //included (Victoire's review: a state forged in the console added +4 Reaction unseen). Nothing the player's client
+  //sends (the option of a system write) makes it quieter
+  if (game.users?.activeGM?.isSelf && gmOnlyItemEffects() && item.isOwned &&
+    !game.users.get(userId)?.isGM && carriesItemEffects(item.system)) {
+    ui.notifications.warn(game.i18n.format('SR5.WARN_ItemEffectsAddedByPlayer', {
+      user: game.users.get(userId)?.name ?? userId, item: item.name, actor: item.parent?.name ?? ""
+    }), {
+      permanent: true
+    })
+  }
+}
+
+// Copy effect fields from an itemAmmunitionType into an effects snapshot
+function _copyAmmoTypeEffects(ammoTypeSystem) {
+  return {
+    apMod: ammoTypeSystem.apMod ?? 0,
+    damageMod: ammoTypeSystem.damageMod ?? 0,
+    damageType: ammoTypeSystem.damageType ?? '',
+    damageElement: ammoTypeSystem.damageElement ?? '',
+    accuracyMod: ammoTypeSystem.accuracyMod ?? 0,
+    blastRadius: ammoTypeSystem.blastRadius ?? 0,
+    blastFallOff: ammoTypeSystem.blastFallOff ?? 0,
+    flatDamage: ammoTypeSystem.flatDamage ?? 0,
+    disableStrDamage: ammoTypeSystem.disableStrDamage ?? false,
+    overrideBaseAP: ammoTypeSystem.overrideBaseAP ?? false,
+    scatterDice: ammoTypeSystem.scatterDice ?? 0,
+    envRangeMod: ammoTypeSystem.envRangeMod ?? 0,
+    envWindMod: ammoTypeSystem.envWindMod ?? 0,
+    gelDamageReduction: ammoTypeSystem.gelDamageReduction ?? 0,
+    injectionNetHits: ammoTypeSystem.injectionNetHits ?? 0,
+    showToxinButton: ammoTypeSystem.showToxinButton ?? false,
+    antiVehicleAP: ammoTypeSystem.antiVehicleAP ?? 0,
+    calledShotTags: ammoTypeSystem.calledShotTags ?? [],
+    calledShotOverrides: ammoTypeSystem.calledShotOverrides ?? {
+    },
+  }
+}
+
+// When an itemAmmunition's ammunitionTypeUuid changes, copy effects from the referenced type
+export function sr5HookPreUpdateItem(document, data, options, userId) {
+  //The effects of an item are the gamemaster's when the world says so (G14): refused to a player before writing
+  if (!game.user?.isGM && userId === game.user?.id && !isSystemEffectWrite(options) && gmOnlyItemEffects() && stripEffectChanges(data, document._source?.system)) {
+    ui.notifications.warn(game.i18n.localize('SR5.WARN_ItemEffectsGMOnly'))
+  }
+  //The Elemental trait of a spirit is the gamemaster's (Forbidden Arcana p. 175): refused to a player before writing
+  //Whatever its form (flat, nested, "==" replacement, "-=" deletion), such an update is refused whole
+  if (document.type === 'itemSpirit' && !game.user?.isGM && stripGMOnlyChanges(data, document, GM_ONLY_ITEM_PATHS, options).length) {
+    ui.notifications.warn(game.i18n.localize('SR5.WARN_SpiritBondsGMOnly'))
+    return false
+  }
+  //The start and the pace of a preparation's loss of Potency are the gamemaster's (SR5 p. 309)
+  if (document.type === 'itemPreparation' && !game.user?.isGM && stripGMOnlyChanges(data, document, GM_ONLY_PREPARATION_PATHS, options).length) {
+    ui.notifications.warn(game.i18n.localize('SR5.WARN_PreparationDecayGMOnly'))
+    return false
+  }
+  //The approval of a drug a player made with the designer is the gamemaster's (decision of DjamZ, 07/10)
+  if (document.type === 'itemDrug' && !game.user?.isGM && stripGMOnlyChanges(data, document, GM_ONLY_DRUG_PATHS, options).length) {
+    ui.notifications.warn(game.i18n.localize('SR5.WARN_DrugDesignGMOnly'))
+    return false
+  }
+  //Vintage (Gun H(e)aven 3 p. 3): an electronic accessory is allowed but warned about, it gets no wireless
+  if (document.type === 'itemWeapon' && data.system?.accessory !== undefined && userId === game.user?.id) {
+    for (const a of electronicAddedToVintage(document.system.accessory, data.system.accessory, WEAPON_ACCESSORY_CATALOG)) {
+      ui.notifications.warn(game.i18n.format('SR5.WARN_VintageElectronic', {
+        weapon: document.name, accessory: a.system ? a.name : game.i18n.localize(SR5.weaponAccessories[a.name] ?? a.name)
+      }))
+    }
+  }
+  if (document.type !== 'itemAmmunition') return
+  const newUuid = data.system?.ammunitionTypeUuid
+  if (newUuid === undefined) return // UUID not being changed
+
+  if (!newUuid) {
+    // Unlinking — clear effects
+    data.system.effects = _copyAmmoTypeEffects({
+    })
+    return
+  }
+
+  const ammoType = fromUuidSync(newUuid)
+  if (!ammoType || ammoType.type !== 'itemAmmunitionType') return
+  data.system.effects = _copyAmmoTypeEffects(ammoType.system)
+
+  // Auto-set the type field to a slug of the ammo type name (for weapon matching)
+  if (!data.system.type || data.system.type === document.system.type) {
+    data.system.type = ammoType.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  }
+}
+
+export async function sr5HookUpdateItem(document, data, options, userId) {
+  followController(document, userId)
+  await sr5HookItemVision(document, userId)
+  //A player's client can be made to skip the refusal above: the active gamemaster is told of every write of effects by a
+  //player. The option of a system write (acid, Apply to item) comes from that same client and can be forged: it no
+  //longer changes the warning, always the lasting one (Victoire's review of séance H; Gustave's second review before)
+  if (game.users?.activeGM?.isSelf && gmOnlyItemEffects() && !game.users.get(userId)?.isGM && touchesItemEffects(data)) {
+    ui.notifications.warn(game.i18n.format('SR5.WARN_ItemEffectsChangedByPlayer', {
+      user: game.users.get(userId)?.name ?? userId, item: document.name, actor: document.parent?.name ?? ""
+    }), {
+      permanent: true
+    })
+  }
+  //A physical jammer (SR5 p. 443) turned on or off, or changed: what it does is measured again
+  if (document.type === "itemGear" && (data.system?.jammer || (SR5_Jammer.isJammer(document) &&
+    ["deviceRating", "itemRating", "wirelessTurnedOn"].some(k => k in (data.system ?? {
+    }))))) SR5_Jammer.refreshItem(document)
+
+  // When an itemAmmunitionType is edited, re-sync all itemAmmunition items referencing it
+  if (document.type === 'itemAmmunitionType' && data.system) {
+    const uuid = document.uuid
+    const effects = _copyAmmoTypeEffects(document.system)
+    for (const actor of game.actors) {
+      for (const item of actor.items) {
+        if (item.type === 'itemAmmunition' && item.system.ammunitionTypeUuid === uuid) {
+          await item.update({
+            'system.effects': effects
+          })
+        }
+      }
+    }
+    // Also check unowned world items
+    for (const item of game.items) {
+      if (item.type === 'itemAmmunition' && item.system.ammunitionTypeUuid === uuid) {
+        await item.update({
+          'system.effects': effects
+        })
+      }
+    }
+  }
+
+  await moveInitiativeOf(document)
+
+  //Keep agent condition monitor synchro with owner deck
+  if(document.type === "itemDevice" && data.system?.conditionMonitors?.matrix && (document.testUserPermission(game.user, 3) || game.user?.isGM)){
+    if (document.parent?.type === "actorPc" || document.parent?.type === "actorGrunt"){
+      for (let a of game.actors) {
+        if(a.type === "actorAgent" && a.system.creatorId === document.parent.id) await SR5_ActorHelper.keepAgentMonitorSynchro(a)
+      }
+    }
+  }
+}
+
+export async function sr5HookDeleteItem(item, _options, userId) {
+  followController(item, userId)
+  await sr5HookItemVision(item, userId)
+  await moveInitiativeOf(item)
+  if (SR5_Jammer.isJammer(item)) SR5_Jammer.refreshItem(item)
+  //A deleted knowledge skill takes its kept roll attribute with it, by the user who deleted it
+  if (item.type === "itemKnowledge" && userId === game.user?.id) await forgetKnowledgeAttribute(item)
+  if (item.testUserPermission(game.user, 3) || (game.user?.isGM)){
+    if (item.system.type === "signalJam"){
+      let actorId = item.parent.id
+      SR5_EffectArea.onJamEnd(actorId)
+      // The "Signal jamming" status goes with its item, however the item was deleted (the sheet's stop button
+      // or the item list). Only the user who deleted it does it, so no two clients delete the same status.
+      if (userId === game.user?.id && item.parent){
+        let status = item.parent.effects.find(e => e.origin === "signalJam")
+        if (status) await item.parent.deleteEmbeddedDocuments("ActiveEffect", [status.id])
+      }
+    }
+    if (item.type === "itemEffect"){
+      //An end of Increase Attribute may leave more damage than the monitor now holds: carried as the book says, by
+      //the user who deleted the effect, once its actor is prepared without it
+      const actor = item.parent
+      if (userId === game.user?.id && actor?.documentName === "Actor") setTimeout(() => SR5_ActorHelper.settleMonitorExcess(actor.isToken ? actor.token.id : actor.id, actor), 0)
+      if (item.system.hasEffectOnItem && item.parent){
+        if (item.parent.isToken) await SR5_ActorHelper.deleteItemEffectFromItem(item.parent.token.id, item.system.ownerItem)
+        else await SR5_ActorHelper.deleteItemEffectFromItem(item.parent.id, item.system.ownerItem)
+      }
+    }
+
+  }
+  //Remove isSlavedToPan switch if PAN master is deleted
+  if (item.system.pan?.content?.length){
+    for (let i of item.system.pan.content){
+      let panItem = await fromUuid(i.uuid)
+      let newItem = foundry.utils.duplicate(panItem.system)
+      newItem.isSlavedToPan = false
+      newItem.panMaster = ""
+      await panItem.update({
+        "system": newItem
+      })
+    }
+  }
+  //Remove item from PAN if it was slaved
+  if (item.system.isSlavedToPan){
+    SR5_ActorHelper.deleteItemFromPan(item.uuid, item.system.panMaster, null)
+  }
+}

@@ -1,0 +1,77 @@
+import {
+  SR5_PrepareRollHelper 
+} from "../roll-prepare-helpers.js"
+import {
+  SR5 
+} from "../../config.js"
+import {
+  isSpiritForceDrain
+} from "../roll-helpers/drainType.js"
+import {
+  maskedDrain, drainFloor
+} from "../../entities/items/mentor-spirits.js"
+import {
+  magicForDrainType
+} from "../../entities/items/magic-masteries.js"
+
+export default function drain(rollData, actor, chatData){
+  let maskApplied = false
+  //Determine title
+  rollData.test.title = game.i18n.localize("SR5.DrainResistanceTest")
+
+  //Determine dicepool composition
+  rollData.dicePool.composition = actor.system.magic.drainResistance.modifiers.filter(mod => (mod.type === "skillRating" || mod.type === "linkedAttribute" || mod.type === "skillGroup"))
+
+  //Determine base dicepool
+  rollData.dicePool.base = SR5_PrepareRollHelper.getBaseDicepool(rollData)
+
+  //Determine dicepool modififiers
+  rollData.dicePool.modifiers = SR5_PrepareRollHelper.getDicepoolModifiers(rollData, actor.system.magic.drainResistance.modifiers)
+
+  //Determine drain damage type
+  if (chatData?.test?.type) {
+    // Drain from a previous roll (spellcasting, summoning, binding, banishing)
+    // Archivist and Conjuring Specialist (Forbidden Arcana p. 32, 40): Magic counted higher to decide the drain type
+    const masteries = actor.system.magic?.masteries
+    const isConjuring = isSpiritForceDrain(chatData)
+    //Blood Magic Points spent on it count as Magic too (Street Grimoire p. 90)
+    const drainTypeMagic = magicForDrainType(actor.system.specialAttributes.magic.augmented.value,
+      masteries?.archivist?.value, masteries?.conjuringSpecialist?.value, isConjuring) + Math.max(0, Number(chatData.magic?.bloodMagic?.drainMagic) || 0)
+    if (isConjuring){
+      if (chatData.magic.force > drainTypeMagic) rollData.magic.drain.type = "physical"
+      else rollData.magic.drain.type = "stun"
+    } else if (chatData.test.type === "ritualResistance") {
+      // SR5 p. 299 (errata): physical if the leader's hits exceed their Magic; computed when the ritual is sealed,
+      // the hits on this card are those of the opposing Force x 2 pool
+      rollData.magic.drain.type = chatData.magic.drain.type || "stun"
+    } else {
+      if (chatData.roll.hits > drainTypeMagic) rollData.magic.drain.type = "physical"
+      else rollData.magic.drain.type = "stun"
+    }
+    rollData.magic.drain.value = chatData.magic.drain.value
+    // Mask of the mentor: Drain reduced by 1, never under its floor (Forbidden Arcana p. 176 ; floors SR5 p. 284, 299, 303, 304)
+    if (actor.system.magic.mentorMask) {
+      const masked = maskedDrain(chatData.magic.drain.value, drainFloor(chatData.test, chatData.magic))
+      if (masked !== rollData.magic.drain.value) maskApplied = true
+      rollData.magic.drain.value = masked
+    }
+    rollData.previousMessage.hits = chatData.roll.hits
+    rollData.previousMessage.messageId = chatData.owner.messageId
+  } else {
+    // Direct drain (adept power activation) — drain value already set on rollData
+    if (rollData.magic.drain.value > actor.system.specialAttributes.magic.augmented.value) rollData.magic.drain.type = "physical"
+    else rollData.magic.drain.type = "stun"
+  }
+
+  //Add details to title
+  if (rollData.magic.drain.value >= 0) rollData.test.title += ` (${rollData.magic.drain.value}${game.i18n.localize(SR5.damageTypesShort[rollData.magic.drain.type])})`
+  if (maskApplied) rollData.test.title += ` [${game.i18n.localize("SR5.MentorMaskDrain")} -1]`
+
+  //Add others informations
+  rollData.test.type = "drain"
+
+  //Special case for centering metamagic
+  if (actor.system.magic.metamagics.centering) rollData.dialogSwitch.centering = true
+
+  return rollData
+}

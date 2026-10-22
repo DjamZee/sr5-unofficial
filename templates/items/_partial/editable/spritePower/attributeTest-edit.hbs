@@ -1,0 +1,23 @@
+<li class="SR-EnTete">
+    <p class="SR-TextUppercase">{{localize 'SR5.TestAttributes'}}</p>
+</li>
+
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.Skill'}} {{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.testSkill" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.spriteSkills selected=system.testSkill localize=true}}
+        </select>
+    </div>
+</li>
+
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.Limit'}} {{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.testLimit" data-dtype="String">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.deckerAttributes selected=system.testLimit localize=true}}
+        </select>
+    </div>
+</li>

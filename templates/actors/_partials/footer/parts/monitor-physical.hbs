@@ -1,0 +1,49 @@
+<div class="SR-Moniteur" style="--n: {{system.conditionMonitors.physical.boxes.length}}; --o: {{system.conditionMonitors.overflow.boxes.length}}">
+<!-- Physical Monitor -->
+	<div class="SR-PaddingLeft10 SR-TextUppercase SR-NeutralLightColor SR-Bold monitorReset" data-target="physical" 
+	   data-helpTitle="{{localize 'SR5.ConditionMonitorPhysical'}}" data-helpMessage="{{localize 'SR5.HELP_MonitorNameMsg'}}">
+		{{localize 'SR5.ConditionMonitorPhysicalShort'}}
+	</div>
+	<div class="SR-MoniteurCases flexrow" style="--n: {{system.conditionMonitors.physical.boxes.length}}; --o: {{system.conditionMonitors.overflow.boxes.length}}" data-target="system.conditionMonitors.physical.actual.base"
+	  data-helpTitle="{{localize 'SR5.ConditionMonitorPhysical'}}" data-helpMessage="{{localize 'SR5.HELP_MonitorMsg'}}">
+		{{#each system.conditionMonitors.physical.boxes as |box index|}}
+			{{#if box.locked}}
+				<div class="boxes box-disabled flex0" data-index="{{index}}">
+					<div class="SR-Case SR-CaseNeutralDarkColor"></div>
+				</div>
+			{{else if box.aggravated}}
+				<a class="boxes" data-index="{{index}}" title="{{localize 'SR5.AggravatedWoundBox'}}">
+					<div class="SR-Case SR-CaseMainColor SR-CaseAggravated"></div>
+				</a>
+			{{else if box.filled}}
+				<a class="boxes" data-index="{{index}}">
+					<div class="SR-Case SR-CaseMainColor"></div>
+				</a>
+			{{else}}
+				<a class="boxes" data-index="{{index}}">
+					<div class="SR-Case SR-CaseSubColor"></div>
+				</a>
+			{{/if}}
+		{{/each}}
+		
+		<!-- Physical overflow -->
+		<div class="SR-MoniteurCases flexrow" style="--n: {{system.conditionMonitors.overflow.boxes.length}}; --o: 0" data-target="system.conditionMonitors.overflow.actual.base"
+			data-helpTitle="{{localize 'SR5.ConditionMonitorPhysicalOverflow'}}" data-helpMessage="{{localize 'SR5.HELP_MonitorMsg'}}">
+			{{#each system.conditionMonitors.overflow.boxes as |box index|}}
+				{{#if box.locked}}
+					<div class="boxes box-disabled" data-index="{{index}}">
+						<div class="SR-Case SR-CaseNeutralDarkColor"></div>
+					</div>
+				{{else if box.filled}}
+					<a class="boxes" data-index="{{index}}">
+						<div class="SR-Case SR-CaseMainColor"></div>
+					</a>
+				{{else}}
+					<a class="boxes" data-index="{{index}}">
+						<div class="SR-Case SR-CaseSubColor"></div>
+					</a>
+				{{/if}}
+			{{/each}}
+		</div>
+	</div>
+</div>

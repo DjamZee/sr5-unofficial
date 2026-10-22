@@ -1,0 +1,33 @@
+@import "../commons/layout-mixin.less";
+@import "../commons/button-mixin.less";
+
+/* === Scene navigation === */
+#scene-navigation {
+
+  &.expanded a {
+    .sr-button-focus();
+  }
+
+  .scene {
+    .sr-block-boxed();
+    .sr-block-floating();
+    color: var(--sr-text-color-grey-dark);
+    text-shadow: 0 0 3px var(--sr-text-color-dark);
+
+    &:hover {
+      border: var(--sr-ui-border-color-active);
+    }
+
+    &::after {
+      color: var(--sr-text-color-grey-dark);
+    }
+
+    &.view {
+      .sr-block-boxed-hover();
+
+      &::after {
+        color: var(--sr-ui-color-active);
+      }
+    }
+  }
+}

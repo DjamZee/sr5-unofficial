@@ -1,0 +1,105 @@
+import {
+  descriptionPartialModel 
+} from './partial/description.js'
+import {
+  activationPartialModel 
+} from './partial/activation.js'
+import {
+  effectsPartialModel 
+} from './partial/effects.js'
+import {
+  damagePartialModel 
+} from './partial/damage.js'
+import {
+  sr5ModsPartialModel 
+} from '../common/mods.js'
+
+export class sr5ItemPreparationDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+    return {
+      ...descriptionPartialModel.defineSchema(),
+      ...activationPartialModel.defineSchema(),
+      ...effectsPartialModel.defineSchema(),
+      ...damagePartialModel.defineSchema(),
+      category: new fields.StringField({
+        initial: ''
+      }),
+      subCategory: new fields.StringField({
+        initial: ''
+      }),
+      range: new fields.StringField({
+        initial: ''
+      }),
+      duration: new fields.StringField({
+        initial: ''
+      }),
+      type: new fields.StringField({
+        initial: ''
+      }),
+      force: new fields.NumberField({
+        initial: 0
+      }),
+      drainValue: new fields.SchemaField({
+        ...sr5ModsPartialModel.defineSchema()
+      }),
+      spellAreaOfEffect: new fields.SchemaField({
+        ...sr5ModsPartialModel.defineSchema()
+      }),
+      spellAreaExtended: new fields.BooleanField({
+        initial: false
+      }),
+      hits: new fields.NumberField({
+        initial: 0
+      }),
+      manipulationDamaging: new fields.BooleanField({
+        initial: false
+      }),
+      illusionSense: new fields.StringField({
+        initial: ''
+      }),
+      detectionSense: new fields.StringField({
+        initial: ''
+      }),
+      healthEssence: new fields.BooleanField({
+        initial: false
+      }),
+      freeSustain: new fields.BooleanField({
+        initial: true
+      }),
+      lynchpin: new fields.StringField({
+        initial: ''
+      }),
+      trigger: new fields.StringField({
+        initial: ''
+      }),
+      potency: new fields.NumberField({
+        initial: 0
+      }),
+      // Loss of Potency on the world clock (SR5 p. 309, system/preparation-potency.js): the world time it was made at
+      // and its starting Potency, both written at its making; the full time multiplier (Potency × 2, 3 or 4 hours)
+      // and the pace of the loss (an hour, or a day with Fixation, SR5 p. 329), the gamemaster's
+      createdAt: new fields.NumberField({
+        initial: null, nullable: true
+      }),
+      initialPotency: new fields.NumberField({
+        initial: 0
+      }),
+      fullPotencyMultiplier: new fields.NumberField({
+        initial: 2
+      }),
+      decayRate: new fields.StringField({
+        initial: 'hour'
+      }),
+      test: new fields.SchemaField({
+        dicePool: new fields.NumberField({
+          initial: 0
+        }),
+        base: new fields.NumberField({
+          initial: 0
+        }),
+        modifiers: new fields.ArrayField(new fields.ObjectField()),
+      }),
+    }
+  }
+}

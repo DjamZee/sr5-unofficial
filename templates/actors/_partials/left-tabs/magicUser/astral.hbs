@@ -1,0 +1,87 @@
+<div class="SRBlockSheet">
+	<ul>
+	  	<li class="grid SR-LigneEnTete">
+			<div class="col-12 SR-TextUppercase">{{localize 'SR5.AstralPlane'}}</div>
+	  	</li>
+		<li class="grid">
+			<div class="col-10"><p>{{localize 'SR5.AstralPerception'}}</p></div>
+			<div class="col-2 SR-TextCenter"
+		  	  data-helpTitle="{{localize 'SR5.HELP_AstralPerception'}}"
+			  data-helpMessage="{{localize 'SR5.HELP_AstralPreceptionMsg'}}"
+			>
+			{{#if system.visions.astral.isActive}}
+	            <a class= "vision-switch" data-binding="astral" data-dtype="Boolean"><em class="fas fa-sm fa-thumbtack SR-SubColor"></em></a>
+			{{else}}
+			    <a class= "vision-switch" data-binding="astral" data-dtype="Boolean"><em class="fas fa-sm fa-thumbtack"></em></a>
+			{{/if}}
+			</div>
+	  	</li>
+	  	<li class="grid">
+			<div class="col-10"><p>{{localize 'SR5.DrainResistance'}}</p></div>
+			<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="drain"
+		  	  data-helpTitle="{{localize 'SR5.HELP_DrainResistance'}}"
+			  data-helpMessage="{{localize 'SR5.HELP_DrainResistanceMsg'}}"
+		  	  data-helpDetails="system.magic.drainResistance"
+			>
+		  		{{system.magic.drainResistance.dicePool}}
+			</div>
+	  	</li>
+		<!-- Harmonious Defense (Forbidden Arcana p. 45): an adept has no Counterspelling row to show the pool on -->
+		{{#if system.magic.metamagics.harmoniousDefense}}
+		<li class="grid">
+			<div class="col-10">{{localize 'SR5.MetamagicHarmoniousDefense'}}</div>
+			<div class="col-2 SR-TextCenter changeValueByClick" data-binding="system.magic.counterSpellPool.current"
+			  data-helpTitle="{{localize 'SR5.HELP_CounterSpellPool'}}"
+			  data-helpMessage="{{localize 'SR5.HELP_CounterSpellPoolMsg'}}">
+				{{system.magic.counterSpellPool.current}} / {{system.magic.counterSpellPool.value}}
+			</div>
+		</li>
+		{{/if}}
+	  	<li class="grid">
+			<div class="col-10">{{localize 'SR5.AstralDamage'}}</div>
+			<div class="col-2 SR-TextCenter"
+			  data-helpTitle="{{localize 'SR5.HELP_AstralDamage'}}"
+              data-helpDetails="system.magic.astralDamage"
+			>
+				{{valueOrDash system.magic.astralDamage.value}}
+			</div>
+	  	</li>
+	 	<li class="grid">
+			<div class="col-10">{{localize 'SR5.AstralDefense'}}</div>
+			<div class="col-2 SR-TextCenter"
+			  data-helpTitle="{{localize 'SR5.HELP_AstralDefense'}}"
+              data-helpMessage="{{localize 'SR5.HELP_AstralDefenseMsg'}}"
+              data-helpDetails="system.magic.astralDefense"
+			>
+				{{valueOrDash system.magic.astralDefense.dicePool}}
+			</div>
+	  	</li>
+	  	<li class="grid">
+			<div class="col-10">{{localize 'SR5.PassThroughBarrier'}}</div>
+			<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="passThroughBarrier"
+			  data-helpTitle="{{localize 'SR5.HELP_PassThroughBarrier'}}"
+              data-helpMessage="{{localize 'SR5.HELP_PassThroughBarrierMsg'}}"
+              data-helpDetails="system.magic.passThroughBarrier"
+			>
+				{{valueOrDash system.magic.passThroughBarrier.dicePool}}
+			</div>
+	  	</li>
+	  	<li class="grid">
+			<div class="col-10">{{localize 'SR5.AstralTracking'}}</div>
+			<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="astralTracking"
+			  data-helpTitle="{{localize 'SR5.HELP_AstralTracking'}}"
+              data-helpMessage="{{localize 'SR5.HELP_AstralTrackingMsg'}}"
+              data-helpDetails="system.magic.astralTracking"
+			>
+				{{valueOrDash system.magic.astralTracking.dicePool}}
+			</div>
+	  	</li>
+		<!-- How long the character may stay projected (SR5 p. 317; Forbidden Arcana p. 43): magicians only -->
+		{{#if (or (eq system.magic.magicType 'magician') (eq system.magic.magicType 'aspectedMagician') (eq system.magic.magicType 'mysticalAdept'))}}
+		<li class="grid">
+			<div class="col-6">{{localize 'SR5.AstralProjectionLimit'}}</div>
+			<div class="col-6 SR-TextRight" data-tooltip="{{localize 'SR5.AstralProjectionLimit_D'}}">{{astralProjectionLimit system}}</div>
+		</li>
+		{{/if}}
+	</ul>
+</div>

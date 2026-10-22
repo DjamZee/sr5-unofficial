@@ -1,0 +1,9 @@
+{{#if rulesMatrixGrid}}
+<li class="grid">
+	<div class="col-12">
+		<select name="system.matrix.userGrid" data-dtype="String" required>
+			{{selectOptions lists.gridTypes selected=system.matrix.userGrid localize=true}}
+		</select>
+		</div>
+	</li>
+{{/if}}

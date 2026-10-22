@@ -1,0 +1,71 @@
+{{#ife system.type "spellcasting"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spellCategories selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "counterspelling"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spellCategories selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "ritualSpellcasting"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spellCategories selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "sustaining"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spellCategories selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "summoning"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spiritTypes selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "banishing"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spiritTypes selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{else ife system.type "binding"}}
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Subtype'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.subType" data-dtype="String" required>
+			<option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+			{{selectOptions lists.spiritTypes selected=system.subType localize=true}}
+		</select>
+	</div>
+</li>
+{{/ife}}

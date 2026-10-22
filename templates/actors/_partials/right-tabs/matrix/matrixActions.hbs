@@ -1,0 +1,94 @@
+<!-- MATRIX ACTIONS -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="SR-LigneEnTete grid">
+			{{#if (or (eq actor.type 'actorDrone') (eq actor.type 'actorDevice'))}}
+				<div class="col-10 SR-TextUppercase">{{localize 'SR5.MatrixActions'}}</div>
+			{{else}}
+				<div class="col-5 filtre-matrixActions SR-TextUppercase unfoldLight">{{localize 'SR5.MatrixActions'}}</div>
+				<div class="col-2 SR-TextCenter">{{localize 'SR5.ActionTypeShort'}}</div>
+				<div class="col-1 SR-TextCenter">{{localize 'SR5.DicePoolShort'}}</div>
+				<div class="col-1 SR-TextCenter">{{localize 'SR5.MarkShort'}}</div>
+				<div class="col-1 SR-TextCenter">{{localize 'SR5.LimitShort'}}</div>
+			{{/if}}
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.DefenseDicePoolShort'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.MatrixGODShort'}}</div>
+		</li>
+	</ul>
+</div>
+<div>
+	<ul>
+		{{#each system.matrix.actions}}
+			{{#if (or (eq ../actor.type 'actorDrone') (eq ../actor.type 'actorDevice'))}}
+				{{#if defense.dicePool}}
+				<li class="item grid" data-matrix="{{@key}}" data-item-id="{{@key}}" data="{{@key}}">
+					<div class="col-10 deplieMatrix">{{findTranslation 'matrixActions' @key}}</div>
+					<div class="col-1 SR-TextCenter roll-logo sr-roll" data-rolltype="matrixDefenseSimple" data-rollkey="{{@key}}"
+					  data-helpTitle="{{localize 'SR5.HELP_Defense' key=(findTranslation 'matrixActions' @key)}}"
+				      data-helpMessage="{{localize 'SR5.HELP_DefenseMsg'}}"
+				      data-helpDetails="system.matrix.actions.{{@key}}.defense">
+						{{valueOrDash defense.dicePool}}
+					</div>
+					<div class="col-1 SR-TextCenter">{{#if increaseOverwatchScore}}<em class="fas fa-sm fa-exclamation-triangle SR-popColor"></em>{{/if}}</div>
+				</li>
+				{{/if}}
+			{{else}}
+			<!-- SR5 p. 240: Erase Matrix Signature needs Resonance (DjamZ's ruling T8) -->
+			{{#unless (and (eq @key 'eraseMatrixSignature') (not (gt ../system.specialAttributes.resonance.augmented.value 0)))}}
+			<li class="item grid" data-matrix="{{@key}}" data-item-id="{{@key}}" data="{{@key}}">
+				<div class="col-5 deplieMatrix">
+					<!--Specialization Icon-->
+					<a class="toggle-actorValue" data-dtype="Boolean" data-binding="system.matrix.actions.{{@key}}.specialization"
+				  	  data-helpTitle="{{localize 'SR5.Specialization'}}" data-helpMessage="{{localize 'SR5.HELP_SpecializationMsg'}}">
+					{{#if specialization}}
+				  	<em class="fab fa-sm fa-gripfire SR-SubColor" data-tooltip="{{localize 'SR5.ExcludeSpecializationBonus'}}"></em>
+					{{else}}
+				  	<em class="fab fa-sm fa-gripfire" data-tooltip="{{localize 'SR5.IncludeSpecializationBonus'}}"></em>
+					{{/if}}
+			  	</a>
+					<!--End Specialization Icon-->
+					<!--Jamming Signal Icon-->
+					{{#if (and (eq @key 'jamSignals') (eq ../system.matrix.isJamming true) )}}
+					<a class="stop-jamming" data-helpTitle="{{localize 'SR5.HELP_Jamming'}}"
+					data-helpMessage="{{localize 'SR5.HELP_JammingMsg'}}"><em class="fas fa-rss"></em></a>
+					{{/if}}
+					<!--End Jamming Signal Icon-->
+					{{findTranslation 'matrixActions' @key}}
+				</div>
+				{{#if (and (not @root.emulateOnlyDepth) (or (and (eq limit.linkedAttribute 'sleaze') (lt ../system.matrix.attributes.sleaze.value 1)) (and (eq limit.linkedAttribute 'attack') (lt ../system.matrix.attributes.attack.value 1)) ))}}
+				<div class="col-2 SR-TextCenter">-</div>
+				<div class="col-1 SR-TextCenter">-</div>
+				<div class="col-1 SR-TextCenter">-</div>
+				<div class="col-1 SR-TextCenter">-</div>
+				{{else}}
+				<div class="col-2 SR-TextCenter">{{findTranslation 'powerActionTypes' actionType}}</div>
+				<div class="col-1 SR-TextCenter {{#if test}}roll-logo sr-roll{{/if}}{{#if (or (eq @key 'changeIcon') (eq @key 'inviteMark') (eq @key 'switchInterfaceMode'))}} roll-logo matrix-owner-action{{/if}}{{#if (eq @key 'gridHop')}} roll-logo matrix-grid-hop{{/if}}{{#if (eq @key 'enterOrExitHost')}} roll-logo matrix-host-presence{{/if}}" data-rolltype="matrixAction" data-rollkey="{{@key}}"
+				  data-helpTitle="{{localize 'SR5.DicePool'}}"
+			  	  data-helpMessage="{{localize 'SR5.HELP_MatrixActionMsg'}}"
+				  data-helpDetails="system.matrix.actions.{{@key}}.test">
+					{{valueOrDash test.dicePool}}
+				</div>
+				<div class="col-1 SR-TextCenter">{{neededMarks}}</div>
+				<div class="col-1 SR-TextCenter"
+				  data-helpTitle="{{localize 'SR5.Limit'}}"
+				  data-helpDetails="system.matrix.actions.{{@key}}.limit">
+				  	{{#if (and @root.emulateOnlyDepth (ne source 'dataTrails'))}}{{localize 'SR5.MatrixActionEmulateLimit' depth=@root.emulateOnlyDepth}}{{else}}{{valueOrDash limit.value}}{{/if}}
+				</div>
+				{{/if}}
+				{{#if_ge defense.dicePool 1}}
+				<div class="col-1 SR-TextCenter roll-logo sr-roll" data-rolltype="matrixDefenseSimple" data-rollkey="{{@key}}"
+				  data-helpTitle="{{localize 'SR5.HELP_Defense' key=(findTranslation 'matrixActions' @key)}}"
+				  data-helpMessage="{{localize 'SR5.HELP_DefenseMsg'}}"
+				  data-helpDetails="system.matrix.actions.{{@key}}.defense">
+					{{defense.dicePool}}
+				</div>
+				{{else}}
+				<div class="col-1 SR-TextCenter">-</div>
+				{{/if_ge}}
+				<div class="col-1 SR-TextCenter">{{#if increaseOverwatchScore}}<em class="fas fa-sm fa-exclamation-triangle SR-popColor"></em>{{/if}}</div>
+			</li>
+			{{/unless}}
+			{{/if}}
+		{{/each}}
+	</ul>
+</div>

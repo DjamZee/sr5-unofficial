@@ -1,0 +1,50 @@
+<!-- INITIATIVES -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete">
+			<div class="col-12 SR-TextUppercase">{{localize 'SR5.Initiatives'}}</div>
+		</li>
+		{{#each system.initiatives}}
+		{{#if (and (eq ../system.isMaterializing false) (eq @key 'physicalInit'))}}
+		<li class="grid">
+			<div class="col-8 SR-SubColor50">{{findTranslation 'characterInitiatives' @key}}</div>
+			<div class="col-1 SR-SubColor50"><em class="fas fa-sm fa-thumbtack"></em></div>
+			<div class="col-1 SR-SubColor50 SR-TextRight">{{value}}</div>
+			<div class="col-2 SR-SubColor50 SR-TextRight">+{{dice.value}}d6</div>
+		</li>
+		{{else}}
+		<li class="grid">
+			<div class="col-8">{{findTranslation 'characterInitiatives' @key}}</div>
+			<div class="col-1" data-helpTitle="{{localize 'SR5.HELP_InitiativeActive' key=(findTranslation 'characterInitiatives' @key)}}"
+			  data-helpMessage="{{#if (eq @key 'matrixInit')}}{{localize 'SR5.HELP_InitiativeActiveMatrixMsg'}}
+			  {{else}}{{localize 'SR5.HELP_InitiativeActiveMsg'}}{{/if}}">
+				{{#if isActive}}
+					<em class="fas fa-sm fa-thumbtack SR-SubColor"></em>
+				{{else}}
+					<a class="init-switch" data-dtype="Boolean" data-binding="{{@key}}"><em class="fas fa-sm fa-thumbtack"></em></a>
+				{{/if}}
+			</div>
+			<div class="col-1 SR-TextRight" data-helpTitle="{{localize 'SR5.HELP_InitiativeRating' key=(findTranslation 'characterInitiatives' @key)}}" data-helpDetails="system.initiatives.{{@key}}">
+				{{value}}
+			</div>
+			<div class="col-2 SR-TextRight" data-helpTitle="{{localize 'SR5.HELP_InitiativeDices' key=(findTranslation 'characterInitiatives' @key)}}" data-helpDetails="system.initiatives.{{@key}}.dice">
+				+{{dice.value}}d6
+			</div>
+		</li>
+		{{/if}}
+		{{/each}}
+		{{!-- A grunt's profile prints its Initiative (SR5 p. 381): typed here, added to the physical initiative --}}
+		{{#if (eq actor.type 'actorGrunt')}}
+		<li class="grid">
+			<div class="col-8" data-helpTitle="{{localize 'SR5.InitiativeProfile'}}"
+			  data-helpMessage="{{localize 'SR5.HELP_InitiativeProfileMsg'}}">{{localize 'SR5.InitiativeProfile'}}</div>
+			<div class="col-2 SR-TextRight">
+				<input type="text" data-dtype="Number" class="input" name="system.profileInitiative.score" value="{{system.profileInitiative.score}}" onfocus="this.select()">
+			</div>
+			<div class="col-2 SR-TextRight">
+				<input type="text" data-dtype="Number" class="input" name="system.profileInitiative.dice" value="{{system.profileInitiative.dice}}" onfocus="this.select()">
+			</div>
+		</li>
+		{{/if}}
+	</ul>
+</div>

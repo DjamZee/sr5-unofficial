@@ -1,0 +1,553 @@
+import {
+  SR5Shop
+} from './shop.js'
+import {
+  SR5ShopCatalog
+} from './shop-catalog.js'
+import {
+  SR5ShopGrades
+} from './shop-grades.js'
+import {
+  SR5_SystemHelpers
+} from '../system/utilitySystem.js'
+import {
+  SR5_EntityHelpers
+} from '../entities/helpers.js'
+import {
+  currentExpress, deliveryDelayed, cardExpressExtra
+} from './shop-orders.js'
+import {
+  counterSystem
+} from './shop-vendor-rules.js'
+import {
+  formatNumber
+} from '../helpers/number-format.js'
+
+/**
+ * The availability test of SR5 p. 420.
+ *
+ * "Pour acheter un objet, il faut faire un test de Disponibilité. Il s'agit
+ * d'un test opposé entre Négociation + Charisme [Sociale] contre l'indice de
+ * Disponibilité de l'objet." The winner's net hits divide the search time of
+ * the delay table; a tie still finds the goods but takes twice as long; a
+ * failure means waiting twice the delay before trying again.
+ *
+ * Each line of a cart is its own object, so each one gets its own test.
+ */
+export class SR5ShopAvailability {
+
+  /**
+   * Charisma maxima per metatype (SR5 p. 68, table Attributs par métatype).
+   * Only used to cap a contact whose sheet was never filled in.
+   */
+  static CHARISMA_MAX = {
+    human: 6, elf: 8, dwarf: 6, ork: 5, troll: 4,
+  }
+
+  /**
+   * What a surcharge buys, SR5 p. 420: "pour chaque tranche de 25 % du prix de
+   * l'objet que l'acheteur est prêt à payer en plus, il gagne un dé
+   * supplémentaire", up to +12 dice. Both figures are settings: a table that
+   * finds money too persuasive, or not enough, moves them.
+   * @returns {{step: number, max: number}} percentage per die, and the cap
+   *   (0 meaning none)
+   */
+  static get surchargeRules() {
+    const step = Math.max(1, Number(game.settings.get('sr5', 'sr5ShopSurchargePerDie')) || 25)
+    const max = Math.max(0, Math.floor(Number(game.settings.get('sr5', 'sr5ShopMaxSurchargeDice')) || 0))
+    return {
+      step, max 
+    }
+  }
+
+  /** How many dice a given surcharge buys. */
+  static surchargeDice(surcharge) {
+    const {
+      step, max 
+    } = SR5ShopAvailability.surchargeRules
+    const dice = Math.floor(Math.max(0, surcharge) / step)
+    return max ? Math.min(max, dice) : dice
+  }
+
+  /** Search times, SR5 p. 420 (table Délais de recherche). */
+  static DELAYS = [
+    {
+      max: 100, hours: 6
+    },
+    {
+      max: 1000, hours: 24
+    },
+    {
+      max: 10000, hours: 48
+    },
+    {
+      max: 100000, hours: 24 * 7
+    },
+    {
+      max: Infinity, hours: 24 * 30
+    },
+  ]
+
+  /* -------------------------------------------- */
+  /*  Dice pools                                  */
+  /* -------------------------------------------- */
+
+  /**
+   * The buyer's own pool: Negotiation + Charisma, capped by the social limit.
+   * The sheet's modifiers already default an untrained buyer to Charisma - 1
+   * (SR5 p. 55) and carry the wound penalties.
+   *
+   * The sheet floors its pool at 0, but a test is impossible when the pool
+   * "aurait été de zéro ou moins" (SR5 p. 58) once every modifier is in, the
+   * surcharge dice included. So `raw` is the sheet's sum without that floor,
+   * and the floor only comes once the surcharge is added.
+   */
+  static buyerPool(actor) {
+    const skill = actor.system.skills?.negotiation
+    const test = skill?.test
+    // The same sum as SR5_EntityHelpers.updatePropertyTotal, minus its floor
+    const raw = test ?
+      SR5_EntityHelpers.roundDecimal(((Number(test.base) || 0) +
+        (SR5_EntityHelpers.modifiersSum(test.modifiers ?? []) || 0)) *
+        SR5_EntityHelpers.modifiersProduct(test.modifiers ?? []), 2) :
+      Number(actor.system.attributes?.charisma?.augmented?.value ?? 0)
+    return {
+      raw,
+      pool: Math.max(0, raw),
+      limit: Number(actor.system.limits?.socialLimit?.value ?? 0),
+      label: actor.name,
+      derived: false,
+    }
+  }
+
+  /**
+   * The contact's pool, SR5 p. 420: "il utilise ses propres scores de
+   * Négociation et Charisme pour le test de Disponibilité, et son indice
+   * d'Influence est ajouté à sa limite Sociale."
+   *
+   * The sheet is read field by field, and only what is missing is filled in:
+   *
+   * - Charisma and Negotiation written on the contact are used as they stand.
+   * - A contact with a Charisma but no Negotiation defaults, `Charisma - 1`
+   *   (SR5 p. 55, se défausser); Negotiation is not one of the skills that
+   *   forbid it.
+   * - A field left at zero on a sheet that was never filled in is read off the
+   *   Connection rating: Run Faster p. 174 (Statistiques rapides pour contacts)
+   *   scales a contact's attribute and skill points with its Connection, so a
+   *   well-connected one is assumed to have put them where its trade is.
+   *
+   * The card states which of the three it was, rather than passing a guess off
+   * as a sheet value.
+   */
+  static contactPool(contact) {
+    const system = contact.system
+    const connection = Number(system.connection ?? 0)
+    // A contact is an item, not an actor: nothing derives its values, so the
+    // computed field is empty until something prepares it. Read what was
+    // typed on the sheet when the derived value is not there.
+    const sheetCharisma = SR5ShopAvailability.sheetValue(system.attributes?.charisma?.augmented) ||
+      SR5ShopAvailability.sheetValue(system.attributes?.charisma?.natural)
+    // A contact who has the Influence group has each of its skills at the group's rating (SR5 p. 90):
+    // Run Faster writes some contacts so, "Influence (GC) 4" (the cyber technician, p. 189)
+    const sheetNegotiation = Math.max(SR5ShopAvailability.sheetValue(system.skills?.negotiation?.rating),
+      SR5ShopAvailability.sheetValue(system.skillGroups?.influenceGroup))
+
+    const cap = SR5ShopAvailability.CHARISMA_MAX[system.metatype] ??
+      SR5ShopAvailability.CHARISMA_MAX.human
+    const charisma = sheetCharisma || Math.min(cap, 3 + connection)
+
+    // Defaulting only makes sense against a Charisma the sheet really carries:
+    // deriving one and then taking a penalty on it would be guesswork twice.
+    const defaulting = !sheetNegotiation && sheetCharisma > 0
+    const negotiation = sheetNegotiation ||
+      (defaulting ? 0 : Math.min(12, 2 + connection))
+
+    // A specialization belongs to a skill the contact actually has.
+    const specialized = negotiation > 0 && SR5ShopAvailability.isDealer(system.type)
+    const pool = defaulting ?
+      Math.max(0, charisma - 1) :
+      charisma + negotiation + (specialized ? 2 : 0)
+
+    // Social limit: the contact's own when its sheet computes one, otherwise
+    // the usual formula on whatever attributes it carries, plus its Connection.
+    const willpower = SR5ShopAvailability.sheetValue(system.attributes?.willpower?.augmented) ||
+      SR5ShopAvailability.sheetValue(system.attributes?.willpower?.natural) || 3
+    const essence = SR5ShopAvailability.sheetValue(system.essence) || 6
+    const ownLimit = SR5ShopAvailability.sheetValue(system.limits?.socialLimit)
+    const limit = (ownLimit || Math.ceil((charisma * 2 + willpower + essence) / 3)) + connection
+
+    return {
+      pool, limit, charisma, negotiation, connection, specialized, defaulting,
+      // What the card should say about where the pool came from
+      derived: !sheetCharisma && !sheetNegotiation,
+      partial: (!sheetCharisma && sheetNegotiation > 0),
+      label: contact.name,
+    }
+  }
+
+  /**
+   * A number typed into a shop field, or null when the field was left empty.
+   * Empty and 0 are not the same answer: empty asks for the computed value.
+   */
+  static typedNumber(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null
+    const number = Number(value)
+    return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : null
+  }
+
+  /** A sheet field's computed value, or what was typed into it. */
+  static sheetValue(field) {
+    return Number(field?.value ?? 0) || Number(field?.base ?? 0) || 0
+  }
+
+  /**
+   * Does this contact deal in goods? Matched on the free-text type field.
+   *
+   * A keyword in -eur also matches its -euse form, so "Receleuse" answers to
+   * "receleur" without the table having to list both. Everything else is a
+   * plain containment, which already covers plurals and feminines in -e.
+   */
+  static isDealer(type) {
+    if (!type) return false
+    const keywords = String(game.settings.get('sr5', 'sr5ShopDealerKeywords') || '')
+      .split(',').map(k => SR5ShopAvailability.normalize(k)).filter(k => k.length)
+    const needle = SR5ShopAvailability.normalize(type)
+    return keywords.some(k => needle.includes(k) ||
+      (k.endsWith('eur') && needle.includes(`${k.slice(0, -3)}eus`)))
+  }
+
+  /** Lowercase, accents removed: "Récéleur" and "receleur" are the same word. */
+  static normalize(text) {
+    return String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  }
+
+  /** The contacts the buyer can call on. */
+  static getContacts(actor) {
+    return actor?.items.filter(i => i.type === 'itemContact') ?? []
+  }
+
+  /* -------------------------------------------- */
+  /*  The test                                    */
+  /* -------------------------------------------- */
+
+  /** Availability rating of a compendium entry, letter aside. */
+  static availabilityOf(system) {
+    return Number(system?.availability?.value ?? system?.availability?.base ?? 0) || 0
+  }
+
+  /** Search time for a price, SR5 p. 420. */
+  static delayFor(price) {
+    return SR5ShopAvailability.DELAYS.find(step => price <= step.max).hours
+  }
+
+  /** Hours as a sentence: 6 heures, 2 jours, 1 semaine… */
+  static formatDelay(hours) {
+    if (hours < 24) {
+      return game.i18n.format('SR5.ShopDelayHours', {
+        value: Math.round(hours * 10) / 10
+      })
+    }
+    const days = hours / 24
+    if (days < 7) return SR5ShopAvailability.#formatUnit('SR5.ShopDelayDays', days)
+    if (days < 30) return SR5ShopAvailability.#formatUnit('SR5.ShopDelayWeeks', days / 7)
+    return SR5ShopAvailability.#formatUnit('SR5.ShopDelayMonths', days / 30)
+  }
+
+  /**
+   * "1 jour", "2 jours": the singular key (the plural one without its final
+   * s) when the language puts that number in the singular. French does for
+   * 1.5, English does not.
+   */
+  static #formatUnit(pluralKey, amount) {
+    const value = Math.round(amount * 10) / 10
+    const lang = game.i18n?.lang || 'en'
+    let singular = value === 1
+    try {
+      singular = new Intl.PluralRules(lang).select(value) === 'one'
+    } catch {
+      // An unknown language code: keep the plain test on 1
+    }
+    return game.i18n.format(singular ? pluralKey.slice(0, -1) : pluralKey, {
+      value
+    })
+  }
+
+  /**
+   * Roll `dice` d6 the SR5 way. A glitch is more than half the dice showing
+   * 1, a critical glitch is a glitch with no hit (SR5 p. 47).
+   * @returns {{hits: number, ones: number, glitch: boolean, criticalGlitch: boolean, faces: number[]}}
+   */
+  static async rollDice(dice) {
+    const count = Math.max(0, Math.floor(dice))
+    if (!count) {
+      return {
+        hits: 0, ones: 0, glitch: false, criticalGlitch: false, faces: []
+      }
+    }
+    const roll = await new Roll(`${count}d6`).evaluate()
+    const faces = roll.dice[0].results.map(r => r.result)
+    const hits = faces.filter(f => f >= 5).length
+    const ones = faces.filter(f => f === 1).length
+    const glitch = ones * 2 > count
+    return {
+      hits, ones, glitch, criticalGlitch: glitch && hits === 0, faces, roll,
+    }
+  }
+
+  /**
+   * Run one test per line and post a single card.
+   *
+   * @param {Actor} actor the buyer
+   * @param {Item|null} contact the contact doing the looking, if any
+   * @param {Array<{uuid: string, quantity: number, name: string}>} lines
+   * @param {number} surcharge percentage of the price the buyer offers on top
+   * @param {object} [options]
+   * @param {number} [options.overridePool] a pool typed in by hand, which
+   *   replaces the computed one — for a contact written up somewhere else, or
+   *   a gamemaster who simply knows what the fixer is worth
+   * @param {number|string} [options.overrideLimit] a limit typed in by hand;
+   *   left empty, the computed limit applies
+   */
+  static async testLines(actor, contact, lines, surcharge = 0, options = {
+  }) {
+    if (!actor) {
+      ui.notifications.warn(game.i18n.localize('SR5.WARN_ShopNoBuyer'))
+      return null
+    }
+    if (!lines?.length) return null
+    // A player's browser never rolls: the active gamemaster does, and freezes the outcome (shop-retry.js)
+    if (!game.user.isGM) {
+      const {
+        requestFirstTest
+      } = await import('./shop-retry.js')
+      await requestFirstTest(actor, contact, lines, surcharge, options)
+      return null
+    }
+
+    // A vendor looks for what it has not got with its own Negotiation and Charisma (SR5 p. 420)
+    // ...or through the contact the gamemaster gave the vendor (lot C, part 2), or with the pool set on its
+    // shop: options.searcherPool is SR5ShopVendor.searcherOf, the pool the window announces
+    const searcher = contact ? SR5ShopAvailability.contactPool(contact) :
+      options.searcherPool ? options.searcherPool :
+        options.searcherContact ? SR5ShopAvailability.contactPool(options.searcherContact) :
+          SR5ShopAvailability.buyerPool(options.searcher ?? actor)
+
+    const bonusDice = SR5ShopAvailability.surchargeDice(surcharge)
+    // null when the field was left empty; an imposed 0 stays 0 dice
+    const override = SR5ShopAvailability.typedNumber(options.overridePool)
+    // The surcharge dice are one more modifier: they are added to the
+    // unfloored pool, and only the total is floored (SR5 p. 58)
+    const basePool = override ?? (searcher.raw ?? searcher.pool)
+    const pool = Math.max(0, basePool + bonusDice)
+    // A limit left empty is the computed one, not "no limit". There is no
+    // limit of 0 in SR5 either, so a typed 0 falls back the same way.
+    const limit = SR5ShopAvailability.typedNumber(options.overrideLimit) || searcher.limit
+
+    const results = []
+    for (const line of lines) {
+      const source = await fromUuid(line.uuid)
+      if (!source) continue
+      const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1))
+      // An implant is looked for at the grade chosen: price and availability follow it (SR5 p. 454)
+      const grade = SR5Shop.gradesFor(source.type, source.system).includes(line.grade) ? line.grade : null
+      const name = SR5Shop.gradedName(source.name, grade)
+      // A vendor's price carries its margin, as its till charges it (lot C)
+      const listed = SR5ShopCatalog.describe({
+        // A stack on a vendor's counter is priced for one piece, as its till charges it (R5)
+        type: source.type, system: source.isEmbedded ? counterSystem(source) : source.system, margin: options.margin
+      }, grade).price
+      const availability = grade ? SR5ShopGrades.availability(source.system, grade) : SR5ShopAvailability.availabilityOf(source.system)
+      const unit = Math.round(listed * (1 + Math.max(0, surcharge) / 100))
+      const price = unit * quantity
+
+      // No availability rating: "Les objets sans Disponibilité peuvent être
+      // achetés sans soucis" (SR5 p. 419). No test, straight to the counter.
+      if (!availability) {
+        results.push({
+          uuid: line.uuid, grade, name, quantity, price, availability: 0,
+          priceLabel: `${formatNumber(price)}¥`,
+          outcome: 'common', obtained: true, delayLabel: '—',
+          outcomeLabel: game.i18n.localize('SR5.ShopOutcome_common'),
+        })
+        continue
+      }
+
+      // No die, no test: "Repousser les limites […] peut vous permettre de
+      // tenter des tests pour lesquels votre réserve de dés aurait été de zéro
+      // ou moins" (SR5 p. 58). Only Edge opens such a test, and the shop
+      // spends none, so nothing is rolled, not even the availability's dice.
+      if (!pool) {
+        results.push({
+          uuid: line.uuid, grade, name, quantity, price, availability,
+          priceLabel: `${formatNumber(price)}¥`,
+          outcome: 'noPool', obtained: false, untested: true, delayLabel: '—',
+          outcomeLabel: game.i18n.localize('SR5.ShopOutcome_noPool'),
+        })
+        continue
+      }
+
+      const test = await SR5ShopAvailability.rollDice(pool)
+      const opposition = await SR5ShopAvailability.rollDice(availability)
+      const hits = limit ? Math.min(test.hits, limit) : test.hits
+      const netHits = hits - opposition.hits
+      // GM ruling (05/10): the search time comes from the base price, not the one raised by the surcharge
+      // SR5 p. 420 does not say which price: DjamZ filled the gap. A ruling, not a house rule, so no setting
+      const baseDelay = SR5ShopAvailability.delayFor(listed * quantity)
+
+      let outcome, obtained, delay
+      if (test.criticalGlitch) {
+        // "En cas d'échec critique […] le personnage n'a aucune chance
+        // d'acquérir l'objet convoité."
+        outcome = 'criticalGlitch'
+        obtained = false
+        delay = null
+      } else if (netHits > 0) {
+        outcome = test.glitch ? 'successGlitch' : 'success'
+        obtained = true
+        delay = baseDelay / netHits
+      } else if (netHits === 0) {
+        // "En cas d'égalité, le personnage parvient à se procurer l'objet,
+        // mais le temps de recherche est le double."
+        outcome = test.glitch ? 'tieGlitch' : 'tie'
+        obtained = true
+        delay = baseDelay * 2
+      } else {
+        // "En cas d'échec, il est possible de réessayer après avoir attendu
+        // le double du délai de recherche."
+        outcome = 'failure'
+        obtained = false
+        delay = baseDelay * 2
+      }
+
+      results.push({
+        uuid: line.uuid,
+        // The base of an express surcharge: the listed price, without the surcharge dice
+        basePrice: listed * quantity,
+        grade,
+        name,
+        quantity,
+        price,
+        priceLabel: `${formatNumber(price)}¥`,
+        availability,
+        hits,
+        opposition: opposition.hits,
+        // The dice themselves: the gamemaster counts the outcome on them, not on the label (shop-retry.js)
+        faces: test.faces,
+        oppositionFaces: opposition.faces,
+        netHits,
+        outcome,
+        obtained,
+        glitch: test.glitch,
+        delayHours: delay,
+        delayLabel: delay === null ? '—' : SR5ShopAvailability.formatDelay(delay),
+        outcomeLabel: game.i18n.localize(`SR5.ShopOutcome_${outcome}`),
+      })
+    }
+
+    if (!results.length) return null
+
+    const obtained = results.filter(r => r.obtained)
+    const total = obtained.reduce((sum, r) => sum + r.price, 0)
+    const cardData = {
+      buyerId: actor.id,
+      buyerName: actor.name,
+      searcherLabel: searcher.label,
+      isContact: !!contact,
+      // The contact a new test after a failure asks again (shop-retry.js): the gamemaster looks it up on the buyer
+      contactId: contact?.id ?? null,
+      // A hand-typed pool owes nothing to the contact's sheet, so neither the
+      // derivation note nor the specialization applies to it.
+      derived: override === null && !!searcher.derived,
+      partial: override === null && !!searcher.partial,
+      defaulting: override === null && !!searcher.defaulting,
+      specialized: override === null && !!searcher.specialized,
+      override,
+      overridden: override !== null,
+      connection: searcher.connection ?? null,
+      pool,
+      // A pool below zero before the surcharge: the card shows it, or "1 die
+      // (+3 surcharge dice)" would hide where the other two went
+      negativePool: basePool < 0 ? basePool : null,
+      bonusDice,
+      surcharge,
+      limit,
+      results,
+      total,
+      totalLabel: `${formatNumber(total)}¥`,
+      canBuy: obtained.length > 0,
+      vendor: options.vendor ?? null,
+      // Express delivery, a house rule off by default (arbitrage de DjamZ, 05/10): offered when a line waits
+      express: SR5ShopAvailability.expressOffer(obtained, actor),
+      // The checkout button shows this total once the express box is ticked
+      expressTotalLabel: `${formatNumber(total + cardExpressExtra(obtained, currentExpress()))}¥`,
+    }
+
+    SR5_SystemHelpers.srLog(3, `Shop: availability test for ${actor.name} (pool ${pool})`, cardData)
+
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/sr5/templates/interface/shop-availability-card.hbs', cardData)
+
+    const message = await foundry.documents.ChatMessage.create({
+      speaker: foundry.documents.ChatMessage.getSpeaker({
+        actor
+      }),
+      content,
+      flags: {
+        sr5shop: cardData
+      },
+    })
+    // Frozen at once, before anyone can click: the till and a new test read this ledger, not the card
+    const {
+      recordShopCard
+    } = await import('./shop-retry.js')
+    await recordShopCard(message)
+
+    return cardData
+  }
+
+  /** What the express box of the card says, or null when it has no reason to be there. */
+  static expressOffer(obtained, buyer = null) {
+    const terms = currentExpress()
+    if (!terms || !deliveryDelayed(buyer) || !obtained.some(r => r.availability > 0)) return null
+    return game.i18n.format('SR5.ShopExpressLabel', {
+      surcharge: terms.surcharge, factor: terms.factor
+    })
+  }
+
+  /* -------------------------------------------- */
+  /*  Chat card                                   */
+  /* -------------------------------------------- */
+
+  /** Wire the "cash the purchase" button of an availability card. */
+  static chatListeners(html, message) {
+    // Ticking express shows the total the till will charge, surcharge included
+    html.querySelectorAll('[data-shop-express]').forEach(box => box.addEventListener('change', () => {
+      const data = message.flags?.sr5shop
+      const total = html.querySelector('[data-shop-total]')
+      if (data && total) total.textContent = box.checked && data.expressTotalLabel ? data.expressTotalLabel : data.totalLabel
+    }))
+    // A failed line may be tested again after twice the delay (SR5 p. 420): the gamemaster checks and rolls
+    html.querySelectorAll('[data-shop-action="retry"]').forEach(el => el.addEventListener('click', async (event) => {
+      event.preventDefault()
+      const {
+        requestRetry
+      } = await import('./shop-retry.js')
+      await requestRetry(message, el.dataset.uuid)
+    }))
+    html.querySelectorAll('[data-shop-action="checkout"]').forEach(el => {
+      el.addEventListener('click', async (event) => {
+        event.preventDefault()
+        const data = message.flags?.sr5shop
+        if (!data) return
+        const express = !!data.express && !!html.querySelector('[data-shop-express]')?.checked
+        // Every test is the gamemaster's (shop-retry.js): a card a player's browser wrote is cashed by nobody
+        if (!message.author?.isGM) return ui.notifications.warn(game.i18n.localize('SR5.WARN_ShopCardNotByGM'))
+        // The gamemaster cashes it, once, from his ledger
+        const {
+          requestCash
+        } = await import('./shop-retry.js')
+        await requestCash(message, express)
+      })
+    })
+  }
+}

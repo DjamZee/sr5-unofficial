@@ -1,0 +1,651 @@
+import {
+  SR5 
+} from "../config.js"
+import {
+  SR5_SystemHelpers 
+} from "../system/utilitySystem.js"
+import {
+  _getSRStatusEffect 
+} from "../system/effectsList.js"
+import {
+  SR5_TOKEN_VISION_MODES, SR5_VISION_COLORS, SR5_VISION_DETECTION_MODES, getVisionRange 
+} from "../system/vision.js"
+
+export class SR5_EntityHelpers {
+
+  //The name shown at the table: an unlinked token's synthetic actor answers to its token ("Garde B"), not to the
+  //base actor it copies (manual, part 3)
+  static displayName(actor) {
+    return (actor?.isToken && actor.token?.name) || actor?.name || ""
+  }
+
+  // Fonction générique pour arrondir
+  static roundDecimal(nombre, precision) {
+    precision = precision || 2
+    var tmp = Math.pow(10, precision)
+    return Math.round(nombre * tmp) / tmp
+  }
+
+  static modifiersSum(modifiersArray) {
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'modifiersSum()'`, (modifiersArray ? modifiersArray : ''))
+      return
+    }
+    return this.parseModifiers(modifiersArray, "sum")
+  }
+
+  static modifiersOnlyPositivesSum(modifiersArray) {
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'modifiersOnlyPositivesSum()'`, (modifiersArray ? modifiersArray : ''))
+      return
+    }
+    return this.parseModifiers(modifiersArray, "sumPositives")
+  }
+
+  static modifiersOnlyNegativesSum(modifiersArray) {
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'modifiersOnlyNegativesSum()'`, (modifiersArray ? modifiersArray : ''))
+      return
+    }
+    return this.parseModifiers(modifiersArray, "sumNegatives")
+  }
+
+  static modifiersProduct(modifiersArray) {
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'modifiersProduct()'`, (modifiersArray ? modifiersArray : ''))
+      return
+    }
+    let product = this.parseModifiers(modifiersArray, "product")
+    return (product ? product : 1)
+  }
+
+  static parseModifiers(modifiersArray, parsingType) {
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'parseModifiers()'`, (modifiersArray ? modifiersArray : ''))
+      return
+    }
+    let totalModifiers = 0
+    for (let [index, modifier] of Object.entries(modifiersArray)) {
+      if (isNaN(modifier.value)) {
+        SR5_SystemHelpers.srLog(1, `Modifier '[${index}]' value is not a number in 'parseModifiers()'`, modifier)
+        return
+      }
+      switch (parsingType) {
+        case "sum":
+          if (!modifier.isMultiplier) {
+            totalModifiers = totalModifiers + modifier.value * 1
+          }
+          break
+        case "sumPositives":
+          if (!modifier.isMultiplier && modifier.type.split("_").pop() == 'gain') {
+            totalModifiers = totalModifiers + modifier.value * 1
+          }
+          break
+        case "sumNegatives":
+          if (!modifier.isMultiplier && modifier.type.split("_").pop() == 'loss') {
+            totalModifiers = totalModifiers + modifier.value * 1
+          }
+          break
+        case "product":
+          if (modifier.isMultiplier) {
+            if (!totalModifiers) totalModifiers = modifier.value
+            else totalModifiers = totalModifiers * modifier.value
+          }
+          break
+        default:
+          SR5_SystemHelpers.srLog(1, `Missing or wrong parsing type sent to 'parseModifiers()'`)
+          return
+      }
+    }
+    return totalModifiers
+  }
+
+  static updateModifier(property, modifierLabel, modifierType, modifierValue, isMultiplier = false, cumulative = true, details) {
+    if (property === undefined) { SR5_SystemHelpers.srLog(1, `Missing or incorrect property sent to 'updateModifier()'`); return }
+    if (!property.modifiers) { SR5_SystemHelpers.srLog(1, `Missing or incorrect modifiers for '${property}' property sent to 'updateModifier()'`); return }
+    let modifiersArray = property.modifiers
+
+    if (modifiersArray === undefined || !Array.isArray(modifiersArray)) { SR5_SystemHelpers.srLog(1, `Missing or non-array variable sent to 'updateModifier()'`); return }
+    if (isNaN(modifierValue)) { SR5_SystemHelpers.srLog(1, `Modifier value '${modifierValue}' is not a number in 'updateModifier()'`); return }
+    //A non-cumulative modifier competes only with the non-cumulative modifiers of the same type: the strongest one
+    //stays (the highest bonus, the deepest penalty), with its own label. Cumulative modifiers are never replaced, so
+    //the total is the same whatever order the modifiers arrive in (a long barrel's +1 Accuracy no longer vanishes
+    //when a non-cumulative sight is mounted after it)
+    if (!cumulative) {
+      const index = modifiersArray.findIndex(m => m.nonCumulative && m.type === modifierType)
+      if (index >= 0) {
+        const old = modifiersArray[index]
+        const stronger = old.value >= 0 ? modifierValue > old.value : modifierValue < old.value
+        if (stronger) modifiersArray[index] = {
+          source: modifierLabel, type: modifierType, value: modifierValue, isMultiplier: isMultiplier, nonCumulative: true, details: details
+        }
+        return
+      }
+      modifiersArray.push({
+        source: modifierLabel, type: modifierType, value: modifierValue, isMultiplier: isMultiplier, nonCumulative: true, details: details
+      })
+      return
+    }
+    modifiersArray.push({
+      source: modifierLabel, type: modifierType, value: modifierValue, isMultiplier: isMultiplier , details: details
+    })
+  }
+
+  static updateValue(property, minValue, maxValue) {
+    if (property === undefined) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-existing property '${property}' sent to 'updateValue()'`)
+      return
+    }
+    this.updatePropertyTotal('value', property, minValue, maxValue)
+  }
+
+  //The modifiers a rating passes on to its test. A ceiling (Little Smoke, Chrome Flesh p. 192: "la Perception […] réduits
+  //à 1") caps the rating, not the dice pool: copied as is, it brought the whole pool down to 1, Intuition included.
+  //In its place, what the cap takes off the rating, as a plain modifier
+  static ratingModifiersForTest(rating) {
+    const all = rating?.modifiers ?? []
+    const modifiers = all.filter(m => typeof m?.ceiling !== "number")
+    const cap = all.find(m => typeof m?.ceiling === "number")
+    if (!cap) return modifiers
+    const uncapped = (Number(rating.base) || 0) + (this.modifiersSum(modifiers) || 0)
+    const cut = (Number(rating.value) || 0) - uncapped
+    if (cut >= 0) return modifiers
+    const cutModifier = {
+      ...cap, value: cut
+    }
+    delete cutModifier.ceiling
+    return modifiers.concat(cutModifier)
+  }
+
+  static updateDicePool(property, minValue, maxValue) {
+    if (property === undefined) {
+      SR5_SystemHelpers.srLog(1, `Missing or non-existing property sent to 'updateDicePool()'`)
+      return
+    }
+    this.updatePropertyTotal('dicePool', property, minValue, maxValue)
+  }
+
+  static updatePropertyTotal(total, property, minValue, maxValue) {
+    let value = this.roundDecimal((property.base + this.modifiersSum(property.modifiers)) * this.modifiersProduct(property.modifiers), 2)
+    if (minValue !== undefined) value = Math.max(value, minValue)
+    if (maxValue !== undefined) value = Math.min(value, maxValue)
+    //A modifier may bring the total down to a value, never up (Little Smoke: "réduits à 1", Chrome Flesh p. 192)
+    const ceilings = (property.modifiers ?? []).filter(m => typeof m?.ceiling === "number").map(m => m.ceiling)
+    if (ceilings.length) value = Math.min(value, ...ceilings)
+    property[total] = value
+  }
+
+  static resolveObjectPath(path, object) {
+    if (path === undefined) return null
+    return path.split('.').reduce(function (previous, current) {
+      return (previous ? previous[current] : null)
+    }, object || self)
+  }
+
+  static GenerateMonitorBoxes(entity, monitorType) {
+    if (!entity || !monitorType) { SR5_SystemHelpers.srLog(1, `Missing 'actor' or 'monitorType' parameter for 'GenerateMonitorBoxes()'`) }
+    if (!entity.conditionMonitors || !entity.conditionMonitors[monitorType]) { SR5_SystemHelpers.srLog(1, `Missing or non-existing '${monitorType}' condition monitor in 'GenerateMonitorBoxes()'`) }
+    let conditionMonitors = entity.conditionMonitors
+    let monitorMaximum = conditionMonitors[monitorType].value, currentMonitorValue = conditionMonitors[monitorType].actual.value
+
+    let aggravated = Math.min(conditionMonitors[monitorType].aggravated || 0, currentMonitorValue)
+
+    conditionMonitors[monitorType].boxes = []
+    for (let loop = 1; loop < monitorMaximum + 1; loop++) {
+      if (monitorType == 'overflow' && conditionMonitors['physical'].actual.value < conditionMonitors['physical'].value)
+        conditionMonitors[monitorType].boxes.push({
+          filled: false, locked: true
+        })
+      else
+        conditionMonitors[monitorType].boxes.push({
+          filled: (loop <= currentMonitorValue ? true : false),
+          aggravated: (loop <= aggravated),
+        })
+    }
+  }
+
+  static updateStatusBars(actor, monitorType) {
+    let actorData = actor.system, conditionMonitors = actorData.conditionMonitors, statusBars = actorData.statusBars
+    statusBars[monitorType].value = conditionMonitors[monitorType].actual.value
+    statusBars[monitorType].max = conditionMonitors[monitorType].value
+  }
+
+  static getTotalPenalty(actor) {
+    if (!actor) {
+      SR5_SystemHelpers.srLog(1, `Missing or invalid actor in call to 'getTotalPenalty()'`)
+      return
+    }
+    if (!actor.penalties) {
+      SR5_SystemHelpers.srLog(1, `No penalties properties for '${actor.name}' actor in call to 'getTotalPenalty()'`)
+      return
+    }
+    return actor.penalties.actual.reduce(function (totalPenalty, currentPenalty) {
+      return totalPenalty + currentPenalty.value
+    }, 0)
+  }
+
+  //Get the real actor Document based on ID. `uuids` (a card's actorUuids, cardActorUuids) gives the token or actor
+  //the roller meant by that id: an unlinked token is found on its own scene, whatever scene the reader looks at,
+  //and a token copied with its scene (same id on two scenes) is not mistaken for the other one
+  static getRealActorFromID(actorId, uuids){
+    const known = actorId && uuids?.[actorId]
+    if (typeof known === "string") {
+      const found = SR5_EntityHelpers.actorFromUuid(known, actorId)
+      if (found) return found
+    }
+    let actor, token, tokenDocument
+    actor = game.actors.get(actorId)
+    if (actor) return actor
+    if (canvas.scene){
+      token = canvas.tokens.get(actorId)
+      if (token){
+        const scene = game.scenes.get(token.scene.id)
+        tokenDocument = scene.tokens.get(actorId)
+        actor = tokenDocument.actor
+      }
+    }
+    //An unlinked token outside the viewed canvas (another scene, or no canvas at all): look for it in the scenes
+    if (!actor) actor = game.scenes?.find(s => s.tokens.has(actorId))?.tokens.get(actorId)?.actor
+    return actor
+  }
+
+  //The uuid that names an actor on a card: its token's for an unlinked token (its id is the token's), else its own
+  static actorRefUuid(actor){
+    return actor?.isToken ? actor.token?.uuid : actor?.uuid
+  }
+
+  //The actor behind a uuid of a card, only when the document it names carries that id: a uuid written on a card
+  //never swaps the id for another actor
+  static actorFromUuid(uuid, actorId){
+    let doc
+    try {
+      doc = fromUuidSync(uuid)
+    } catch {
+      return null
+    }
+    if (!doc || doc.id !== actorId) return null
+    if (doc.documentName === "Token") return doc.actor ?? null
+    return doc.documentName === "Actor" ? doc : null
+  }
+
+  //The ids a card names (its roller, its target, the card it answers), each with the uuid this client finds for it.
+  //Written by the client that rolls, which sees the scene where it happens; kept from the card it answers
+  static cardActorUuids(rollData, actor, chatData){
+    const uuids = {
+    }
+    for (const [id, uuid] of Object.entries(chatData?.actorUuids ?? {
+    })) if (typeof uuid === "string") uuids[id] = uuid
+    const rollerId = rollData?.owner?.actorId
+    if (rollerId && actor) uuids[rollerId] = SR5_EntityHelpers.actorRefUuid(actor)
+    for (const id of [rollData?.owner?.speakerId, rollData?.target?.actorId, rollData?.previousMessage?.actorId]) {
+      if (!id || uuids[id]) continue
+      const found = SR5_EntityHelpers.getRealActorFromID(id)
+      if (found) uuids[id] = SR5_EntityHelpers.actorRefUuid(found)
+    }
+    return uuids
+  }
+
+  /**
+	 * Get the position of an actor on the canvas
+	 * @param actor             The actor entity
+	 * @return {actorPosition}  The position of the actor {x: ; y:}
+	 */
+  static getActorCanvasPosition(actor){
+    let actorPosition = 0
+    if (actor.token) {
+      actorPosition = {
+        x: actor.token.x, y: actor.token.y 
+      }
+    } else {
+      let t = canvas.scene?.tokens.find((token) => token.actorId === actor.id)
+      if (t !== undefined) actorPosition = {
+        x: t.x, y: t.y 
+      }
+    }
+    return actorPosition
+  }
+
+  //Get the id of the player controlling an actor
+  static getUserOwner(actor){
+    // Not card-helpers' playerOwners (N2): active players only, owners by name only (not by default ownership)
+    const playerOwners = Object.entries(actor.ownership).filter(([id, level]) => (!game.users.get(id)?.isGM && game.users.get(id)?.active) && level === 3).map(([id, _level])=> id)
+    if(playerOwners.length > 0) {
+      return game.users.get(playerOwners[0])
+    } else return game.users.find(u => u.isGM && u.active)
+  }
+
+  // Return object with properties sorted alphabetically by translated terms, using keys from a "table" from config.js
+  // NOTE: no assumptions should be made regarding order of properties in an object so it might not work for all browsers
+  static sortByTranslatedTerm(object, table) {
+    if (typeof table === "undefined" || !SR5[table]) {
+      SR5_SystemHelpers.srLog(0, `Missing or inexistant translation '${table}' table`)
+      return object
+    }
+    const newObject = {
+    }
+    const arrayTerms = []
+    for (let [key, data] of Object.entries(object)) {
+      if (Object.prototype.toString.call(data) !== "[object Object]") {
+        let tmpObject = {
+          key: key,
+          label: data
+        }
+        arrayTerms.push(tmpObject)
+      } else {
+        data.key = key
+        arrayTerms.push(data)
+      }
+    }
+    arrayTerms.sort((a, b) => {
+      const labelA = SR5[table][a.key]
+      const labelB = SR5[table][b.key]
+      // Skip sorting for keys with empty or missing translation values
+      if (!labelA || !labelB) {
+        if (labelA === undefined) SR5_SystemHelpers.srLog(1, `Missing key '${a.key}' in translation table '${table}'`)
+        if (labelB === undefined) SR5_SystemHelpers.srLog(1, `Missing key '${b.key}' in translation table '${table}'`)
+        return 0
+      }
+      return game.i18n.localize(labelA).localeCompare(game.i18n.localize(labelB))
+    })
+    for (let loop = 0; loop < arrayTerms.length; ++loop) {
+      newObject[arrayTerms[loop]["key"]] = arrayTerms[loop]
+    }
+    for (let key of Object.keys(newObject)) {
+      let label = newObject[key].label
+      delete newObject[key].key
+      delete newObject[key].label
+      if (!Object.values(newObject[key]).length) {
+        newObject[key] = label
+      }
+    }
+    return newObject
+  }
+
+  // Resolve a display label for an ammunition type key (built-in or custom)
+  static resolveAmmoTypeLabel(typeKey) {
+    if (!typeKey) return ''
+    const i18nKey = SR5.allAmmunitionTypes?.[typeKey]
+    if (i18nKey) return game.i18n.localize(i18nKey)
+    // Custom type — find matching world itemAmmunitionType by slug
+    for (const item of game.items) {
+      if (item.type !== 'itemAmmunitionType') continue
+      const slug = item.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+      if (slug === typeKey) return `${game.i18n.localize('SR5.Custom')} (${item.name})`
+    }
+    return `${game.i18n.localize('SR5.Custom')} (${typeKey})`
+  }
+
+  // A table already sorted is the very object sortByTranslatedTerm returned, with as many keys, in the same language:
+  // sorting it again gives the same order, so it is skipped. Every actor's preparation asked for the whole sort.
+  static _sortedTables = new Map()
+
+  // To call when a table is changed in place without adding or removing a key (a renamed custom spirit type)
+  static invalidateSortedTranslations() {
+    SR5_EntityHelpers._sortedTables.clear()
+  }
+
+  static _isAlreadySorted(key, table) {
+    let sorted = SR5_EntityHelpers._sortedTables.get(key)
+    return !!sorted && sorted.table === table && sorted.size === Object.keys(table).length && sorted.lang === game.i18n?.lang
+  }
+
+  // Here we sort all the tables except those mentionned in the switch
+  static sortTranslations(object) {
+    let cache = object === SR5
+    for (let key of Object.keys(object)) {
+      if (cache && SR5_EntityHelpers._isAlreadySorted(key, object[key])) continue
+      switch (key) {
+        case "powerActionTypes":
+        case "radiationLevels":
+        case "augmentationGrades":
+        case "characterAttributes":
+        case "characterDefenses":
+        case "characterInitiatives":
+        case "characterResistances":
+        case "characterSpecialAttributes":
+        case "deckModules":
+        case "deckModes":
+        case "droneTypes":
+        case "genders":
+        case "legalTypes":
+        case "legalTypesShort":
+        case "metatypes":
+        case "valueMultipliers":
+        case "spellCombatTypes":
+        case "spellCombatTypesShort":
+        case "spellDurations":
+        case "spellDurationsShort":
+        case "spellTypes":
+        case "spellTypesShort":
+        case "statusEffects":
+        case "lifestyleTypes":
+        case "qualityTypes":
+        case "qualityTypesShort":
+        case "barrierTypes":
+        case "matrixSearchInfoType":
+        case "rammingAngles":
+        case "rammingGaits":
+        case "drugQualities":
+        case "matrixNoiseDistance":
+          //Book order for the last four: Rigger 5 p. 179, SR5 p. 203, Chrome Flesh p. 194, SR5 p. 232 (nearest first)
+          break
+        default:
+          object[key] = this.sortByTranslatedTerm(object[key], key)
+      }
+      let table = object[key]
+      if (cache && table && typeof table === "object") SR5_EntityHelpers._sortedTables.set(key, {
+        table, size: Object.keys(table).length, lang: game.i18n?.lang
+      })
+    }
+    return object
+  }
+
+  //Sort alphabetically the value of an Object
+  static sortObjectValue(obj){
+    // convert object into array
+    var sortable=[]
+    for(var key in obj){
+      if(Object.hasOwn(obj, key)) sortable.push([key, obj[key]]) // each item is an array in format [key, value]
+    }
+    // sort items by value
+    sortable.sort(function (a, b){
+      return a[1].localeCompare(b[1])
+    })
+    sortable = Object.fromEntries(sortable)
+    return sortable
+  }
+
+  //The monitor a Heal or unresisted damage effect aims at, named as the item sheet's list names it (effect.hbs):
+  //conditionMonitorTypes lets the drones' and grunts' "Condition Monitor" overwrite the "Monitor" of the list (relecture djamz.17)
+  static effectMonitorLabel(monitor){
+    return SR5.characterConditionMonitors?.[monitor] ?? SR5.conditionMonitorTypes?.[monitor] ?? monitor
+  }
+
+  static getLabelByKey(key){
+    let newKey = ""
+    if (key.includes("system.matrix.attributes")){
+      newKey = key.slice(25)
+      return `${game.i18n.localize(SR5.matrixAttributes[newKey])}`
+    } else if (key.includes("system.attributes")){
+      newKey = key.slice(18)
+      newKey = newKey.replace('.augmented','')
+      return `${game.i18n.localize(SR5.characterAttributes[newKey])}`
+    } else if (key.includes("system.initiatives")){
+      newKey = key.slice(19)
+      return `${game.i18n.localize(SR5.characterInitiatives[newKey])}`
+    } else if (key.startsWith("system.specialProperties.hardenedArmors.")){
+      //The Petrification spell's barrier armor: the "sheet-defined effect" window showed ": Net hits = 1" without it
+      newKey = key.slice(40)
+      return game.i18n.localize(SR5.hardenedArmorTypes[newKey] ?? "SR5.HardenedArmor")
+    } else if (/^\w+\.(removeDamage|addDamage)$/.test(key)){
+      //Heal and unresisted damage, named as the item sheet names them: the "sheet-defined effect" window of Heal showed
+      //": Hits = 3" without it (vérification djamz.16, B2)
+      const [monitor, action] = key.split(".")
+      const name = game.i18n.localize(this.effectMonitorLabel(monitor))
+      const what = action === "removeDamage" ? game.i18n.localize("SR5.Heal") :
+        `${game.i18n.localize("SR5.Damage")} ${game.i18n.localize("SR5.NotResisted")}`
+      return `${name} [${what}]`
+    } else {
+      switch (key){
+        case "system.conditionMonitors.stun.actual":
+          return `${game.i18n.localize("SR5.DamageTemporary")} (${game.i18n.localize("SR5.DamageTypeStun")})`
+        case "system.conditionMonitors.physical.actual":
+          return `${game.i18n.localize("SR5.DamageTemporary")} (${game.i18n.localize("SR5.DamageTypePhysical")})`
+        case "system.conditionMonitors.condition.actual":
+          return `${game.i18n.localize("SR5.DamageTemporary")} (${game.i18n.localize("SR5.DamageTypePhysical")})`
+        case "system.conditionMonitors.matrix":
+          return game.i18n.localize("SR5.MatrixMonitor")
+        case "system.itemsProperties.armor":
+          return game.i18n.localize("SR5.Armor")
+        case "system.penalties.special.actual":
+          return game.i18n.localize("SR5.GlobalPenalty")
+        case "system.defenses.defend":
+          return game.i18n.localize("SR5.Defenses")
+        case "system.matrix.noise":
+          return game.i18n.localize("SR5.MatrixNoise")
+        case "system.itemsProperties.environmentalMod.light":
+          return game.i18n.localize("SR5.EnvironmentalModLight")
+        default:
+          SR5_SystemHelpers.srLog(1, `Unknown '${key}' in 'getLabelByKey()'`)
+          return newKey
+      }
+    }
+  }
+
+  //Return the vision type a token should use : the one the character has switched on, and
+  //ordinary sight when it has switched none on.
+  //A character owns the vision its metatype gives it, but owning it is not using it : the sheet
+  //offers a 'natural vision' pin, and the environmental modifiers of a vision are applied on
+  //'isActive' only. Falling back on the metatype vision here made that pin impossible to pick,
+  //and left the picture disagreeing with the dice - a dwarf saw a heat picture while its light
+  //modifier stayed at 0.
+  static getActiveVisionType(actor){
+    const visions = actor?.system?.visions
+    if (!visions) return "basic"
+    for (const key of Object.keys(SR5.visionActive)) {
+      if (visions[key]?.isActive) return key
+    }
+    return "basic"
+  }
+
+  //Return necessery data to update a token to the vision its actor is currently using
+  //scene: the scene the token stands on. tokenDocument is often a plain copy, which has lost its parent.
+  static async getVisionData(tokenDocument, actor, scene = tokenDocument?.parent ?? canvas?.scene){
+    if (!tokenDocument) return SR5_SystemHelpers.srLog(1, `Empty '${tokenDocument}' in 'getVisionData()'`)
+    const vision = this.getActiveVisionType(actor)
+    const mode = SR5_TOKEN_VISION_MODES[vision]
+    tokenDocument.sight.enabled = true
+    tokenDocument.sight.visionMode = mode ?? "basic"
+    //The settings are in meters (SR5 p. 176: ultrasound reaches 50 meters), the token draws in its scene's units
+    const range = SR5_SystemHelpers.convertMetersToSceneUnits(getVisionRange(vision), scene)
+    tokenDocument.sight.range = mode ? range : 0
+    tokenDocument.sight.color = SR5_VISION_COLORS[vision] ?? null
+    //Apply the look of the vision mode, as the token configuration does when it is picked by hand
+    const defaults = CONFIG.Canvas.visionModes[tokenDocument.sight.visionMode]?.vision?.defaults ?? {
+    }
+    for (const key of ["attenuation", "brightness", "contrast", "saturation"]) {
+      if (defaults[key] !== undefined) tokenDocument.sight[key] = defaults[key]
+    }
+    //Only the vision in use keeps its detection mode
+    const visionDetections = Object.values(SR5_VISION_DETECTION_MODES)
+    tokenDocument.detectionModes = (tokenDocument.detectionModes ?? []).filter(d => !visionDetections.includes(d.id))
+    if (SR5_VISION_DETECTION_MODES[vision]) tokenDocument.detectionModes.push({
+      id: SR5_VISION_DETECTION_MODES[vision], enabled: true, range
+    })
+    return tokenDocument
+  }
+
+  //Tokens placed before the vision ranges were converted carry the setting's value in meters as if it were
+  //scene units (50 ft of ultrasound on a map in feet). Return the updates that give them their range in the
+  //scene's units. Only a range still equal to the bare setting is touched : one the GM typed by hand, or one
+  //already converted, is left as it is, so running this again changes nothing.
+  static visionRangeUpdatesOfScene(scene){
+    const updates = []
+    for (const document of scene?.tokens ?? []) {
+      //Read the stored data, not the prepared one : prepared detection modes carry derived values (lightPerception
+      //at Infinity where the source holds null), and an update built from them is refused without a word, the
+      //sight range with it
+      const token = document._source ?? document
+      const vision = Object.keys(SR5_TOKEN_VISION_MODES).find(k => SR5_TOKEN_VISION_MODES[k] === token.sight?.visionMode)
+      if (!vision) continue
+      const meters = getVisionRange(vision)
+      const range = SR5_SystemHelpers.convertMetersToSceneUnits(meters, scene)
+      if (range === meters) continue
+      const update = {
+      }
+      if (token.sight.range === meters) update["sight.range"] = range
+      const detectionModes = token.detectionModes ?? []
+      if (detectionModes.some(d => d.id === SR5_VISION_DETECTION_MODES[vision] && d.range === meters)) {
+        update.detectionModes = detectionModes.map(d => (d.id === SR5_VISION_DETECTION_MODES[vision] && d.range === meters ? {
+          ...d, range
+        } : d))
+      }
+      if (Object.keys(update).length) updates.push({
+        _id: token.id ?? token._id, ...update
+      })
+    }
+    return updates
+  }
+
+  //Add Effect to actor
+  static async addEffectToActor(actor, effect){
+    let hasEffect = actor.effects.find(e => e.origin === effect)
+    if (hasEffect) return SR5_SystemHelpers.srLog(3, `Effect "${effect}" already on`)
+    let effectToAdd = await _getSRStatusEffect(effect)
+    await actor.createEmbeddedDocuments('ActiveEffect', [effectToAdd])
+  }
+
+  //Delete Effect on actor
+  static async deleteEffectOnActor(actor, effect){
+    let effectToRemove = actor.effects.find(e => e.origin === effect)
+    if (effectToRemove) await actor.deleteEmbeddedDocuments('ActiveEffect', [effectToRemove.id])
+    else SR5_SystemHelpers.srLog(3, `No effect "${effect}" to delete`)
+  }
+
+  //Generate itemEffect
+  static async generateItemEffect(name, type, owner, target, value, duration, durationType){
+    let effect = {
+      name: name,
+      type: "itemEffect",
+      system: {
+        type : type,
+        ownerID: owner.id,
+        ownerName: owner.name,
+        ownerItem: owner.uuid,
+        target: target,
+        value: value,
+        duration: duration,
+        durationType: durationType,
+        customEffects: [],
+        itemEffects: [],
+        systemEffects: [],
+      },
+    }
+    return effect
+  }
+
+  //Generate customEffect data
+  static async generateCustomEffect(category, target, type, value, forceAdd){
+    let customEffect = {
+      "category": category,
+      "target": target,
+      "type": type,
+      "value": value,
+      "forceAdd": forceAdd,
+    }
+    return customEffect
+  }
+
+  /**
+  *Remove one element of an Array based on key / value
+  @param {arr} array the source array
+  @param {key} string the key to check
+  @param {value} string the targeted value
+  */
+  static removeElementFromArray(arr, key, value) {
+    const index = arr.findIndex((element) => element[key] === value)
+    if (index !== -1) {
+      arr.splice(index, 1)
+    }
+  }
+}

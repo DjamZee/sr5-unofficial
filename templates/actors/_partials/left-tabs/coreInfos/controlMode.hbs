@@ -1,0 +1,104 @@
+<!-- CONTROL MODES -->
+<div class="SRBlockSheet">
+    <ul>
+        <li class="grid SR-LigneEnTete">
+            <div class="col-11 SR-TextUppercase">{{localize 'SR5.ControlMode'}}</div>
+            <div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_VehicleControlerChoice'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleControlerChoiceMsg'}}">
+                <a class="chooseControler"><em class="fas fa-user-cog"></em></a>
+            </div>
+        </li> 
+        {{#ifne system.vehicleOwner.id ""}}
+        <li class="grid">
+            <div class="col-4">{{localize 'SR5.Controler'}}</div>
+            <div class="col-8 SR-TextRight">{{system.vehicleOwner.name}}</div>
+        </li>
+        {{/ifne}}
+        <li class="grid">
+            <div class="col-12" data-helpTitle="{{localize 'SR5.HELP_VehicleControleMode'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleControleModeMsg'}}">
+                <select name="system.controlMode" data-dtype="String">
+                    {{selectOptions lists.vehicleControlModesAutopilot selected=system.controlMode localize=true}}
+                    {{#ifne system.vehicleOwner.id ""}}
+                        {{selectOptions lists.vehicleControlModesSimple selected=system.controlMode localize=true}}
+                        {{!-- Jumping in asks a control rig or the echo Possession de la machine (SR5 p. 243, 261); a vehicle already jumped into keeps its mode --}}
+                        {{#if (or system.canJumpIn (eq system.controlMode "rigging"))}}
+                            {{selectOptions lists.vehicleControlModesRigging selected=system.controlMode localize=true}}
+                        {{/if}}
+                    {{/ifne}}
+                </select>
+            </div>
+        </li>
+        <li class="grid">
+            <div class="col-6">{{localize 'SR5.PilotSkill'}}</div>
+            <div class="col-6" data-helpTitle="{{localize 'SR5.HELP_VehiclePilotSkill'}}" data-helpMessage="{{localize 'SR5.HELP_VehiclePilotSkillMsg'}}">
+                <select name="system.pilotSkill" data-dtype="String">
+                    <option value="">{{localize 'SR5.None'}}</option>
+                    {{selectOptions lists.pilotSkills selected=system.pilotSkill localize=true}}
+                </select>
+            </div>
+        </li>
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.Vehicle_RI_S'}}</div>
+            {{#ife system.type "drone"}}
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_VehicleRiggerInterface'}}" data-helpMessage="{{localize 'SR5.HELP_DroneRiggerInterfaceMsg'}}">
+                <input type="checkbox" checked disabled>
+            </div>
+            {{else}}
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_VehicleRiggerInterface'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleRiggerInterfaceMsg'}}">
+                <input type="checkbox" name="system.riggerInterface" data-dtype="Boolean" {{checked system.riggerInterface}}>
+            </div>
+            {{/ife}}
+        </li>
+        {{#ifne system.vehicleOwner.id ""}}
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.DEVICE_TYPE_SlavedDevice_F'}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_VehicleSlaved'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleSlavedMsg'}}">
+                <input type="checkbox" name="system.slaved" data-dtype="Boolean" {{checked system.slaved}}>
+            </div>
+        </li>
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.RiggerCabled'}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.RiggerCabled'}}" data-helpMessage="{{localize 'SR5.HELP_RiggerCabledMsg'}}">
+                <input type="checkbox" name="system.riggerCabled" data-dtype="Boolean" {{checked system.riggerCabled}}>
+            </div>
+        </li>
+        {{!-- The swarm of the rigger the drone belongs to (Rigger 5.0 p. 35, system/swarm.js) --}}
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.SwarmNumber'}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.SwarmNumber'}}" data-helpMessage="{{localize 'SR5.HELP_SwarmNumber'}}">
+                <input type="number" name="system.swarm" value="{{system.swarm}}" min="0" step="1" data-dtype="Number">
+            </div>
+        </li>
+        {{#if system.swarmState.label}}
+        <li class="grid">
+            <div class="col-12 SR-GreyColor">{{system.swarmState.label}}</div>
+        </li>
+        {{/if}}
+        {{/ifne}}
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.VehicleCurrentSpeed'}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.VehicleCurrentSpeed'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleCurrentSpeedMsg'}}">
+                <input type="number" name="system.currentSpeed" value="{{system.currentSpeed}}" min="0" step="1" data-dtype="Number">
+            </div>
+        </li>
+        {{#if system.cannotMove}}
+        <li class="grid">
+            <div class="col-12 SR-popColor SR-Bold" data-tooltip="{{localize 'SR5.DroneCannotMoveHint'}}"><i class="fas fa-triangle-exclamation"></i> {{localize 'SR5.DroneCannotMove'}}</div>
+        </li>
+        {{/if}}
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.OffRoadMode'}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.OffRoadMode'}}" data-helpMessage="{{localize 'SR5.HELP_OffRoadModeMsg'}}">
+                <input type="checkbox" name="system.offRoadMode" data-dtype="Boolean" {{checked system.offRoadMode}}>
+            </div>
+        </li>
+        {{#if system.isSecondaryPropulsion}}
+        <li class="grid">
+            <div class="col-6">{{localize 'SR5.VEHICLE_SecondaryPropulsion'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-4">{{findTranslation 'vehicleSecondaryPropulsionMode' system.secondaryPropulsionType}}</div>
+            <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.VEHICLE_SecondaryPropulsion'}}" data-helpMessage="{{localize 'SR5.HELP_VEHICLE_ActivateSecondaryMsg'}}">
+                <input type="checkbox" name="system.isSecondaryPropulsionActivate" data-dtype="Boolean" {{checked system.isSecondaryPropulsionActivate}}>
+            </div>
+        </li>
+        {{/if}}
+    </ul>
+</div>

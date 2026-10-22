@@ -1,0 +1,71 @@
+<li class="SR-LigneEnTete SR-PaddingTop10">
+    <div>{{localize 'SR5.AttackInfo'}}</div>
+</li>
+<li class="grid SR-PaddingTop5">
+    <div class="col-10">{{localize 'SR5.DamageValue'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">{{damage.value}}{{findTranslation 'damageTypesShort' damage.type}}</div>
+</li>
+{{#if damage.element}}
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.SpecialDamage'}}{{localize 'SR5.Colons'}} </div>
+    <div class="col-4 SR-TextRight">{{findTranslation 'specialDamageTypes' damage.element}}{{#if damage.elementSecond}}/{{findTranslation 'specialDamageTypes' damage.elementSecond}}{{/if}}</div>
+</li>
+{{/if}}
+{{#if (or (eq damage.element "toxin") (eq damage.elementSecond "toxin"))}}
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.Type'}}{{localize 'SR5.Colons'}} </div>
+    <div class="col-4 SR-TextRight">{{#ife damage.toxin.type "custom"}}{{damage.toxin.custom.name}}{{else}}{{findTranslation 'toxinTypes' damage.toxin.type}}{{/ife}}</div>
+</li>
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.ToxinPenetration'}}{{localize 'SR5.Colons'}} </div>
+    <div class="col-4 SR-TextRight">{{damage.toxin.penetration}}</div>
+</li>
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.ToxinPower'}}{{localize 'SR5.Colons'}} </div>
+    <div class="col-4 SR-TextRight">{{damage.toxin.power}}</div>
+</li>
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.ToxinSpeed'}}{{localize 'SR5.Colons'}} </div>
+    <div class="col-4 SR-TextRight">{{damage.toxin.speed}}</div>
+</li>
+{{/if}}
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.ArmorPenetration'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">{{combat.armorPenetration}}</div>
+</li>
+<li class="grid">
+    {{#if (eq test.typeSub 'meleeWeapon')}}
+    <div class="col-10">{{localize 'SR5.WeaponReach'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">{{combat.reach}}</div>
+    {{/if}}
+    {{#if (eq test.typeSub 'rangedWeapon')}}
+    <div class="col-10">{{localize 'SR5.WeaponMode'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">{{findTranslation 'weaponModesCode' combat.firingMode.selected}}</div>
+    {{/if}}
+    {{#if (eq combat.weaponType "shotgun")}}
+    <div class="col-6">{{localize 'SR5.ChokeSettings'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-6 SR-TextRight">{{findTranslation 'chokeSettings' combat.choke.selected}}</div>
+    {{/if}}
+</li>
+{{#if (ne combat.ammo.type '')}}
+<li class="grid">
+    <div class="col-8">{{localize 'SR5.AmmunitionType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-4 SR-TextRight">{{findTranslation 'allAmmunitionTypes' combat.ammo.type}}</div>
+</li>
+{{/if}}
+{{#if combat.calledShot.name}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.CS_CalledShots'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8 SR-TextRight">{{findTranslation 'calledShotsAll' combat.calledShot.name}}
+        {{#if combat.calledShot.location}}
+            ({{findTranslation 'calledShotsSpecifics' combat.calledShot.location}})
+        {{/if}}
+    </div>
+</li>
+{{/if}}
+{{#if (or (eq test.typeSub 'grenade') combat.grenade.isGrenade)}}
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.Blast'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">{{combat.grenade.blastRadius}}m {{#if_l combat.grenade.damageFallOff 0}} ({{combat.grenade.damageFallOff}}) {{/if_l}}</div>
+</li>
+{{/if}}

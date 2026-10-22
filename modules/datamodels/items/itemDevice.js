@@ -1,0 +1,111 @@
+import {
+  descriptionPartialModel 
+} from './partial/description.js'
+import {
+  storablePartialModel 
+} from './partial/storable.js'
+import {
+  boughtOrSoldPartialModel 
+} from './partial/boughtOrSold.js'
+import {
+  activationPartialModel 
+} from './partial/activation.js'
+import {
+  concealmentPartialModel 
+} from './partial/concealment.js'
+import {
+  wirelessPartialModel 
+} from './partial/wireless.js'
+import {
+  effectsPartialModel 
+} from './partial/effects.js'
+
+export class sr5ItemDeviceDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields
+    return {
+      ...descriptionPartialModel.defineSchema(),
+      ...storablePartialModel.defineSchema(),
+      ...boughtOrSoldPartialModel.defineSchema(),
+      ...activationPartialModel.defineSchema(),
+      ...concealmentPartialModel.defineSchema(),
+      ...wirelessPartialModel.defineSchema(),
+      ...effectsPartialModel.defineSchema(),
+      attributesCollection: new fields.SchemaField({
+        value1: new fields.NumberField({
+          initial: 0
+        }),
+        value2: new fields.NumberField({
+          initial: 0
+        }),
+        value3: new fields.NumberField({
+          initial: 0
+        }),
+        value4: new fields.NumberField({
+          initial: 0
+        }),
+        value1isSet: new fields.BooleanField({
+          initial: false
+        }),
+        value2isSet: new fields.BooleanField({
+          initial: false
+        }),
+        value3isSet: new fields.BooleanField({
+          initial: false
+        }),
+        value4isSet: new fields.BooleanField({
+          initial: false
+        }),
+      }),
+      type: new fields.StringField({
+        initial: ''
+      }),
+      // A technomancer's living persona kept by the system: created when missing, never deleted (living-persona.js)
+      managed: new fields.BooleanField({
+        initial: false
+      }),
+      // "Fusion avec la matrice" chosen by hand on the persona (Kill Code p. 107), when no quality carries it:
+      // "", "slave", "master" or "both"
+      matrixFusion: new fields.StringField({
+        initial: ''
+      }),
+      // Strain of a head case's CFD (Dark Terrors p. 91): Lockdown p. 206 or the original one, Dark Terrors p. 88
+      strain: new fields.StringField({
+        initial: 'lockdown'
+      }),
+      program: new fields.SchemaField({
+        value: new fields.NumberField({
+          initial: 0
+        }),
+        max: new fields.NumberField({
+          initial: 0
+        }),
+      }),
+      module: new fields.StringField({
+        initial: ''
+      }),
+      dongle: new fields.StringField({
+        initial: ''
+      }),
+      // The commcode of the device (SR5 p. 237: a Matrix Perception can read it); empty, it answers "not written"
+      commcode: new fields.StringField({
+        initial: ''
+      }),
+      // The owner changed it once already (relecture djamz.13, arbitrage de DjamZ): the next change is the GM's
+      commcodeEdited: new fields.BooleanField({
+        initial: false
+      }),
+      modifiers: new fields.ArrayField(new fields.ObjectField()),
+      pan: new fields.SchemaField({
+        max: new fields.NumberField({
+          initial: 0
+        }),
+        current: new fields.NumberField({
+          initial: 0
+        }),
+        content: new fields.ArrayField(new fields.ObjectField()),
+      }),
+      markedItems: new fields.ArrayField(new fields.ObjectField()),
+    }
+  }
+}

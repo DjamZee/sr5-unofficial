@@ -1,0 +1,71 @@
+<!-- WHAT IS INSIDE A STORAGE PUT DOWN ON THE MAP -->
+<div class="SRBlockSheet sr-dropped-storage">
+	{{#if storageLock.hasLock}}
+	<!-- Its lock: SR5 p. 365-366 -->
+	<ul class="sr-storage-lock">
+		<li class="grid">
+			<div class="col-6">
+				<em class="fas fa-sm {{#if storageLock.locked}}fa-lock{{else}}fa-lock-open{{/if}}"></em>
+				{{localize storageLock.typeLabel}} {{storageLock.rating}}{{#if storageLock.wireless}} &middot; {{localize 'SR5.StorageLockWireless'}}{{/if}}{{#if storageLock.antiTamper}} &middot; {{localize 'SR5.StorageLockAntiTamper'}} {{storageLock.antiTamper}}{{/if}}
+				&mdash; <strong>{{#if storageLock.locked}}{{localize 'SR5.StorageLocked'}}{{else}}{{localize 'SR5.StorageUnlocked'}}{{/if}}</strong>
+			</div>
+			<div class="col-6 SR-TextRight">
+				{{#if storageLock.hasKey}}
+				<a class="storage-lock-toggle" data-tooltip="{{#if storageLock.locked}}{{localize 'SR5.StorageLockOpen'}}{{else}}{{localize 'SR5.StorageLockShut'}}{{/if}}">
+					<em class="fas fa-key"></em>
+				</a>
+				{{/if}}
+				<a class="storage-lock-pick" data-tooltip="{{#if storageLock.locked}}{{localize 'SR5.StorageLockPick'}}{{else}}{{localize 'SR5.StorageLockRelock'}}{{/if}}">
+					<em class="fas fa-screwdriver"></em>
+				</a>
+				{{#if storageLock.canHack}}
+				<a class="storage-lock-hack" data-tooltip="{{localize 'SR5.StorageLockHack'}}">
+					<em class="fas fa-wifi"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+	</ul>
+	{{/if}}
+	{{#if storageLock.hideContents}}
+	<p class="sr-storage-empty SR-GreyColor">{{localize 'SR5.StorageLockedHidden'}}</p>
+	{{else}}
+	<ul>
+		<li class="SR-LigneEnTete grid">
+			<div class="col-6 SR-TextUppercase">{{localize 'SR5.StorageContents'}}</div>
+			<div class="col-3 SR-TextCenter">{{localize 'SR5.Type'}}</div>
+			<div class="col-2 SR-TextCenter">{{localize 'SR5.Quantity'}}</div>
+			<div class="col-1 SR-TextRight">
+				{{#if actor.contents.length}}
+				<a class="storage-loot-all" data-tooltip="{{localize 'SR5.StorageLootAll'}}"
+				  data-helpTitle="{{localize 'SR5.HELP_StorageLootAll'}}"
+				  data-helpMessage="{{localize 'SR5.HELP_StorageLootMsg'}}">
+					<em class="fas fa-sm fa-hand-holding"></em>
+				</a>
+				{{/if}}
+			</div>
+		</li>
+		{{#each actor.contents as |content|}}
+		<li class="item grid" data-item-id="{{content._id}}" draggable="true">
+			<div class="col-6 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+				<img class="sr-storage-icon" src="{{content.img}}" alt="" />
+				<span>{{content.name}}</span>
+			</div>
+			<div class="col-3 SR-TextCenter SR-GreyColor">{{findTranslation 'itemTypes' content.type}}</div>
+			<div class="col-2 SR-TextCenter">{{valueOrDash content.system.quantity}}</div>
+			<div class="col-1 SR-TextRight">
+				<a class="storage-loot" data-item-id="{{content._id}}" data-tooltip="{{localize 'SR5.StorageLoot'}}"
+				  data-helpTitle="{{localize 'SR5.HELP_StorageLoot' key=content.name}}"
+				  data-helpMessage="{{localize 'SR5.HELP_StorageLootMsg'}}">
+					<em class="fas fa-sm fa-hand-holding"></em>
+				</a>
+			</div>
+		</li>
+		{{else}}
+		<li class="grid">
+			<div class="col-12 sr-storage-empty SR-GreyColor">{{localize 'SR5.StorageDroppedEmpty'}}</div>
+		</li>
+		{{/each}}
+	</ul>
+	{{/if}}
+</div>

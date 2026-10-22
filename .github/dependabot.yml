@@ -1,0 +1,51 @@
+version: 2
+updates:
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "deurk"
+    labels:
+      - "github"
+      - "dependencies"
+    target-branch: "dev"
+    open-pull-requests-limit: 10
+    groups:
+      actions:
+        update-types: ["minor", "patch"]
+
+  # Maintain dependencies for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "deurk"
+    labels:
+      - "npm"
+      - "dependencies"
+    target-branch: "dev"
+    open-pull-requests-limit: 10
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+
+  # Maintain dependencies for Discord webhook script
+  - package-ecosystem: "npm"
+    directory: "/scripts/push_to_discord"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "deurk"
+    labels:
+      - "npm"
+      - "dependencies"
+    target-branch: "dev"
+    open-pull-requests-limit: 10
+    groups:
+      discord-dependencies:
+        update-types: ["minor", "patch"]

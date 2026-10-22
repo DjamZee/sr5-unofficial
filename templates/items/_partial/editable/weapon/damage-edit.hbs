@@ -1,0 +1,36 @@
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.DamageValue'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1"><input type="number" data-dtype="Number" name="system.damageValue.base" value="{{system.damageValue.base}}" placeholder="0" onfocus="this.select()"/></div>
+    <!-- Strength based dammage-->
+    <div class="col-1"></div>
+    {{#if (or (and (eq system.type "throwing") (ne system.category "grenade")) (eq system.category "meleeWeapon"))}}
+    <div class="col-4 SR-TextRight">{{localize 'SR5.StrengthBasedDV'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight SR-PaddingRight3"><input type="checkbox" name="system.damageValue.isStrengthBased" data-dtype="Boolean" {{checked system.damageValue.isStrengthBased}} /></div>
+    {{/if}}
+</li>
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.WeaponMagicMultiplier'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1"><input type="number" data-dtype="Number" name="system.damageValue.magicMultiplier" value="{{system.damageValue.magicMultiplier}}" placeholder="0" min="0" onfocus="this.select()"/></div>
+</li>
+
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.DamageType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-3">
+        <select name="system.damageType">
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.weaponDamageTypes selected=system.damageType localize=true}}
+        </select>
+    </div>
+    <div class="col-1"></div>
+    <div class="col-2 SR-TextRight">{{localize 'SR5.MagicalSource'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight SR-PaddingRight3"><input type="checkbox" name="system.isMagical" data-dtype="Boolean" {{checked system.isMagical}} /></div>
+</li>
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.SpecialDamageType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.damageElement">
+            <option value="">{{localize 'SR5.SpecialDamageNone'}}</option>
+            {{selectOptions lists.specialDamageTypes selected=system.damageElement localize=true}}
+        </select>
+    </div>
+</li>

@@ -1,0 +1,45 @@
+<li class="grid">
+    <div class="col-7">{{localize 'SR5.WorkingCondition'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-4 SR-PaddingRight10">
+        <select class="SR-ModSelect" data-target="dicePoolModWorkingCondition" data-modifier="workingCondition">
+            <option value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.workingCondition selected=workingCondition localize=true }}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModWorkingCondition" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+<li class="grid">
+    <div class="col-7">{{localize 'SR5.ToolsAndParts'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-4 SR-PaddingRight10">
+        <select class="SR-ModSelect" data-target="dicePoolModToolsAndParts" data-modifier="toolsAndParts">
+            <option value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.toolsAndParts selected=toolsAndParts localize=true}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModToolsAndParts" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+
+<li class="grid">
+    <div class="col-7">{{localize 'SR5.PlansMaterial'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-4 SR-PaddingRight10">
+        <select class="SR-ModSelect" data-target="dicePoolModPlansMaterial" data-modifier="plansMaterial">
+            <option value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.plansMaterial selected=plansMaterial localize=true}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModPlansMaterial" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.WorkingFromMemory'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight"><input type="checkbox" class="SR-ModCheckbox" data-target="dicePoolWorkingFromMemory" data-modifier="workingFromMemory"></div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolWorkingFromMemory" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>

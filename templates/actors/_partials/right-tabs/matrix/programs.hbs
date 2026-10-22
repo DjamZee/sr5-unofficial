@@ -1,0 +1,147 @@
+<!-- PROGRAMS -->
+<div class="SRBlockSheet">
+	<ul >
+		<li class="SR-LigneEnTete grid">
+			<div class="col-6"><p class="SR-TextUppercase {{#if (ne actor.type 'actorAgent')}}filterMatrixPrograms unfoldLight{{/if}}">{{localize 'SR5.Programs'}}</p></div>
+			<div class="col-2"><p class="SR-TextCenter" data-tooltip="{{localize 'SR5.ProgramType'}}">{{localize 'SR5.ProgramTypeShort'}}</p></div>
+			<div class="col-2"><p class="SR-TextCenter">{{localize 'SR5.Rating'}}</p></div>
+			<div class="col-1"><p class="SR-TextCenter" data-tooltip="{{localize 'SR5.RunningPrograms'}}">{{localize 'SR5.RunningProgramShort'}}</p></div>
+			<div class="col-1">
+				{{#if owner}}
+				{{#if (ne actor.type 'actorAgent')}}				
+				{{#if (ne actor.type 'actorDrone')}}
+					<p class="SR-TextRight add-item" data-helpTitle="{{localize 'SR5.HELP_ItemAdd' key=(findTranslation 'itemTypes' 'itemProgram')}}" 
+					data-helpMessage="{{localize 'SR5.HELP_ItemAddMsg'}}">
+						<a class="item-create" data-tooltip="{{localize 'SR5.Add'}}" data-type="itemProgram"><em class="fas fa-plus"></em></a>
+					</p>
+				{{/if}}
+				{{/if}}
+				{{/if}}
+			</div>
+		</li>
+
+		{{#each actor.programs}}
+		<li class="item grid" data-item-id="{{_id}}" draggable="true">
+			<div class="col-6 deplie" data-helpTitle="{{localize 'SR5.HELP_MoreInfos'}}" data-helpMessage="{{localize 'SR5.HELP_MoreInfosMsg'}}">
+				<p>{{name}}
+				{{#if (and @root.actsAsRcc (eq system.type "autosoft"))}}
+					<!-- Shared with the slaved drones, as many as the console's Sharing (SR5 p. 269) -->
+					<a class="toggle-value" data-dtype="Boolean" data-binding="system.isShared"
+					data-helpTitle="{{localize 'SR5.RccShareAutosoft' key=name}}" data-helpMessage="{{localize 'SR5.HELP_RccShareAutosoftMsg'}}">
+						<em class="fas fa-sm fa-share-alt {{#unless system.isShared}}SR-SubColor25{{/unless}}"></em>
+					</a>
+				{{/if}}
+				</p>
+			</div>
+			<div class="col-2"><p class="SR-TextCenter">{{findTranslation 'programTypes' system.type}}</p></div>
+			<div class="col-2 SR-TextCenter">
+				{{#if (eq system.type "autosoft")}}
+					<p class="changeValueByClick" data-binding="system.itemRating"
+					data-helpTitle="{{localize 'SR5.HELP_Rating' key=name}}"
+					data-helpMessage="{{localize 'SR5.HELP_RatingMsg'}}">{{valueOrDash system.itemRating}}</p>
+					{{#if (and (eq @root.actor.type 'actorDrone') (gt system.itemRating @root.actor.autopilotCap))}}
+					<!-- An autopilot runs an autosoft at most at its own rating (Rigger 5.0 p. 131) -->
+					<p class="SR-SubColor" data-helpTitle="{{localize 'SR5.AutosoftCapped'}}"
+					data-helpMessage="{{localize 'SR5.HELP_AutosoftCappedMsg' cap=@root.actor.autopilotCap}}"><em class="fas fa-sm fa-compress-alt"></em> {{@root.actor.autopilotCap}}</p>
+					{{/if}}
+				{{else if (eq system.type "agent")}}
+					<p class="changeValueByClick" data-binding="system.itemRating"
+					  data-helpTitle="{{localize 'SR5.HELP_Rating' key=name}}"
+					  data-helpMessage="{{localize 'SR5.HELP_RatingMsg'}}">{{valueOrDash system.itemRating}}
+					</p>
+				{{else}}
+					-
+				{{/if}}
+			</div>
+			<!-- The help sits on each branch: on the column, the parent's mouseover would overwrite the agent's or the drone's -->
+			<div class="col-1">
+				{{#if (eq system.type 'agent')}}
+				<p class="SR-TextCenter">
+					{{#if system.isCreated}}
+					<a class="sidekickDestroy toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isCreated"
+					data-helpTitle="{{localize 'SR5.HELP_AgentDismiss' key=name}}"
+					data-helpMessage="{{localize 'SR5.HELP_AgentDismissMsg'}}">
+						<em class="fas fa-flip-both fa-external-link-alt"></em>
+					</a>
+					{{else}}
+					<a class="sidekickCreate toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isCreated"
+					data-helpTitle="{{localize 'SR5.HELP_AgentCreate' key=name}}"
+					data-helpMessage="{{localize 'SR5.HELP_AgentCreateMsg'}}">
+						<em class="fas fa-external-link-alt"></em>
+					</a>					
+					{{/if}}
+				</p>
+				{{else if (and (eq ../actor.type 'actorDrone') (ne ../actor.system.controlMode 'autopilot') )}}
+				<p class="SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramsControler' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ProgramsControlerDisabledMsg'}}">
+					<em class="fas fa-times-circle SR-SubColor25"></em>
+				</p>
+				{{else}}
+				<p class="SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramToggle' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ProgramToggleMsg'}}">
+				{{#if system.isActive}}
+					<a class="toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.StopProgram'}}"><em class="fas fa-sm fa-upload SR-SubColor"></em></a>
+				{{else}}
+					<a class="toggle-value" data-dtype="Boolean" data-item-id="{{_id}}" data-binding="system.isActive" data-tooltip="{{localize 'SR5.StartProgram'}}"><em class="fas fa-sm fa-upload"></em></a>
+				{{/if}}
+				</p>
+				{{/if}}
+			</div>
+			<div class="col-1 SR-TextRight">
+				{{#if ../owner}}
+					{{#if system.isCreated}}
+					{{else}}
+					<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
+						<em class="fas fa-sm fa-edit item-management"></em>
+					</a>
+					{{/if}}
+				{{/if}}
+			</div>
+
+		</li>
+		{{/each}}
+
+		<!-- Controler's programs -->
+		<!-- The console's autosofts: used when shared and the drone runs none of its own (SR5 p. 269) -->
+		{{#each actor.rccAutosofts}}
+		<li class="grid">
+			<div class="col-6">{{name}}</div>
+			<div class="col-2 SR-TextCenter">{{findTranslation 'programTypes' 'autosoft'}}</div>
+			<div class="col-2 SR-TextCenter">{{valueOrDash rating}}</div>
+			{{#if (eq state "used")}}
+			<div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramsControler' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ProgramsControlerMsg'}}">
+				<em class="fas fa-sm fa-upload SR-SubColor"></em>
+			</div>
+			{{else if (eq state "idle")}}
+			<div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramsControler' key=name}}" data-helpMessage="{{localize 'SR5.HELP_RccSharedIdleMsg'}}">
+				<em class="fas fa-times-circle SR-SubColor25"></em>
+			</div>
+			{{else}}
+			<div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramsControler' key=name}}" data-helpMessage="{{localize 'SR5.HELP_RccNotSharedMsg'}}">
+				<em class="fas fa-sm fa-upload SR-SubColor25"></em>
+			</div>
+			{{/if}}
+			<div class="col-1 SR-TextRight"><em class="fas fa-user-cog SR-SubColor25"></em></div>
+		</li>
+		{{/each}}
+
+		<!-- Owner Agent's programs -->
+		{{#if (eq actor.type 'actorAgent')}}
+		{{#each system.creatorData.items}}
+		{{#if (and (eq type "itemProgram") (or (eq system.type "common") (eq system.type "hacking") ))}}
+		<li class="grid">
+			<div class="col-6">{{name}}</div>
+			<div class="col-2 SR-TextCenter">{{findTranslation 'programTypes' system.type}}</div>
+			<div class="col-2 SR-TextCenter">{{valueOrDash system.itemRating}}</div>
+			<div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.HELP_ProgramsControler' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ProgramsControlerMsg'}}">
+				{{#if system.isActive}}
+					<em class="fas fa-sm fa-upload SR-SubColor"></em>
+				{{else}}
+					<em class="fas fa-sm fa-upload SR-SubColor25"></em>
+				{{/if}}
+			</div>
+			<div class="col-1 SR-TextRight"><em class="fas fa-user-cog SR-SubColor25"></em></div>
+		</li>
+		{{/if}}
+		{{/each}}
+		{{/if}}
+	</ul>
+</div>

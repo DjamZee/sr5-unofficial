@@ -1,0 +1,1386 @@
+import {
+  SR5
+} from "../../config.js"
+import {
+  SR5_Toxins
+} from "../items/toxins.js"
+import {
+  HOST_CHANGED_HOOK, exitHostInPlace
+} from "../../system/matrix-host-presence.js"
+import {
+  FLICKER_DISCONNECTION, isFlickerDisconnected
+} from "../../system/flicker-disconnection.js"
+import {
+  prototypeChanges, tokenFamily
+} from "../../system/token-defaults.js"
+import {
+  cleanCreatedSource
+} from "../../migration-source-modifiers.js"
+import Migration from "../../migration.js"
+import {
+  GM_ONLY_FIELDS
+} from "../../system/implant-essence.js"
+import {
+  essenceTaken
+} from "../../system/implant-register.js"
+import {
+  reservedChangedBy
+} from "../../system/reserved-fields.js"
+import {
+  stripTakenOut
+} from "../../rolls/roll-helpers/conceal-rules.js"
+import {
+  SR5_EntityHelpers
+} from "../helpers.js"
+import {
+  hasAegis
+} from "../../system/aegis.js"
+import {
+  SR5_SystemHelpers
+} from "../../system/utilitySystem.js"
+import {
+  linkLockStatusIds,
+  isLinkLockEffect
+} from "../../system/link-lock.js"
+import {
+  bloodMetamagicKey
+} from "../../system/blood-magic-rules.js"
+import {
+  applyDiseaseEffects
+} from "../../system/diseases.js"
+import {
+  SR5_UtilityItem 
+} from "../items/utilityItem.js"
+import {
+  SR5_CharacterUtility
+} from "./utilityActor.js"
+import {
+  personaMayBeSlaved, personaPanMax
+} from "./living-persona.js"
+import {
+  SR5_CompendiumUtility 
+} from "./utilityCompendium.js"
+import {
+  SR5_PrepareRollTest 
+} from "../../rolls/roll-prepare.js"
+import {
+  _getSRStatusEffect 
+} from "../../system/effectsList.js"
+import {
+  SR5_SocketHandler
+} from "../../socket.js"
+import {
+  SR5_EffectArea
+} from "../../system/effectArea.js"
+import {
+  installLiveStatuses
+} from "./actor-statuses.js"
+import {
+  SR5_ActorHelper
+} from "./entityActor-helpers.js"
+import {
+  SR5_MarkHelpers
+} from "../../rolls/roll-helpers/mark.js"
+import {
+  vouch
+} from "../../rolls/roll-helpers/attack-card.js"
+import {
+  isStoredAway
+} from "../../interface/storage-rules.js"
+import {
+  SR5StorageLockRights
+} from "../../interface/storage-lock-rights.js"
+import {
+  worsenAddiction, burnoutAttribute
+} from "../../rolls/roll-helpers/addiction.js"
+import {
+  isNecroSpirit
+} from "../../system/necro-spirits.js"
+import {
+  martialArtApplies
+} from "../../system/martial-arts-technique.js"
+import {
+  migrateNegotiationSkill
+} from "../../datamodels/common/negotiationMigration.js"
+import {
+  migrateLegacyImages, migrateLegacyDescription, migrateLocksmithLimit
+} from "../../datamodels/common/v12ImportMigration.js"
+import {
+  missingBaseDevice, hasBaseDevice
+} from "./base-device.js"
+import {
+  SR5_SpiritTypes
+} from "../items/spirit-types.js"
+import {
+  requestForgetIntel
+} from "../../canvas/pan-crown/pan-perception-card.js"
+import {
+  hasRiggerInterface
+} from "../../system/rigging-rules.js"
+import {
+  mayJumpIn
+} from "./technomancer-streams.js"
+import {
+  applySwarm
+} from "../../system/swarm.js"
+import {
+  giveStarterKit
+} from "../../system/starter-kit.js"
+
+/**
+ * Extend the base Actor class to implement additional logic specialized for Shadowrun 5.
+ */
+
+export class SR5Actor extends Actor {
+
+  constructor(...args) {
+    super(...args)
+    //The core fills statuses in applyActiveEffects, which this system never calls : hasStatusEffect reads them
+    installLiveStatuses(this)
+  }
+
+  //"Import Data" replaces the items with the file's: a player character gets back the starting kit it lacks
+  //(relecture djamz.13, R8, system/starter-kit.js; measured in game: the import had wiped it)
+  async importFromJSON(json) {
+    const result = await super.importFromJSON(json)
+    await giveStarterKit(this, {
+      again: true
+    })
+    return result
+  }
+
+  //The Negotiation skill under its former key, on an actor imported after the world migration (datamodels/common/negotiationMigration.js)
+  static migrateData(source) {
+    migrateNegotiationSkill(source?.system)
+    //What an actor exported from V12 still carries, imported after the world migration (datamodels/common/v12ImportMigration.js)
+    migrateLegacyImages(source)
+    migrateLegacyDescription(source?.system)
+    migrateLocksmithLimit(source)
+    return super.migrateData(source)
+  }
+
+  /** Overide Actor's create Dialog to hide certain type and sort them alphabetically*/
+  static async createDialog(data={
+  }, {
+    parent=null, pack=null, ..._options
+  }={
+  }) {
+
+    // Collect data
+    const documentName = this.metadata.name
+    const hiddenTypes = ["actorAgent", "base"]
+    const originalTypes = game.documentTypes[documentName]
+    const types = originalTypes.filter((actorType) => !hiddenTypes.includes(actorType))
+    const folders = parent ? [] : game.folders.filter(f => (f.type === documentName) && f.displayed)
+    const label = game.i18n.localize(this.metadata.label)
+    const title = game.i18n.format("DOCUMENT.Create", {
+      type: label
+    })
+
+    // Render the document creation form
+    const html = await foundry.applications.handlebars.renderTemplate(`templates/sidebar/document-create.html`, {
+      folders,
+      name: data.name || '',
+      defaultName: this.defaultName({
+        type: data.type || CONFIG[documentName]?.defaultType || types[0], parent, pack
+      }),
+      folder: data.folder,
+      hasFolders: folders.length >= 1,
+      type: data.type || CONFIG[documentName]?.defaultType || types[0],
+      types: types.reduce((obj, t) => {
+        const label = CONFIG[documentName]?.typeLabels?.[t] ?? t
+        obj[t] = game.i18n.has(label) ? game.i18n.localize(label) : t
+        return SR5_EntityHelpers.sortObjectValue(obj)
+      }, {
+      }),
+      hasTypes: types.length > 1
+    })
+
+    // Render the confirmation dialog window
+    return foundry.applications.api.DialogV2.wait({
+      window: {
+        title 
+      },
+      content: html,
+      buttons: [
+        {
+          action: "ok",
+          label: title,
+          icon: CONFIG[documentName]?.sidebarIcon,
+          default: true,
+          callback: (event, button, dialog) => {
+            const form = dialog.element.querySelector("form")
+            const fd = new foundry.applications.ux.FormDataExtended(form)
+            foundry.utils.mergeObject(data, fd.object, {
+              inplace: true
+            })
+            if ( !data.folder ) delete data.folder
+            if ( types.length === 1 ) data.type = types[0]
+            if ( !data.name?.trim() ) data.name = this.defaultName({
+              type: data.type, parent, pack
+            })
+            return this.create(data, {
+              parent, pack, renderSheet: true
+            })
+          },
+        },
+      ],
+      rejectClose: false,
+    })
+  }
+
+  // Returns the actor it creates, as Foundry's Actor.create does: a module that made a device got nothing back (the
+  // tab « CI » of matrice-sr5). A dialog closed without a choice (spirit, sprite) still creates nothing
+  static async create(data, options) {
+    if (!data.img) data.img = `systems/sr5/assets/img/actors/${data.type}.svg`
+
+    // If the created actor has items (only applicable to foundry.utils.duplicated actors) bypass the new actor creation logic
+    if (data.items) return super.create(data, options)
+
+    // Initialize empty items
+    data.items = []
+    data.effects = []
+
+    // Handle special create method
+    let dialogData = {
+      lists: SR5_EntityHelpers.sortTranslations(SR5)
+    }
+    let baseItems
+
+    switch (data.type){
+      case "actorSpirit": {
+        const spiritDlg = await foundry.applications.handlebars.renderTemplate("systems/sr5/templates/interface/createSpirit.hbs", dialogData)
+        const spiritResult = await foundry.applications.api.DialogV2.wait({
+          window: {
+            title: game.i18n.localize('SR5.SpiritType') 
+          },
+          content: spiritDlg,
+          buttons: [
+            {
+              action: "ok",
+              label: "Ok",
+              default: true,
+              callback: (event, button, dialog) => ({
+                action: "ok", element: dialog.element 
+              }),
+            },
+          ],
+          rejectClose: false,
+        })
+        if (!spiritResult || spiritResult.action !== "ok") {
+          SR5_SystemHelpers.srLog(3, data)
+          break
+        }
+        const spiritType = spiritResult.element.querySelector("[name=spiritType]").value
+        const spiritForce = spiritResult.element.querySelector("[name=spiritForce]").value
+        baseItems = await SR5_CompendiumUtility.getBaseItems(data.type, spiritType, spiritForce)
+        // A custom type with a picture of its own lends it to the portrait and the token, an entity's above all
+        const typeImg = SR5_SpiritTypes.get(spiritType)?.img
+        if (typeImg && data.img === "systems/sr5/assets/img/actors/actorSpirit.svg" && !typeImg.endsWith("/itemSpiritType.svg") && !typeImg.endsWith("/itemSpirit.svg")) data.img = typeImg
+        for (let baseItem of baseItems) {
+          data.items.push(baseItem)
+        }
+        data.system = {
+          "force": {
+            "base": parseInt(spiritForce) || 0,
+            "value": 0,
+            "modifiers": []
+          },
+          "type": spiritType
+        }
+        SR5_EntityHelpers.updateValue(data.system.force)
+        return super.create(data, options)
+      }
+      case "actorSprite": {
+        const spriteDlg = await foundry.applications.handlebars.renderTemplate("systems/sr5/templates/interface/createSprite.hbs", dialogData)
+        const spriteResult = await foundry.applications.api.DialogV2.wait({
+          window: {
+            title: game.i18n.localize('SR5.SpriteType') 
+          },
+          content: spriteDlg,
+          buttons: [
+            {
+              action: "ok",
+              label: "Ok",
+              default: true,
+              callback: (event, button, dialog) => ({
+                action: "ok", element: dialog.element 
+              }),
+            },
+          ],
+          rejectClose: false,
+        })
+        if (!spriteResult || spriteResult.action !== "ok") {
+          SR5_SystemHelpers.srLog(3, data)
+          break
+        }
+        const spriteType = spriteResult.element.querySelector("[name=spriteType]").value
+        const spriteLevel = spriteResult.element.querySelector("[name=spriteLevel]").value
+        baseItems = await SR5_CompendiumUtility.getBaseItems(data.type, spriteType, spriteLevel)
+        for (let baseItem of baseItems) {
+          data.items.push(baseItem)
+        }
+        data.system = {
+          "level": parseInt(spriteLevel) || 0,
+          "type": spriteType
+        }
+        return super.create(data, options)
+      }
+      case "actorDevice":
+      case "actorDrone":
+      case "actorAgent": {
+        baseItems = {
+          "name": game.i18n.localize("SR5.Device"),
+          "type": "itemDevice",
+        }
+        baseItems.system = {
+          "isActive": true,
+          "type": "baseDevice",
+        }
+        data.items.push(baseItems)
+        let effect = await _getSRStatusEffect("matrixInit")
+        let initiativeEffect = new CONFIG.ActiveEffect.documentClass(effect)
+        const effects = data.effects.map(e => e.toObject())
+        effects.push(initiativeEffect.toObject())
+        foundry.utils.mergeObject(data, {
+          "effects": effects
+        })
+        return super.create(data, options)
+      }
+      case "actorGrunt":
+      case "actorPc":
+        baseItems = await SR5_CompendiumUtility.getBaseItems(data.type)
+        for (let baseItem of baseItems) {
+          data.items.push(baseItem)
+        }
+        return super.create(data, options)
+      default:
+        return super.create(data, options)
+    }
+  }
+
+  async _preUpdate(changes, options, user) {
+    //A storage's rights while it is shut: rewritten here, since Foundry's ownership window updates with noHook
+    if (this.type === "actorStorage") SR5StorageLockRights.hold(this, changes, options)
+    // Essence lost to removed implants (SR5 p. 53): written by the active gamemaster alone (system/essence-hole.js).
+    // Read after the merge, every form of update counts; the active GM checks again (implant-register.js)
+    if (!game.user.isGM && this.system?.essence && reservedChangedBy(this._source, changes, GM_ONLY_FIELDS.actor, options).length) {
+      ui.notifications?.warn(game.i18n.localize("SR5.WARN_GMOnlyField"))
+      return false
+    }
+    //SR5 p. 422: a hidden weapon made ready from the sheet is taken out, as through Item#_preUpdate
+    stripTakenOut(this, changes)
+    return super._preUpdate(changes, options, user)
+  }
+
+  async _preCreate(data, options, user) {
+    await super._preCreate(data, options, user)
+    // An actor exported prepared (the Mégapack actors) arrives without its computed modifiers
+    cleanCreatedSource(this)
+    // A head case saved the old way (Nanite Volume in Resonance) and imported after the world's migration ran
+    // (a JSON file, another world, a module pack) is moved here, as the migration does (migration.js)
+    let createData = Migration.migrateHeadcaseNaniteData(this)
+    foundry.utils.mergeObject(createData, {
+      "prototypeToken.sight.enabled": true,
+      "prototypeToken.sight.range": 0,
+      "prototypeToken.displayName": CONST.TOKEN_DISPLAY_MODES.OWNER,
+      "prototypeToken.displayBars": CONST.TOKEN_DISPLAY_MODES.OWNER,
+      "prototypeToken.name": this.name,
+    })
+
+    let actorLink = false
+    if (this.type === "actorPc") actorLink = true
+    if (this.type === "actorAgent") actorLink = true
+    if (this.type === "actorSpirit" && this.system.creatorId !== "") actorLink = true
+    if (this.type === "actorDrone" && this.system.creatorId !== "") actorLink = true
+    if (this.type === "actorSprite" && this.system.creatorId !== "") actorLink = true
+
+    switch(this.type){
+      case "actorPc":
+        foundry.utils.mergeObject(createData, {
+          "prototypeToken.actorLink": actorLink,
+          "prototypeToken.lockRotation": true,
+          "prototypeToken.bar1": {
+            attribute: "statusBars.physical"
+          },
+          "prototypeToken.bar2": {
+            attribute: "statusBars.stun"
+          },
+        })
+        break
+      case "actorGrunt":
+        foundry.utils.mergeObject(createData, {
+          "prototypeToken.lockRotation": true,
+          "prototypeToken.disposition": CONST.TOKEN_DISPOSITIONS.HOSTILE,
+          "prototypeToken.bar1": {
+            attribute: "statusBars.condition"
+          },
+        })
+        break
+      case "actorSpirit":
+        foundry.utils.mergeObject(createData, {
+          "prototypeToken.lockRotation": true,
+          "prototypeToken.actorLink": actorLink,
+          "prototypeToken.bar1": {
+            attribute: "statusBars.physical"
+          },
+          "prototypeToken.bar2": {
+            attribute: "statusBars.stun"
+          },
+          "prototypeToken.texture.src": this.img,
+        })
+        break
+      case "actorDrone":
+        foundry.utils.mergeObject(createData, {
+          "prototypeToken.lockRotation": true,
+          "prototypeToken.actorLink": actorLink,
+          "prototypeToken.bar1": {
+            attribute: "statusBars.condition"
+          },
+          "prototypeToken.bar2": {
+            attribute: "statusBars.matrix"
+          },
+          "prototypeToken.texture.src": this.img,
+        })
+        break
+      case "actorDevice":
+      case "actorSprite":
+      case "actorAgent": 
+        foundry.utils.mergeObject(createData, {
+          "prototypeToken.lockRotation": true,
+          "prototypeToken.actorLink": actorLink,
+          "prototypeToken.bar2": {
+            attribute: "statusBars.matrix"
+          },
+          "prototypeToken.texture.src": this.img,
+        })
+        break
+      // Linked below, once any remembered token has been laid on
+      case "actorStorage":
+        break
+      default :
+        SR5_SystemHelpers.srLog(1, `Unknown '${this.type}' type in 'base _preCreate()'`)
+    }
+
+    // The GM's token for this family (lot 9, system/token-defaults.js): nothing set, nothing changed
+    const family = tokenFamily(this.type, this.system?.matrix?.deviceType)
+    if (family) foundry.utils.mergeObject(createData, prototypeChanges(family))
+
+    // A summoned actor wears the token kept when it was last dismissed. That
+    // token may be empty or half written on older items, so never let it erase
+    // the picture its item carries.
+    let rememberedToken = this.system.sideKickPrototypeToken
+    if (rememberedToken && Object.keys(rememberedToken).length) {
+      foundry.utils.mergeObject(createData, {
+        "prototypeToken": rememberedToken
+      })
+    }
+    if (this.system.creatorItemId) {
+      foundry.utils.mergeObject(createData, {
+        "prototypeToken.texture.src": this.prototypeToken?.texture?.src || rememberedToken?.texture?.src || this.img
+      })
+    }
+
+    this.updateSource(createData)
+
+    // A device, drone or agent created by script without its base device (base-device.js)
+    const baseDevice = missingBaseDevice(this.type, this._source?.items)
+    if (baseDevice) {
+      const update = {
+        items: [...this._source.items, baseDevice]
+      }
+      if (!this._source.effects.some(e => e.statuses?.includes("matrixInit"))) {
+        const initiativeEffect = new CONFIG.ActiveEffect.documentClass(await _getSRStatusEffect("matrixInit"))
+        update.effects = [...this._source.effects, initiativeEffect.toObject()]
+      }
+      this.updateSource(update)
+    }
+
+    // A storage on the map is one bag, wherever it is opened from: what is
+    // taken through its token must leave the actor too, or picking it up
+    // gives back what has already been taken. Set last, so that a token
+    // remembered from a bag put down before this was so cannot unlink it.
+    if (this.type === "actorStorage") this.updateSource({
+      "prototypeToken.actorLink": true
+    })
+  }
+
+  //An unlinked token inherits the effects of its world actor: switched to astral perception, that actor showed the
+  //"Astral perception" icon on every unlinked token of it, which does not have the vision (M4 D3). Shown only where
+  //the vision is on; the effect carries no modifier and nothing reads it
+  get temporaryEffects() {
+    const effects = super.temporaryEffects
+    if (!this.isToken || this.system?.visions?.astral?.isActive) return effects
+    return effects.filter(e => e.origin !== "astralVision")
+  }
+
+  prepareData() {
+    if (!this.img) this.img = CONST.DEFAULT_TOKEN
+    if (!this.name) this.name = "[" + game.i18n.localize("SR5.New") + "]" + this.documentName
+    // Situational effects are gathered anew at each preparation (roll-helpers/situational.js)
+    this.situationalEffects = []
+    // So are the effects on other actors' rolls (roll-helpers/indirect.js)
+    this.indirectEffects = []
+    // And the movement boxes of the sheet (situationalMovement)
+    this.movementSituational = []
+    this.prepareBaseData()
+    this.prepareEmbeddedDocuments() // first pass on items to add bonuses from the items to the characters
+    this.prepareDerivedData()
+    this.sortLists(this.system)
+    this.updateItems(this) // second pass on items to get characters data for final items calculations
+  }
+
+  prepareBaseData() {
+    let actor = this
+    actor.system.lists = SR5_EntityHelpers.sortTranslations(SR5)
+    actor.system.isGM = game.user.isGM
+
+    switch (actor.type) {
+      case "actorPc":
+      case "actorGrunt":
+        SR5_CharacterUtility.resetCalculatedValues(actor)
+        SR5_CharacterUtility.applyRacialModifers(actor)
+        break
+      case "actorDrone":
+        SR5_CharacterUtility.resetCalculatedValues(actor)
+        SR5_CharacterUtility.applyVehicleReplacements(actor)
+        break
+      case "actorDevice":
+      case "actorSprite":
+      case "actorAgent":
+        SR5_CharacterUtility.resetCalculatedValues(actor)
+        break
+      case "actorSpirit":
+        if (!Object.hasOwn(actor.system, "type")) actor.system.type = actor.flags.spiritType
+        if (actor.system.force < 1) actor.system.force = parseInt(actor.flags.spiritForce)
+        SR5_CharacterUtility.resetCalculatedValues(actor)
+        // A spirit is always a magical being. The V12 template.json stored magicType "spirit"; the shared
+        // magic schema of V13 starts empty, which skipped every astral value (astral damage 0, no drain resistance)
+        SR5_CharacterUtility.setSpiritMagicType(actor)
+        break
+      default:
+        SR5_SystemHelpers.srLog(1, `Unknown '${actor.type}' actor type in prepareBaseData()`)
+    }
+
+    return actor
+  }
+
+  prepareDerivedData() {
+    let actor = this
+    if (actor.flags.sr5 === undefined) actor.flags.sr5 = {
+    }
+    switch (actor.type) {
+      case "actorDrone":
+        actor.system.hasRiggerInterface = hasRiggerInterface(actor.system)
+        //Jumping in takes a control rig, or the echo that stands for one (SR5 p. 243, 261, 267; Data Trails p. 63)
+        actor.system.canJumpIn = mayJumpIn(actor.system, actor.system.hasRiggerInterface)
+        if (actor.system.vehicleOwner.items.length) SR5_CharacterUtility.applyAutosoftEffect(actor)
+        SR5_CharacterUtility.updateAttributes(actor)
+        SR5_CharacterUtility.capVehicleArmor(actor)
+        SR5_CharacterUtility.updateResistances(actor)
+        SR5_CharacterUtility.updateConditionMonitors(actor)
+        //A swarm's ratings, once the monitors tell a wrecked drone, before the tests (Rigger 5.0 p. 35)
+        applySwarm(actor, (item, target) => SR5_CharacterUtility.applyCustomEffects(item, target))
+        SR5_CharacterUtility.updatePenalties(actor)
+        SR5_CharacterUtility.updateDefenses(actor)
+        SR5_CharacterUtility.updateRecoil(actor)      
+        SR5_CharacterUtility.updateInitiativePhysical(actor)
+        SR5_CharacterUtility.generateVehicleSkills(actor)
+        SR5_CharacterUtility.generateVehicleTest(actor)        
+        SR5_CharacterUtility.generateRammingTest(actor)
+        SR5_CharacterUtility.updateVehicleSlots(actor)
+        SR5_CharacterUtility.handleSensorVision(actor)
+        SR5_CharacterUtility.updateActions(actor)
+        break
+      case "actorSpirit":
+        SR5_CharacterUtility.updateBackgroundCount(actor)
+        SR5_CharacterUtility.updateSpiritValues(actor)
+        SR5_CharacterUtility.updateSpiritAttributes(actor)
+        SR5_CharacterUtility.updateAttributes(actor)
+        SR5_CharacterUtility.updateEssence(actor)
+        SR5_CharacterUtility.updateSpecialAttributes(actor)
+        SR5_CharacterUtility.updateConditionMonitors(actor)
+        SR5_CharacterUtility.updateSpecialProperties(actor)
+        SR5_CharacterUtility.updatePenalties(actor)
+        SR5_CharacterUtility.updateInitiativePhysical(actor)
+        SR5_CharacterUtility.updateInitiativeAstral(actor)
+        SR5_CharacterUtility.updateLimits(actor)
+        SR5_CharacterUtility.generateSpiritSkills(actor)
+        SR5_CharacterUtility.updateSkills(actor)
+        SR5_CharacterUtility.updateArmor(actor)
+        SR5_CharacterUtility.updateResistances(actor)
+        SR5_CharacterUtility.updateDefenses(actor)
+        SR5_CharacterUtility.updateDerivedAttributes(actor)
+        SR5_CharacterUtility.updateMovements(actor)
+        SR5_CharacterUtility.updateAstralValues(actor)
+        SR5_CharacterUtility.updateEncumbrance(actor)
+        SR5_CharacterUtility.handleVision(actor)
+        SR5_CharacterUtility.updateActions(actor)
+        break
+      case "actorSprite":
+        SR5_CharacterUtility.updateSpriteValues(actor)
+        SR5_CharacterUtility.updateAttributes(actor)
+        SR5_CharacterUtility.updateSpecialAttributes(actor)
+        SR5_CharacterUtility.updateLimits(actor)
+        SR5_CharacterUtility.generateSpriteSkills(actor)
+        SR5_CharacterUtility.updateSkills(actor)
+        SR5_CharacterUtility.updateConditionMonitors(actor)
+        SR5_CharacterUtility.updateActions(actor)
+        break
+      case "actorDevice":
+        SR5_CharacterUtility.updateConditionMonitors(actor)
+        SR5_CharacterUtility.handleSensorVision(actor)
+        SR5_CharacterUtility.updateActions(actor)
+        SR5_CharacterUtility.updateMatrixEffect(actor)
+        break
+      case "actorAgent":
+        SR5_CharacterUtility.applyProgramToAgent(actor)
+        SR5_CharacterUtility.updateActions(actor)
+        break
+      case "actorPc":
+      case "actorGrunt":
+        SR5_CharacterUtility.updateAttributes(actor)
+        SR5_CharacterUtility.updateEssence(actor)
+        SR5_CharacterUtility.updateSpecialAttributes(actor)
+        SR5_CharacterUtility.updateBackgroundCount(actor)
+        SR5_CharacterUtility.updateGreyMana(actor)
+        SR5_CharacterUtility.updateConditionMonitors(actor)
+        SR5_CharacterUtility.updateSpecialProperties(actor)
+        SR5_CharacterUtility.updatePenalties(actor)
+        SR5_CharacterUtility.updateLimits(actor)
+        SR5_CharacterUtility.updateInitiativePhysical(actor)
+        SR5_CharacterUtility.updateInitiativeAstral(actor)
+        if (SR5_CharacterUtility.isDepthActive(actor)) SR5_CharacterUtility.updateInitiativeMatrix(actor)
+        SR5_CharacterUtility.updateSkills(actor)
+        SR5_CharacterUtility.updateArmor(actor)
+        SR5_CharacterUtility.updateResistances(actor)
+        SR5_CharacterUtility.updateDefenses(actor)
+        SR5_CharacterUtility.updateDerivedAttributes(actor)
+        SR5_CharacterUtility.updateEncumbrance(actor)
+        SR5_CharacterUtility.updateRecoil(actor)
+        SR5_CharacterUtility.updateMovements(actor)
+        SR5_CharacterUtility.updateAstralValues(actor)
+        SR5_CharacterUtility.updatePowerPoints(actor)
+        SR5_CharacterUtility.updateCounterSpellPool(actor)
+        SR5_CharacterUtility.handleVision(actor)
+        if (actor.type === "actorPc") {
+          SR5_CharacterUtility.updateKarmas(actor)
+          SR5_CharacterUtility.updateNuyens(actor)
+          SR5_CharacterUtility.updateStreetCred(actor)
+          SR5_CharacterUtility.updateNotoriety(actor)
+          SR5_CharacterUtility.updatePublicAwareness(actor)
+        }
+        SR5_CharacterUtility.updateActions(actor)
+        break
+      default:
+        SR5_SystemHelpers.srLog(1, `Unknown '${actor.type}' actor type in prepareDerivedData()`)
+    }
+  }
+
+  prepareEmbeddedDocuments() {
+    const actor = this
+    const lists = SR5
+
+    // Iterate through items, allocating to containers
+    const mentorSpirits = []
+    for (let i of actor.items) {
+      let iData = i.system
+      SR5_SystemHelpers.srLog(3, `Parsing '${i.type}' item named '${i.name}'`, i)
+
+      // Gear left in a storage is out of play: an armour at the stash protects
+      // nobody, a deck in the garage answers no call on the Matrix. Its own
+      // values are still computed so the storage can show it, but it is held
+      // inactive here rather than on the item, so taking it out gives it back
+      // exactly as it was.
+      // A storage put down on the map has nobody to give a bonus to: what it
+      // carries computes its own values and nothing else. It is not switched
+      // off, because the storage hands its items over with their prepared data.
+      if (actor.type === "actorStorage") {
+        i.prepareData()
+        continue
+      }
+      if (isStoredAway(i, actor)) {
+        i.prepareData()
+        iData.isActive = false
+        if (iData.wirelessTurnedOn !== undefined) iData.wirelessTurnedOn = false
+        continue
+      }
+
+      switch (i.type) {
+        case "itemGear":
+          i.prepareData()
+          if (!iData.isSlavedToPan) actor.system.matrix.potentialPanObject.gears[i.uuid] = i.name
+          if (iData.isActive && iData.wirelessTurnedOn) actor.system.matrix.connectedObject.gears[i.uuid] = i.name
+          //A vision enhancement mounted in a weapon accessory only counts for the shots of that weapon (arbitrage de
+          //DjamZ, 06/10, as the weapon flashlight): never on the character (SR5_UtilityItem.getWeaponVisionEnhancements)
+          if (iData.isActive && Object.keys(iData.customEffects).length && !SR5_UtilityItem.weaponAccessoryHost(i.id, actor)) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        //A learned technique applies on its own, unless it is an action chosen for the roll (martial-arts-technique.js)
+        case "itemMartialArt":
+          if (martialArtApplies(iData) && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemPower":
+        case "itemMetamagic":
+        case "itemEcho":
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          //Sacrifice and Cannibalize (Street Grimoire p. 89-90) are known once learned, recognised by their name: the
+          //items copied into a world carry no effect. Nothing happens without a choice of their owner (blood-magic.js)
+          if (i.type === "itemMetamagic" && bloodMetamagicKey(i) && actor.system.magic?.metamagics) actor.system.magic.metamagics[bloodMetamagicKey(i)] = true
+          break
+					
+        case "itemPreparation":
+        case "itemQuality":
+          i.prepareData()
+          if (Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        // SR5 p. 76, 323-324: only the first mentor counts, the sheet warns about the others
+        case "itemMentorSpirit":
+          i.prepareData()
+          // Applied once every item is parsed: the Essence lost to augmentations decides whether it lies dormant
+          mentorSpirits.push(i)
+          break
+
+        case "itemSpell":
+          i.prepareData()
+          if (!iData.freeSustain && !iData.preparation) actor.system.magic.spellList[i.id] = i.name
+          SR5_UtilityItem._handleSpell(i, actor)
+          if (iData.isActive && Object.keys(iData.customEffects)) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemArmor": {
+          i.prepareData()
+          let modifierType
+          SR5_UtilityItem._handleItemCapacity(iData)
+          SR5_UtilityItem._handleItemPrice(iData)
+          SR5_UtilityItem._handleItemAvailability(iData)
+          SR5_UtilityItem._handleItemConcealment(iData)
+          SR5_UtilityItem._handleArmorValue(iData)
+          if (iData.isActive) {
+            if (iData.isCumulative) modifierType = "armorAccessory"
+            else modifierType = "armor"
+            //The fall resistance takes the whole armor (SR5 p. 174) from itemsProperties.armor in updateResistances
+            if (!iData.isAccessory) SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.armor, `${i.name}`, modifierType, iData.armorValue.value)
+            if (Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          }
+          if (iData.isActive && iData.wirelessTurnedOn) actor.system.matrix.connectedObject.armors[i.uuid] = i.name
+          if (!iData.isSlavedToPan) actor.system.matrix.potentialPanObject.armors[i.uuid] = i.name
+          break
+        }
+
+        case "itemAugmentation":
+          i.prepareData()
+          SR5_UtilityItem._handleAugmentation(iData, actor, i)
+          // An implant improved or lowered in place keeps the highest Essence it took (Chrome Flesh p. 74, SR5 p. 53)
+          // The cost before that peak is kept: the end of creation starts the peak from it (peaksAtCreationEnd)
+          iData.essenceCost.withoutPeak = iData.essenceCost.value
+          iData.essenceCost.value = essenceTaken(i, iData.essenceCost.value)
+          if (!iData.isAccessory) SR5_EntityHelpers.updateModifier(actor.system.essence, `${i.name}`, `itemAugmentation`, -iData.essenceCost.value)
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          if (iData.isActive && iData.wirelessTurnedOn) actor.system.matrix.connectedObject.augmentations[i.uuid] = i.name
+          if (!iData.isSlavedToPan) actor.system.matrix.potentialPanObject.augmentations[i.uuid] = i.name
+          break
+
+        case "itemAdeptPower":
+          i.prepareData()
+          SR5_EntityHelpers.updateModifier(actor.system.magic.powerPoints, i.name, i.type, iData.powerPointsCost.value)
+          //Better Than Bad p. 141: under Blight the adept powers are off, their effects left out (decision H1 of DjamZ)
+          if (iData.isActive && Object.keys(iData.customEffects).length && !SR5_Toxins.isCutFromManasphere(actor)) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemSpirit":
+          if (iData.isBounded) actor.system.magic.boundedSpirit.current ++
+          if (iData.isActive) SR5_CharacterUtility._actorModifPossession(i, actor)
+          //Forbidden Arcana p. 50: each necro spirit under control lowers the mage's Magic by 1
+          if (isNecroSpirit(iData.type) && actor.system.specialAttributes?.magic) SR5_EntityHelpers.updateModifier(actor.system.specialAttributes.magic.augmented, i.name, "itemSpirit", -1)
+          break
+
+        case "itemDevice":
+          i.prepareData()
+          if (actor.type === "actorPc" || actor.type === "actorGrunt"){
+            iData.conditionMonitors.matrix.value = Math.ceil(iData.deviceRating / 2) + 8
+            if (iData.isActive) {
+              SR5_CharacterUtility.generateMatrixAttributes(i, actor)
+              if (Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+            }
+          }
+          break
+
+        case "itemProgram":
+          i.prepareData()
+          if (actor.type === "actorDrone" && actor.system.controlMode !== "autopilot") iData.isActive = false
+          if (iData.type === "common" || iData.type === "hacking" || iData.type === "autosoft" || iData.type === "agent") {
+            if (iData.isActive) {
+              SR5_EntityHelpers.updateModifier(actor.system.matrix.programsCurrentActive, `${i.name}`, `${game.i18n.localize(lists.itemTypes[i.type])}`, 1)
+              SR5_EntityHelpers.updateValue(actor.system.matrix.programsCurrentActive, 0)
+              SR5_CharacterUtility.switchProgramFlagByName(i, actor)
+            }
+          }
+          if (iData.isActive && Object.keys(iData.customEffects).length) {
+            if (actor.type === "actorDrone") SR5_CharacterUtility.applyCustomEffects(i, actor)
+            if (iData.type !== "autosoft" && (actor.type === "actorPc" || actor.type === "actorGrunt"))
+              SR5_CharacterUtility.applyCustomEffects(i, actor)
+          }
+          break
+
+        case "itemComplexForm":
+          i.prepareData()
+          if (!iData.freeSustain) actor.system.matrix.complexFormList[i.id] = i.name
+          SR5_UtilityItem._handleComplexForm(i, this)
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemKarma":
+        case "itemNuyen": {
+          i.prepareData()
+          let target
+          if (iData.amount && iData.type) {
+            let resourceLabel = `${game.i18n.localize(lists.transactionsTypes[iData.type])} (${i.name})`
+            switch (i.type) {
+              case "itemKarma":
+                target = actor.system.karma
+                break
+              case "itemNuyen":
+                target = actor.system.nuyen
+                break
+            }
+            if (iData.amount < 0) iData.amount = -iData.amount
+            SR5_EntityHelpers.updateModifier(target, resourceLabel, `${i.type}_${i.id}_${iData.type}`, iData.amount)
+          }
+          break
+        }
+
+        case "itemReputation":
+          i.prepareData()
+          if (iData.amount && iData.type && iData.reputationType) {
+            let reputationTarget
+            switch (iData.reputationType) {
+              case "streetCred":
+                reputationTarget = actor.system.streetCred
+                break
+              case "notoriety":
+                reputationTarget = actor.system.notoriety
+                break
+              case "publicAwareness":
+                reputationTarget = actor.system.publicAwareness
+                break
+            }
+            if (reputationTarget) {
+              let reputationLabel = `${game.i18n.localize(lists.transactionsTypes[iData.type])} (${i.name})`
+              let reputationAmount = Math.abs(iData.amount)
+              if (iData.type === "loss") reputationAmount = -reputationAmount
+              SR5_EntityHelpers.updateModifier(reputationTarget, reputationLabel, `${i.type}_${i.id}_${iData.type}`, reputationAmount)
+            }
+          }
+          break
+
+        case "itemWeapon": {
+          let modes = (iData.weaponModes = [])
+          for (let mode of Object.entries(iData.firingMode)) {
+            if (mode[1].value) modes.push(game.i18n.localize(SR5.weaponModesAbbreviated[mode[0]]))
+          }
+          SR5_UtilityItem._handleVisionAccessory(iData, actor)					
+          SR5_UtilityItem._handleItemConcealment(iData)
+          if(actor.system.matrix){
+            if (iData.isActive && iData.wirelessTurnedOn) actor.system.matrix.connectedObject.weapons[i.uuid] = i.name
+            if (!iData.isSlavedToPan) actor.system.matrix.potentialPanObject.weapons[i.uuid] = i.name
+          }
+          break
+        }
+
+        case "itemFocus":
+          //Not prepared again here: its price and availability would add up at each preparation
+          SR5_UtilityItem._resetItemModifiers(i)
+          SR5_UtilityItem._handleFocus(iData)
+          //Better Than Bad p. 141: under Blight a focus switched on anyway (from the console) gives nothing (Victoire's review)
+          if (iData.isActive && !SR5_Toxins.isCutFromManasphere(actor)) SR5_CharacterUtility.applyFocusBonus(i, actor)
+          switch (iData.type) {
+            case "alchemical":
+            case "banishing":
+            case "binding":
+            case "masking":
+            case "centering":
+            case "counterspelling":
+            case "disenchanting":
+            case "spellShaping":
+            case "summoning":
+            case "spellcasting":
+            case "ritualSpellcasting":
+            case "power":
+            case "flexibleSignature":
+            case "qi":
+              if (iData.linkedAdeptPower) {
+                let linkedPower = this.items.find(p => p.id === iData.linkedAdeptPower)
+                if (linkedPower) {
+                  iData.linkedAdeptPowerName = linkedPower.name
+                  if (iData.isActive) {
+                    let discount = linkedPower.system.powerPointsCost.isRatingBased ?
+                      linkedPower.system.powerPointsCost.base * Math.min(iData.itemRating, linkedPower.system.itemRating) :
+                      linkedPower.system.powerPointsCost.base
+                    SR5_EntityHelpers.updateModifier(actor.system.magic.powerPoints, `${i.name}`, "itemFocus", -discount)
+                  }
+                } else {
+                  iData.linkedAdeptPowerName = ""
+                }
+              }
+              break
+            case "weapon":
+              iData.weaponChoices = SR5_UtilityItem._generateWeaponFocusWeaponList(this)
+              if (iData.linkedWeapon){
+                let linkedWeapon = this.items.find(w => w.id === iData.linkedWeapon)
+                if (linkedWeapon) iData.linkedWeaponName = linkedWeapon.name
+                else iData.linkedWeaponName = ""
+              }
+              break
+            case "sustaining":
+              iData.spellChoices = SR5_UtilityItem._generateSustainFocusSpellList(iData, actor)
+              break
+            //Street Grimoire p. 90: no bonus, it stores Blood Magic Points (blood-magic.js)
+            case "athame":
+              break
+            default:
+              SR5_SystemHelpers.srLog(1,`Unknown focus type '${iData.type}' in 'prepareEmbeddedDocuments()'`)
+          }
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemRitual":
+          i.prepareData()
+          iData.spellChoices = SR5_UtilityItem._generateSpellList(actor)
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemDrug":
+          i.prepareData()
+          if ((iData.isActive || iData.wirelessTurnedOn) && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemEffect":
+          i.prepareData()
+          if (Object.keys(iData.customEffects).length && !SR5_EffectArea.isPreparedAreaEffectOffScene(i, actor)) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          if (iData.type === "signalJam") actor.system.matrix.isJamming = true
+          break
+
+        case "itemTradition":
+          i.prepareData()
+          SR5_CharacterUtility.updateTradition(actor, iData)
+          if (Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          break
+
+        case "itemSprite":
+          i.prepareData()
+          if (iData.isRegistered) actor.system.matrix.registeredSprite.current ++
+          break
+
+        case "itemVehicleMod":
+          i.prepareData()
+          // A mod carried by an imported character or grunt has no vehicle attributes to read: ignored there
+          if (actor.type !== "actorDrone") break
+          iData.weaponChoices = SR5_UtilityItem._generateWeaponMountWeaponList(iData, this)
+          if (iData.mountedWeapon){ 
+            let weapon = this.items.find(w => w.id === iData.mountedWeapon)
+            iData.mountedWeaponName = weapon.name
+          }
+          if (iData.isActive && Object.keys(iData.customEffects).length) SR5_CharacterUtility.applyCustomEffects(i, actor)
+          if (iData.secondaryPropulsion.isSecondaryPropulsion && iData.isActive) SR5_CharacterUtility.handleSecondaryAttributes(actor, iData)
+          SR5_CharacterUtility.updateModificationsSlots(actor, iData)
+          SR5_CharacterUtility.handleVehiclePriceMultiplier(actor, iData)
+          SR5_UtilityItem._handleItemPrice(iData)
+          SR5_UtilityItem._handleItemAvailability(iData)
+          break
+
+        case "itemVehicle":        
+          i.prepareData()
+          //An icon in the Matrix only with its wireless on, as other objects; slaved or not (SR5 p. 270)
+          //While deployed, the drone actor holds the switch (N91)
+          if (SR5_ActorHelper.vehicleWirelessOn(i, game.actors)) actor.system.matrix.connectedObject.vehicles[i.uuid] = i.name
+          if (!iData.isSlavedToPan) actor.system.matrix.potentialPanObject.vehicles[i.uuid] = i.name
+          SR5_UtilityItem._handleVehicleSlots(iData)
+          break
+
+        case "itemLifestyle":
+        case "itemAmmunition":
+        case "itemSin":     
+          i.prepareData()
+          break
+
+        case "itemLanguage":
+        case "itemKnowledge":
+        case "itemMark":
+        case "itemFile":
+        case "itemContact":
+        case "itemSpritePower":
+          break
+
+        default:
+          SR5_SystemHelpers.srLog(1, `Unknown '${i.type}' item type in prepareEmbeddedDocuments()`)
+      }
+    }
+    for (const mentor of mentorSpirits) SR5_CharacterUtility.applyMentorSpirit(mentor, actor)
+    //Diseases: read from the GM's ledger, never from the actor (system/diseases.js)
+    if (actor.type === "actorPc" || actor.type === "actorGrunt") applyDiseaseEffects(actor, SR5_EntityHelpers.updateModifier.bind(SR5_EntityHelpers), game.i18n.localize("SR5.Pathogen"))
+    SR5_CharacterUtility.keepStrongestFocus(actor)
+  }
+
+  sortLists(data) {
+    SR5_SystemHelpers.srLog(3, `Sorting specific lists by order of translated terms`)
+    if (data.skills) data.skills = SR5_EntityHelpers.sortByTranslatedTerm(data.skills, "skills")
+    if (data.skillGroups) data.skillGroups = SR5_EntityHelpers.sortByTranslatedTerm(data.skillGroups, "skillGroups")
+    if (data.matrix && data.matrix.actions) data.matrix.actions = SR5_EntityHelpers.sortByTranslatedTerm(data.matrix.actions, "matrixActions")
+  }
+
+  updateItems(actor) {
+    let actorData = actor.system
+    for (let i of actor.items) {
+      let iData = i.system
+      // Stored gear takes no part in what the character can do
+      if (isStoredAway(i, actor) || actor.type === "actorStorage") continue
+      switch (i.type){
+        case "itemDevice":
+          if (actor.type === "actorPc" || actor.type === "actorGrunt"){
+            if (iData.isActive === true){
+              SR5_CharacterUtility.generateMatrixAttributes(i, actor)
+              SR5_CharacterUtility.generateMatrixResistances(actor, i)
+              SR5_CharacterUtility.generateMatrixActions(actor)
+              SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+              SR5_CharacterUtility.updateInitiativeMatrix(actor)
+              // Drone data propagation is now handled by the updateActor hook
+              if (iData.type === "livingPersona" || iData.type === "headcase") SR5_CharacterUtility.generateResonanceMatrix(actor)
+              //A living persona is no device and takes no slave (SR5 p. 253), save with Fusion avec la matrice (KC p. 107)
+              iData.pan.max = iData.type === "livingPersona" ? personaPanMax(actor, actorData.matrix.deviceRating) : actorData.matrix.deviceRating * 3
+            }
+            //Fusion avec la matrice at 2 or 10 Karma: the persona may join another PAN as a slave (Kill Code p. 107)
+            if (iData.type === "livingPersona" && personaMayBeSlaved(actor, i)) actorData.matrix.potentialPanObject.gears[i.uuid] = i.name
+          } else if (actor.type === "actorDrone"){
+            //Its matrix is its base device's: a commlink carried aboard does not overwrite its marks (base-device.js)
+            if (iData.type !== "baseDevice" && hasBaseDevice(actor.items)) break
+            SR5_CharacterUtility.generateVehicleMatrix(actor, iData)
+            SR5_CharacterUtility.generateMatrixResistances(actor, i)
+            SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+          } else if (actor.type === "actorDevice"){
+            SR5_CharacterUtility.generateDeviceMatrix(actor, iData)
+            SR5_CharacterUtility.generateMatrixResistances(actor, i)
+            SR5_CharacterUtility.generateDeviceMatrixActions(actor)
+            SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+            if (actorData.matrix.deviceType === "ice") SR5_CharacterUtility.updateInitiativeMatrix(actor)
+          } else if (actor.type === "actorSprite"){
+            SR5_CharacterUtility.generateSpriteMatrix(actor, iData)
+            SR5_CharacterUtility.generateMatrixResistances(actor, i)
+            SR5_CharacterUtility.generateMatrixActions(actor)
+            SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+            SR5_CharacterUtility.updateInitiativeMatrix(actor)
+          } else if (actor.type === "actorAgent"){
+            SR5_CharacterUtility.generateAgentMatrix(actor, iData)
+            SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+            SR5_CharacterUtility.generateMatrixActions(actor)
+            SR5_CharacterUtility.generateMatrixResistances(actor, i)
+            SR5_CharacterUtility.updateConditionMonitors(actor)
+            SR5_CharacterUtility.updateInitiativeMatrix(actor)
+          }
+          break
+        case "itemComplexForm":
+          iData.threaderResonance = actorData.specialAttributes.resonance.augmented.value
+          break
+        case "itemArmor":
+        case "itemGear":
+        case "itemAugmentation":
+          if (Object.keys(iData.accessory).length) SR5_UtilityItem._updatePluggedAccessory(iData, actor)
+          break
+        case "itemSpell":
+          iData.casterMagic = actorData.specialAttributes.magic.augmented.value
+          SR5_UtilityItem._handleSpellRange(iData, iData.casterMagic)
+          break
+        case "itemPreparation":
+          i.prepareData()
+          // SR5 p. 307: an area like the spell's, without which its template was drawn with a radius of 0.
+          // SR5 p. 309: the preparation's Force stands for the Magic, and an area's radius is its Potency
+          SR5_UtilityItem._handleSpellRange(iData, parseInt(iData.force || 0), iData.potency || 0)
+          break
+        case "itemSpirit":
+          if (iData.isBounded){
+            for (let [key, value] of Object.entries(actorData.magic.elements)){
+              if (iData.type === value) iData.spellType = key
+            }
+          }
+          break
+        case "itemVehicleMod":
+          if (!iData.isWeaponMounted) SR5_UtilityItem._resetWeaponMounted(iData)  
+          SR5_UtilityItem._handleItemPrice(iData)
+          SR5_UtilityItem._handleItemAvailability(iData)
+          break
+        case "itemWeapon":
+        case "itemKnowledge":
+        case "itemLanguage":
+        case "itemPower":
+        case "itemSpritePower":
+        case "itemAdeptPower":
+        case "itemVehicle":
+        case "itemMartialArt":
+          i.prepareData()
+          break
+        case "itemProgram":
+          // Agent data propagation is now handled by the updateActor hook
+          break
+      }
+    }
+    // An AI outside any device still defends against matrix actions, and resists matrix damage, with its persona alone (Data Trails p. 157)
+    // It acts in the Matrix through Emulate alone (Data Trails p. 157 and 159): its actions are listed like a decker's
+    if (SR5_CharacterUtility.isDevicelessAI(actor)) {
+      SR5_CharacterUtility.generateMatrixActions(actor)
+      SR5_CharacterUtility.generateMatrixActionsDefenses(actor)
+      SR5_CharacterUtility.generateDevicelessAIMatrixResistance(actor)
+    }
+  }
+
+  //Roll a test
+  rollTest(rollType, rollKey, chatData){
+    SR5_PrepareRollTest.rollTest(this, rollType, rollKey, chatData)
+  }
+
+  //A GM's request is rolled as sent (a resistance to an area spell). A player's carried a whole card, rolled and
+  //posted by the receiver, who then believed it as his own: only the crush of a hold is asked by a player, and its
+  //card is built again here (security pass, Olympe). Only the user it was sent to rolls, for an actor he owns
+  static async _socketRollTest(message, senderId){
+    const data = message?.data ?? {
+    }
+    const sender = game.users?.get(senderId)
+    const actor = SR5_EntityHelpers.getRealActorFromID(data.actorId)
+    if (!actor || !sender || message.userId !== game.user.id || !actor.isOwner) return
+    let chatData = data.chatData
+    //The crush of a hold travels without its card, whoever sends it: built again here, for a GM too (Harriet's review)
+    if (data.use === "grappleCrush") {
+      const {
+        SR5_GrappleHelpers
+      } = await import("../../rolls/roll-helpers/grapple.js")
+      chatData = data.rollType === "resistanceCard" ? SR5_GrappleHelpers.crushRollData(data.holderId, data.actorId, sender) : null
+    } else if (!sender.isGM) chatData = null
+    //What the GM worked out for this player (a drone's biofeedback, dumpshock): vouched for as on his own browser,
+    //where the card behind it may be the drone's, which the rigger does not stand for (attack-card.js)
+    else vouch(chatData)
+    if (!chatData) return SR5_SystemHelpers.srLog(1, `actorRoll refused from ${senderId}`, data)
+    SR5_PrepareRollTest.rollTest(actor, data.rollType, data.rollKey, chatData)
+  }
+
+  //Apply Damage to actor
+  async takeDamage(options){
+    let actorId = (this.isToken ? this.token.id : this.id)
+    //Aegis (Kill Code p. 112): matrix damage on its owner goes to the active GM, who alone spends the shield
+    const aegisToGM = !game.user.isGM && options?.damage?.matrix?.value > 0 && hasAegis(this)
+    if (!aegisToGM && (game.user.isGM || this.testUserPermission(game.user, 3))) await SR5_ActorHelper.takeDamage(actorId, options)
+    else {
+      SR5_SocketHandler.emitForGM("takeDamage", {
+        actorId: actorId,
+        options: options,
+      })
+    }
+  }
+	
+
+  //Apply splitted damage to actor
+  async takeSplitDamage(messageData) {
+    let originalDamage = messageData.damage.value
+    messageData.damage.type = "stun"
+    messageData.damage.value = messageData.damage.splittedOne
+    await this.takeDamage(messageData)
+    if (messageData.damage.splittedTwo){
+      messageData.damage.type = "physical"
+      messageData.damage.value = messageData.damage.splittedTwo
+      await this.takeDamage(messageData)
+    } else {
+      return ui.notifications.info(`${game.i18n.format("SR5.INFO_ArmorGreaterThanDVSoNoDamage", {
+        armor: this.itemsProperties.armor.value + (messageData.combat.situationalArmor || 0) + messageData.combat.armorPenetration, damage:originalDamage
+      })}`) 
+    }
+  }
+
+
+  //Reboot deck = reset Overwatch score and delete any marks on or from the actor
+  //A character in VR when the device reboots takes dumpshock (SR5 p. 244), whatever made it reboot
+  async rebootDeck(_device = null, {
+    hostExitReason = "reboot", dumpshock = true, notify = true
+  } = {
+  }) {
+    //A character a Flicker disconnected has had its dumpshock already: reconnecting reboots without a second one
+    //(Kill Code p. 74, flicker-disconnection.js)
+    if (dumpshock && !isFlickerDisconnected(this)) SR5_ActorHelper.dumpshockIfInVR(this)
+    //SR5 p. 236: whoever had spotted its icons loses sight of them, and it starts again without what it had spotted
+    //(couronne du PAN, lot 5)
+    await requestForgetIntel({
+      holder: this.uuid, clearOwn: true
+    })
+    let actorId = (this.isToken ? this.token.id : this.id)
+    let dataToUpdate = {
+    }
+    let updatedItems = foundry.utils.duplicate(this.items)
+
+    //Reset le SS à 0
+    //The deck keeps its configuration: attributes are assigned at its first start and only change by reconfiguring (SR5 p. 229)
+    let actorData = foundry.utils.duplicate(this.system)
+    actorData.matrix.overwatchScore = 0
+    //A reboot leaves the host the persona was in, back to its grid (S3, SR5 p. 240, 244)
+    const previousHost = actorData.matrix.currentHost || null
+    exitHostInPlace(actorData.matrix)
+    //A reboot cuts the connection: a character in VR is thrown out of it (SR5 p. 231, 244) and, back online, is in AR;
+    //going back into VR is the Simple action Switch Interface Mode (p. 239). No second dumpshock at the next reboot
+    //(Delphin#2947, 23/10). An AI lives in the Matrix and keeps its mode
+    if (["coldsim", "hotsim"].includes(actorData.matrix.userMode) && !SR5_CharacterUtility.isDepthActive(this)) actorData.matrix.userMode = "ar"
+    //The marks placed on an AI's persona go too, with their trace on the decks of those who placed them (SR5 p. 244)
+    if (SR5_CharacterUtility.isDepthActive(this)) {
+      await SR5_MarkHelpers.clearPersonaMarks(this)
+      actorData.matrix.marks = []
+    }
+
+    //Delete marks on others actors
+    //markedItems is prepared from the active device: the copy above holds the source, where it is always empty.
+    //The traces of every owned device are cleared below, so the marks they point to go too, or they would be left orphaned
+    let markedItems = []
+    for (let m of [...(this.system.matrix?.markedItems ?? []), ...Array.from(this.items).flatMap(i => i.system.markedItems ?? [])]){
+      if (!markedItems.some(e => e.uuid === m.uuid)) markedItems.push(foundry.utils.duplicate(m))
+    }
+    if (markedItems.length) {
+      let markData = {
+        matrix: {
+          markedItems: markedItems
+        }
+      }
+      if (!game.user?.isGM) {
+        await SR5_SocketHandler.emitForGM("deleteMarksOnActor", {
+          actorData: markData,
+          actorId: actorId,
+        })
+      } else {
+        await SR5_ActorHelper.deleteMarksOnActor(markData, actorId)
+      }
+    }
+
+    //Delete marks from owned items
+    for (let i of updatedItems){
+      if (i.system.marks && i.system.marks?.length) {
+        for (let m of i.system.marks){
+          if (!game.user?.isGM) {
+            await SR5_SocketHandler.emitForGM("deleteMarkInfo", {
+              actorId: m.ownerId,
+              item: i._id,
+            })
+          } else {
+            await SR5_ActorHelper.deleteMarkInfo(m.ownerId, i._id)
+          }
+        }
+        i.system.marks = []
+      }
+      //Reset Marked items
+      if (i.system.markedItems?.length) i.system.markedItems = []
+    }
+
+    //No action is spent here: an IC that forces the reboot (SR5 p. 250) takes none of the character's actions.
+    //The sheet button spends the complex action of a reboot the character chooses
+
+    dataToUpdate = foundry.utils.mergeObject(dataToUpdate, {
+      "system": actorData,
+      "items": updatedItems,
+    })
+    //A lowering of the Overwatch Score a player writes herself (overwatch-guard.js)
+    await this.update(dataToUpdate, {
+      sr5OverwatchLower: "reboot"
+    })
+    if (previousHost) Hooks.callAll(HOST_CHANGED_HOOK, this, null, previousHost, hostExitReason)
+
+    //Delete effects from Deck. A reboot cuts the connection (SR5 p. 231, 250; Kill Code p. 74): every link lock goes
+    //with it, permanent as its effect is, and so does its status
+    const ended = this.items.filter(i => i.type === "itemEffect" && (i.system.durationType === "reboot" || isLinkLockEffect(i) ||
+      i.system.type === FLICKER_DISCONNECTION)).map(i => i.id)
+    if (ended.length) await this.deleteEmbeddedDocuments("Item", ended)
+    const lockStatuses = linkLockStatusIds(this)
+    if (lockStatuses.length) await this.deleteEmbeddedDocuments("ActiveEffect", lockStatuses)
+
+    //deviceName is prepared from the active device, the copy only holds the source; empty when that device was just
+    //turned off: the persona's name then (Anatolie). A brick says "disconnected" instead (ejectBricked)
+    if (notify) ui.notifications.info(`${this.system.matrix.deviceName || SR5_EntityHelpers.displayName(this)} ${game.i18n.localize("SR5.Rebooted")}.`)
+  }
+
+  //Reset Cumulative Recoil (SR5 p. 178)
+  async resetRecoil(){
+    if (!(this.getFlag("sr5", "cumulativeRecoil") > 0)) return
+    await this.setFlag("sr5", "cumulativeRecoil", 0)
+    ui.notifications.info(`${this.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.CumulativeRecoilSetTo0")}.`)
+  }
+
+  //Reset Addiction
+  async resetAddiction(){
+    let dataToUpdate = {
+    }
+
+    //Reset le SS à 0
+    let actorData = foundry.utils.duplicate(this.system)
+    actorData.addictions = []
+
+    dataToUpdate = foundry.utils.mergeObject(dataToUpdate, {
+      "system": actorData
+    })
+    await this.update(dataToUpdate)
+
+    ui.notifications.info(`${this.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.AddictionsSettoNone")}.`)
+  }
+
+  //A failed addiction test (SR5 p. 416): the addiction goes up one level. At burnout the lost point of Body
+  //or Willpower is told to the gamemaster, not applied
+  async worsenAddiction(messageData){
+    let index = messageData?.various?.addictionIndex
+    let addictions = foundry.utils.duplicate(this.system.addictions || [])
+    let addiction = addictions[index]
+    if (!addiction || addiction.name !== messageData.various.addictionName) return ui.notifications.warn(game.i18n.localize("SR5.WARN_AddictionNotFound"))
+    let {
+      level, attributeLoss
+    } = worsenAddiction(addiction.level)
+    let levelLabel = game.i18n.localize(SR5.addictionLevels[level])
+    if (attributeLoss) {
+      let attributes = this.system.attributes
+      let attribute = burnoutAttribute(attributes.body.augmented.value, attributes.willpower.augmented.value, addiction.addiction?.type)
+      let attributeLabel = attribute === "either" ? game.i18n.localize("SR5.AddictionBurnoutEither") : game.i18n.localize(SR5.allAttributes[attribute])
+      return ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({
+          actor: this
+        }),
+        whisper: ChatMessage.getWhisperRecipients("GM"),
+        content: game.i18n.format("SR5.AddictionBurnoutLoss", {
+          name: this.name, drug: addiction.name, attribute: attributeLabel
+        }),
+      })
+    }
+    addiction.level = level
+    await this.update({
+      "system.addictions": addictions
+    })
+    ui.notifications.info(`${this.name}${game.i18n.localize("SR5.Colons")} ${addiction.name}, ${levelLabel}`)
+  }
+
+  //Reset Cumulative Defense
+  resetCumulativeDefense(){
+    this.setFlag("sr5", "cumulativeDefense", 0)
+    ui.notifications.info(`${this.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.localize("SR5.CumulativeDefenseSetTo0")}.`)
+  }
+
+  //Apply an external effect to actor (such spell, complex form). Data is provided by chatMessage
+  //`reviewed`: a definition review the GM's caller already showed (SR5_ActorHelper.applyExternalEffect)
+  async applyExternalEffect(data, effectType, reviewed = null){
+    let actorId = (this.isToken ? this.token.id : this.id)
+    //Awaited: a template's spell effect is checked again on the next move, and must find the effect created
+    //false when it was refused: the card keeps its button
+    return SR5_ActorHelper.applyExternalEffect(actorId, data, effectType, reviewed)
+  }
+
+  //Apply specific toxin effect
+  async applyToxinEffect(data){
+    let actorId = (this.isToken ? this.token.id : this.id)
+    SR5_ActorHelper.applyToxinEffect(actorId, data)
+  } 
+
+  //Apply specific called shots effect
+  async applyCalledShotsEffect(data){
+    let actorId = (this.isToken ? this.token.id : this.id)
+    SR5_ActorHelper.applyCalledShotsEffect(actorId, data)
+  }
+
+}

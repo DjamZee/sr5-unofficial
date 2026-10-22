@@ -1,0 +1,79 @@
+{{#if various.bbUnderFire}}
+<li class="grid SR-TopSeparator">
+    <div class="col-3">{{localize 'SR5.BB_Mode'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModBBMode" data-modifier="bbMode">
+            {{#if (eq test.typeSub "firstAid")}}<option value="treatment">{{localize 'SR5.BB_ModeTreatment'}}</option>
+            <option value="stabilization">{{localize 'SR5.BB_ModeStabilization'}}</option>{{/if}}
+            {{#if (eq test.typeSub "medecine")}}<option value="none">{{localize 'SR5.ChooseOne'}}</option>{{/if}}
+            <option value="diagnosis">{{localize 'SR5.BB_ModeDiagnosis'}}</option>
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModBBMode" value="" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+{{/if}}
+<li class="grid SR-TopSeparator">
+    <div class="col-3">{{localize 'SR5.HealingConditions'}}{{localize 'SR5.Colons'}}</div> 
+    <div class="col-8 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModHealingCondition" data-modifier="healingCondition">
+            <option value="none">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.healingConditions selected=healingCondition localize=true sort=false}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModHealingCondition" value="" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.HealingSupplies'}}{{localize 'SR5.Colons'}}</div> 
+    <div class="col-6 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModHealingSupplies" data-modifier="healingSupplies">
+            <option value="none">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.healingSupplies selected=healingSupplies localize=true sort=false}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModHealingSupplies" value="" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+{{#if various.bbImprovised}}
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.BB_ImprovisedHits'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextCenter">
+        <input type="number" name="bbImprovisedHits" value="0" min="0" max="3" data-dtype="Number" data-tooltip="{{localize 'SR5.BB_ImprovisedHits_D'}}" />
+    </div>
+</li>
+{{/if}}
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.PatientAwakenedOrEmerged'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight"><input type="checkbox" class="SR-ModCheckbox SR-ModCheckboxFilled" data-target="dicePoolModPatientAwakenedOrEmerged" data-modifier="patientAwakenedOrEmerged"></div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModPatientAwakenedOrEmerged" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+<li class="grid">
+    <div class="col-10">{{localize 'SR5.UncooperativePatient'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1 SR-TextRight"><input type="checkbox" class="SR-ModCheckbox" data-target="dicePoolModPatientCooperation" data-modifier="patientCooperation"></div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModPatientCooperation" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>
+<li class="grid">
+    <div class="col-9">{{localize 'SR5.PatientEssence'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-2 SR-TextRight">
+        <div class="grid">
+            <span class="col-auto">
+                <a class="SR-ModControl" data-target="patientEssence" data-type="minus" data-modifier="patientEssence"><em class="fas fa-minus-circle"></em></a>
+                <a class="SR-ModControl" data-target="patientEssence" data-type="plus" data-modifier="patientEssence"><em class="fas fa-plus-circle"></em></a>
+            </span>
+            <span class="col-auto">
+                <input class="SR-ModInput SR-ModInputFilled" data-modifier="patientEssence" type="number" style="text-align:right;" name="patientEssence" value="{{targetEssence}}" placeholder="0" data-dtype="Number" />
+            </span>
+        </div>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModPatientEssence" value="0" placeholder="0" data-dtype="Number" />
+    </div>
+</li>

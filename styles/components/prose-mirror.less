@@ -1,0 +1,268 @@
+@import "../commons/layout-mixin.less";
+
+/* === ProseMirror editor (V13 <prose-mirror> custom element) === */
+
+/* Make blocks containing prose-mirror size to content instead of stretching */
+.sr-block-span:has(prose-mirror) {
+  align-self: start !important;
+}
+.SR-Editor:has(prose-mirror) {
+  min-height: 0 !important;
+}
+.SRBlockSheet:has(prose-mirror) {
+  min-height: 0 !important;
+}
+
+/* Override Foundry's .editor-content { height: 100% } and .editor { height: 100% }
+   This file is imported inside body[class^="sr-theme-"] so selectors already have theme specificity */
+.app prose-mirror {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  > *, .editor-content, .editor-container {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  &.inactive .editor-content {
+    position: relative !important;
+    inset: unset !important;
+    overflow: visible !important;
+  }
+
+  &:not(.inactive) .editor-content,
+  &:not(.inactive) .editor-container {
+    position: relative !important;
+    inset: unset !important;
+  }
+
+  &:not(.inactive) .editor-container {
+    min-height: 120px !important;
+  }
+
+  .editor-content.ProseMirror {
+    color: #222 !important;
+    background: #fff !important;
+    min-height: 120px !important;
+
+    p, span, li, h1, h2, h3, h4, h5, h6, a, strong, em, code {
+      color: #222 !important;
+    }
+  }
+}
+
+prose-mirror {
+  position: relative;
+  overflow: visible;
+
+  /* Toggle button (pen icon) — visible when inactive, hidden when active */
+  button.icon.toggle {
+    display: none;
+    position: absolute;
+    top: -21px;
+    right: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    font-size: inherit;
+    color: var(--sr-text-color-light);
+    z-index: 1;
+
+    &:hover {
+      color: var(--sr-ui-border-color-active);
+    }
+  }
+
+  /* Content area */
+  .editor-content {
+    padding: 4px 6px;
+    font-family: var(--sr-font-body);
+    font-size: var(--sr-font-size-normal);
+    color: var(--sr-text-color-dark);
+
+    &:empty::before {
+      content: "\00a0";
+    }
+
+    p {
+      margin-top: 0.25em;
+      margin-bottom: 0.25em;
+    }
+
+    ul {
+      list-style-type: disc;
+      margin: 0;
+      padding: 0 0 0 1.5em;
+    }
+  }
+
+  /* Inactive: shrink to content, show pencil, hide toolbar */
+  &.inactive {
+    button.icon.toggle {
+      display: block !important;
+    }
+
+    .editor-content {
+      overflow: visible !important;
+      min-height: 0 !important;
+    }
+
+    menu.editor-menu {
+      display: none !important;
+    }
+  }
+
+  /* Active: min height for editing comfort */
+  &:not(.inactive) {
+    .editor-content {
+      border: 1px solid var(--sr-ui-border-color-active);
+      border-radius: 0 0 4px 4px;
+      min-height: 120px !important;
+      color: var(--sr-text-color-dark);
+    }
+
+    button.icon.toggle {
+      display: none;
+    }
+  }
+
+  /* ProseMirror content when editing */
+  .editor-content.ProseMirror {
+    padding: 4px 8px;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+/* Pen under a plain title (.SR-EnTete: coloured text on the light sheet, no band): white was invisible */
+.SR-EnTete + li prose-mirror button.icon.toggle {
+  color: var(--sr-ui-border-color);
+
+  &:hover {
+    color: var(--sr-ui-border-color-active);
+  }
+}
+
+/* Toolbar (menu) when editor is active.
+   Also applies to the legacy {{editor}} ProseMirror (.editor) still used by some modules,
+   whose toolbar buttons otherwise get the generic themed button look. */
+prose-mirror menu.editor-menu,
+.editor menu.editor-menu {
+  background: none;
+  padding: 2px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--sr-ui-border-color-idle);
+  list-style: none;
+
+  > li {
+    display: flex;
+    align-items: center;
+
+    &.right {
+      margin-left: auto;
+    }
+  }
+
+  /* Bare buttons, no box (DjamZ's session of 08/10): only the hover and the pressed state get a background */
+  button {
+    background: none;
+    color: var(--sr-ui-border-color-active);
+    border: none;
+    box-shadow: none;
+    border-radius: 3px;
+    width: auto;
+    height: 26px;
+    min-width: 26px;
+    padding: 0 5px;
+    font-family: var(--sr-font-body);
+    font-size: var(--sr-font-size-small);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    margin: 0;
+    line-height: 1;
+
+    &:hover, &:focus-visible {
+      background-color: var(--sr-ui-border-color-active);
+      color: var(--sr-text-color-light);
+      outline: none;
+    }
+
+    &.active:not(:hover) {
+      background-color: color-mix(in srgb, var(--sr-ui-border-color-active) 25%, transparent);
+    }
+
+    &::before {
+      content: none !important;
+    }
+
+    i {
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .fa-chevron-down {
+      font-size: 8px;
+      margin-left: 3px;
+    }
+  }
+
+}
+
+/* Legacy editor only. The <prose-mirror> element gives itself the `editor` class as well, so the
+   selector has to exclude it: otherwise these rules reach every editor, and the hidden
+   concurrent-users would take the "who else is editing" mark off a collaborative page. */
+.editor:not(prose-mirror) menu.editor-menu {
+  .pm-dropdown {
+    /* The table dropdown is also button.icon, whose core flex-basis would keep it icon sized */
+    flex: none;
+    width: max-content;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .html, ul {
+      display: none;
+    }
+  }
+
+  .concurrent-users {
+    display: none;
+  }
+}
+
+/* Dropdown popover (rendered outside the element) */
+#prosemirror-dropdown {
+  ul {
+    border: 1px solid var(--sr-ui-border-color-idle);
+    color: var(--sr-ui-color);
+    background-color: var(--sr-ui-bg-color-dark);
+  }
+
+  li {
+    &:hover {
+      color: var(--sr-ui-color-active);
+      background: var(--sr-ui-bg-color-hover);
+    }
+  }
+}

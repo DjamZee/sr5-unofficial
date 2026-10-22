@@ -1,0 +1,26 @@
+{{#if (or 
+    (eq system.type "av") 
+    (eq system.type "apds") 
+    (eq system.type "capsule")
+    (eq system.type "exExplosive")
+    (eq system.type "explosive")
+    (eq system.type "flechette")
+    (eq system.type "injection")
+    (eq system.type "frangible")
+    (eq system.type "gel")
+    (eq system.type "regular")
+    (eq system.type "hollowPoint")
+    (eq system.type "stickNShock")
+    (eq system.type "tracer")
+    (eq system.type "tracker")
+)}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.CaseType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.caseType" data-dtype="String" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.ammunitionCaseType selected=system.caseType localize=true}}
+        </select> 
+    </div>
+</li>
+{{/if}}

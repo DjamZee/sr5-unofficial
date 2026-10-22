@@ -1,0 +1,53 @@
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.FullAddress'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{system.streetAddress}},<br>{{system.city}} ({{system.country}})</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.LinkedIdentity'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{valueOrDash system.linkedIdentity}}</span>
+    </p>
+</li>
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.PrepaidMonths'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">
+        {{#if system.rent.bought}}
+            {{localize 'SR5.LifeStyleBought'}}
+        {{else}}
+            {{valueOrDash system.rent.duration}}
+        {{/if}}
+      </span>
+    </p>
+</li>
+
+{{#if rentDebit}}
+<li class="grid">
+    <p>
+        <span class="col-auto">{{rentDebit.label}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor">{{rentDebit.text}}</span>
+    </p>
+</li>
+{{/if}}
+
+<li class="grid">
+    <p>
+        <span class="col-auto">{{localize 'SR5.RentCost'}}{{localize 'SR5.Colons'}}</span>
+        <span class="col-auto SR-GreyColor" data-helpTitle="{{localize 'SR5.RentCost'}}"
+            data-helpDetails="system.price">{{valueOrDash (nuyen system.price.value)}}</span>
+    </p>
+</li>
+
+<li class="SR-PaddingTop10 grid SR-LigneEnTete">
+    <div class="col-12 SR-TextUppercase">{{localize 'SR5.LifeStyleOptions'}}</div>
+</li>
+
+{{#each system.options}}
+<li data-sr5-options="{{@key}}">
+    {{findTranslation 'lifestyleOptions' name}}
+</li>
+{{/each}}

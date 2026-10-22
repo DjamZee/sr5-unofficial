@@ -1,0 +1,214 @@
+{
+  "id": "sr5",
+  "title": "Shadowrun 5 (unofficial)",
+  "license": "https://github.com/DjamZee/sr5-unofficial/blob/main/LICENSE",
+  "description": "A comprehensive ruleset to play Shadowrun 5th Edition with Foundry VTT. Unofficial fan project, not affiliated with Catalyst Game Labs or The Topps Company.",
+  "authors": [
+    {
+      "name": "Karmaroms, deurk, Michel_Platinium",
+      "url": "https://github.com/shadowfoundry",
+      "flags": {}
+    },
+    {
+      "name": "DjamZ",
+      "url": "https://github.com/DjamZee",
+      "flags": {}
+    }
+  ],
+  "readme": "https://github.com/DjamZee/sr5-unofficial#readme",
+  "bugs": "https://github.com/DjamZee/sr5-unofficial/issues",
+  "changelog": "https://github.com/DjamZee/sr5-unofficial/releases",
+  "version": "13.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "maximum": "13",
+    "verified": "13.351"
+  },
+  "esmodules": [
+    "modules/sr5.js"
+  ],
+  "styles": [
+    "css/shadowrun.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "fr",
+      "name": "Français",
+      "path": "lang/fr.json"
+    }
+  ],
+  "packs": [
+    {
+      "name": "manuel",
+      "label": "Manuel Shadowrun 5",
+      "path": "packs/manuel",
+      "type": "JournalEntry",
+      "system": "sr5",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "manual",
+      "label": "Shadowrun 5 Manual",
+      "path": "packs/manual",
+      "type": "JournalEntry",
+      "system": "sr5",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "sr5-megapack-items",
+      "label": "SR5 - Objets",
+      "path": "packs/sr5-megapack-items",
+      "type": "Item",
+      "system": "sr5",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {
+        "sr5": {
+          "build": "megapack"
+        }
+      }
+    },
+    {
+      "name": "sr5-megapack-actors",
+      "label": "SR5 - Acteurs",
+      "path": "packs/sr5-megapack-actors",
+      "type": "Actor",
+      "system": "sr5",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {
+        "sr5": {
+          "build": "megapack"
+        }
+      }
+    },
+    {
+      "name": "sr5-megapack-tables",
+      "label": "SR5 - Tables",
+      "path": "packs/sr5-megapack-tables",
+      "type": "RollTable",
+      "system": "sr5",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {
+        "sr5": {
+          "build": "megapack"
+        }
+      }
+    },
+    {
+      "name": "sr5-megapack-macros",
+      "label": "SR5 - Macros",
+      "path": "packs/sr5-megapack-macros",
+      "type": "Macro",
+      "ownership": {
+        "PLAYER": "NONE",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {
+        "sr5": {
+          "build": "megapack"
+        }
+      }
+    }
+  ],
+  "socket": true,
+  "url": "https://github.com/DjamZee/sr5-unofficial",
+  "manifest": "https://github.com/DjamZee/sr5-unofficial/releases/latest/download/system.json",
+  "download": "https://github.com/DjamZee/sr5-unofficial/releases/download/v13.1.0/sr5.zip",
+  "background": "systems/sr5/assets/img/accueil.webp",
+  "initiative": "1d6",
+  "flags": {
+    "hotReload": {
+      "extensions": [
+        "css",
+        "html",
+        "hbs",
+        "json",
+        "js"
+      ],
+      "paths": [
+        "templates",
+        "css",
+        "lang",
+        "modules"
+      ]
+    }
+  },
+  "grid": {
+    "distance": 1.5,
+    "units": "m"
+  },
+  "documentTypes": {
+    "Actor": {
+      "actorPc": {},
+      "actorGrunt": {},
+      "actorSpirit": {},
+      "actorDrone": {},
+      "actorDevice": {},
+      "actorSprite": {},
+      "actorStorage": {},
+      "actorAgent": {}
+    },
+    "Item": {
+      "itemAdeptPower": {},
+      "itemAmmunition": {},
+      "itemAmmunitionType": {},
+      "itemArmor": {},
+      "itemAugmentation": {},
+      "itemComplexForm": {},
+      "itemContact": {},
+      "itemDevice": {},
+      "itemDrug": {},
+      "itemEcho": {},
+      "itemEffect": {},
+      "itemFile": {},
+      "itemFocus": {},
+      "itemGear": {},
+      "itemKarma": {},
+      "itemKnowledge": {},
+      "itemLanguage": {},
+      "itemLifestyle": {},
+      "itemMark": {},
+      "itemMartialArt": {},
+      "itemMentorSpirit": {},
+      "itemMetamagic": {},
+      "itemNuyen": {},
+      "itemPower": {},
+      "itemPreparation": {},
+      "itemProgram": {},
+      "itemQuality": {},
+      "itemReputation": {},
+      "itemRitual": {},
+      "itemSin": {},
+      "itemSpell": {},
+      "itemSpirit": {},
+      "itemSpiritType": {},
+      "itemSprite": {},
+      "itemSpritePower": {},
+      "itemStorage": {},
+      "itemToxin": {},
+      "itemTradition": {},
+      "itemVehicle": {},
+      "itemVehicleMod": {},
+      "itemWeapon": {}
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "editor.formatOnSave": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript"],
+  "less.compile": {
+    "main": "${workspaceFolder}/styles/shadowrun.less",
+    "out": "${workspaceFolder}/css/shadowrun.css",
+    "compress": false,
+    "sourceMap": false
+  }
+}

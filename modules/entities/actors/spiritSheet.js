@@ -1,0 +1,135 @@
+import {
+  isAlwaysActive
+} from "../items/always-active.js"
+import {
+  ActorSheetSR5 
+} from "./baseSheet.js"
+import {
+  SR5, SR5_BARRIER_RATINGS
+} from "../../config.js"
+import {
+  SR5_SpiritTypes
+} from "../items/spirit-types.js"
+import {
+  INSECT_RACES, isInsectCaste, insectRaceOptions
+} from "../items/insect-races.js"
+
+/**
+ * An Actor sheet for spirit type actors in the Shadowrun 5 system.
+ */
+export class SR5SpiritSheet extends ActorSheetSR5 {
+  constructor(...args) {
+    super(...args)
+
+    this._shownUntrainedSkills = false
+    this._filters = {
+      skills: ""
+    }
+  }
+
+  static DEFAULT_OPTIONS = {
+    classes: ["app", "window-app", "sr5", "actor", "spirit"],
+    position: {
+      width: 900, height: 618 
+    },
+    window: {
+      resizable: true 
+    },
+  }
+
+  static PARTS = {
+    sheet: {
+      template: "systems/sr5/templates/actors/spirit-sheet.hbs",
+      root: true,
+      scrollable: [".sr-panel"],
+    },
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options)
+
+    this._prepareItems(context.actor)
+    this._prepareSkills(context.actor)
+    this._prepareHomunculusMaterials(context)
+
+    return context
+  }
+
+  // SR5 p. 301: a homunculus picks its material in the Barrier Ratings table (SR5 p. 198), each shown with its ratings
+  _prepareHomunculusMaterials(context) {
+    // The templates read the base type, so that custom types based on a watcher or a homunculus behave like them
+    context.spiritBaseType = SR5_SpiritTypes.baseType(this.actor.system.type)
+    context.singleMonitor = SR5_SpiritTypes.hasSingleMonitor(this.actor.system.type)
+    context.isHomunculus = context.spiritBaseType === "homunculus"
+    // Insect castes take a race (Dark Terrors p. 22-34); its rules that are not automated are shown as a note
+    if (isInsectCaste(context.spiritBaseType)) {
+      context.insectRaces = insectRaceOptions()
+      const race = INSECT_RACES[this.actor.system.insectRace]
+      if (race?.note) context.insectRaceNote = game.i18n.localize(`SR5.InsectRace_${this.actor.system.insectRace}_D`)
+    }
+    if (!context.isHomunculus) return
+    const structure = game.i18n.localize("SR5.Structure"), armor = game.i18n.localize("SR5.VehicleStat_ArmorShort")
+    context.homunculusMaterials = {
+    }
+    for (let [key, ratings] of Object.entries(SR5_BARRIER_RATINGS)) {
+      context.homunculusMaterials[key] = `${game.i18n.localize(SR5.barrierTypes[key])} (${structure} ${ratings.structure}, ${armor} ${ratings.armor})`
+    }
+    context.homunculusMaterials.other = game.i18n.localize("SR5.HomunculusMaterialOther")
+  }
+
+  _prepareSkills(actor) {
+    const activeSkills = {
+    }
+    for (let [key, skill] of Object.entries(actor.system.skills)) {
+      if (skill.rating.value > 0 || this._shownUntrainedSkills) activeSkills[key] = skill
+    }
+    actor.system.skills = activeSkills
+  }
+
+  _prepareItems(actor) {
+    const weapons = []
+    const spells = []
+    const powers = []
+    const externalEffects = []
+    const traditions = []
+
+    // Iterate through items, allocating to containers
+    for (let i of actor.items) {
+      if (i.type === "itemSpell") spells.push(i)
+      else if (i.type === "itemWeapon") weapons.push(i)
+      else if (i.type === "itemPower") powers.push(i)
+      else if (i.type === "itemEffect") externalEffects.push(i)
+      else if (i.type === "itemTradition") traditions.push(i)
+    }
+
+    actor.weapons = weapons
+    actor.spells = spells
+    actor.powers = powers
+    actor.externalEffects = externalEffects
+    actor.traditions = traditions
+  }
+
+  /** @override */
+  async _onDropItemCreate(item) {
+    switch(item.type){
+      case "itemTradition":
+        for (let i of this.actor.items){
+          if (i.type === "itemTradition") return ui.notifications.warn(game.i18n.localize('SR5.WARN_OnlyOneTradition'))
+        }
+        return super._onDropItemCreate(item)
+      case "itemWeapon":
+        this._activeUnlessOneIs(item, i => i.type === "itemWeapon" && i.system.category === item.system.category)
+        return super._onDropItemCreate(item)
+      case "itemPower":
+        if (isAlwaysActive(item)) item.system.isActive = true
+        return super._onDropItemCreate(item)
+      case "itemSpell":
+      case "itemEffect":
+        return super._onDropItemCreate(item)
+      default:
+        ui.notifications.info(game.i18n.localize('SR5.INFO_ForbiddenItemType'))
+        return
+    }
+  }
+
+}

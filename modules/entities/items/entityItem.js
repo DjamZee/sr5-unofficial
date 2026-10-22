@@ -1,0 +1,1046 @@
+import {
+  refuseByRule, ruleLockActive, ruleLockBinds
+} from "../../system/rule-locks.js"
+import {
+  hasWeaponTrait, capBallReloadStep, CAP_BALL_STEPS, firearmCommandIsFree
+} from './weaponTraits.js'
+import {
+  CONCEALED_FLAG, updateTakesOut
+} from "../../rolls/roll-helpers/conceal-rules.js"
+import {
+  accessoryCapacity, capacityTaken
+} from './weapon-accessory-rules.js'
+import {
+  cleanCreatedSource
+} from "../../migration-source-modifiers.js"
+import {
+  SR5_UtilityItem
+} from "./utilityItem.js"
+import {
+  screenRejectedImplants, IMPLANT_REJECTION_CONFIRMED, installationFlags, GM_ONLY_FIELDS
+} from "../../system/implant-essence.js"
+import {
+  creationModeFor
+} from "../../system/creation-actor.js"
+import {
+  reservedChangedBy
+} from "../../system/reserved-fields.js"
+import {
+  needsCommcode, generateCommcode, commcodeChange
+} from "../../system/commcode-rules.js"
+import {
+  worldCommcodes
+} from "../../interface/commcode-default.js"
+import {
+  contactCommcodeFromFlag
+} from "../../interface/contact-commcode.js"
+import {
+  SR5_CharacterUtility 
+} from "../actors/utilityActor.js"
+import {
+  SR5ShopGrades
+} from "../../interface/shop-grades.js"
+import AbilityTemplate from "../../interface/canvas-template.js"
+import {
+  SR5_EntityHelpers 
+} from "../helpers.js"
+import {
+  SR5_PrepareRollTest 
+} from "../../rolls/roll-prepare.js"
+import {
+  SR5_RollMessage 
+} from "../../rolls/roll-message.js"
+import {
+  SR5 
+} from "../../config.js"
+import {
+  SR5Combat 
+} from "../../system/srcombat.js"
+import {
+  reloadIsFree
+} from "../actors/augmentationCap.js"
+import {
+  migrateNegotiationTargets, migrateNegotiationSkill
+} from "../../datamodels/common/negotiationMigration.js"
+import {
+  migrateTargetOfEffect
+} from "../../datamodels/common/targetOfEffectMigration.js"
+import {
+  migrateTemplateNoise
+} from "../../datamodels/common/templateNoiseMigration.js"
+import {
+  migrateLegacyImages
+} from "../../datamodels/common/v12ImportMigration.js"
+import {
+  isFactoryMod, modTakesSlots
+} from "../../system/vehicle-factory.js"
+import {
+  usesModPoints, droneModRule, modPointsRefusal, vehicleStats
+} from "../../system/drone-mod-points.js"
+import {
+  modSlotUse, slotsRefusal, droneInWorld
+} from "../../system/vehicle-mods.js"
+
+/** Rigger 5.0 p. 153-154: a mod fitted on a drone beyond the slots of its category is refused (rule lock "objects").
+ *  `after` is the mod as it would be, prepared; factory equipment fits by definition */
+function vehicleModSlotsRefused(drone, before, after) {
+  if (drone?.type !== "actorDrone" || isFactoryMod(after)) return false
+  //Under the optional Modification Points (R5 p. 126-127), a drone has one pool of points, not slots by category
+  if (usesModPoints(droneModRule(), drone.system?.type)) {
+    const fitted = drone.items.filter(i => i.type === "itemVehicleMod" && modTakesSlots(i.system, isFactoryMod(i)))
+    const refusal = modPointsRefusal(vehicleStats(drone.system), fitted, before && fitted.includes(before) ? before : null,
+      modTakesSlots(after.system, false) ? after : null)
+    if (!refusal) return false
+    if (refusal.floor !== undefined) return refuseByRule("objects", "SR5.WARN_DroneModBodyFloor", {
+      name: after.name, floor: refusal.floor
+    }, {
+      actor: drone
+    })
+    return refusal.attribute ? refuseByRule("objects", "SR5.WARN_DroneModAttributeCap", {
+      name: after.name, cap: refusal.cap, attribute: game.i18n.localize(SR5.vehicleAttributes?.[refusal.attribute] ?? refusal.attribute)
+    }, {
+      actor: drone
+    }) : refuseByRule("objects", "SR5.WARN_DroneModPointsFull", {
+      name: after.name, needed: refusal.needed, free: refusal.free
+    }, {
+      actor: drone
+    })
+  }
+  const refusal = slotsRefusal(drone.system?.modificationSlots, before ? modSlotUse(before.system) : null, modSlotUse(after.system))
+  if (!refusal) return false
+  return refuseByRule("objects", "SR5.WARN_VehicleModSlotsFull", {
+    name: after.name, needed: refusal.needed, free: refusal.free, category: game.i18n.localize(SR5.vehicleModType[refusal.category])
+  }, {
+    actor: drone
+  })
+}
+
+/** The mod as an update or a creation would leave it, prepared, without touching the document */
+function preparedCopy(item, changes = {
+}) {
+  const copy = item.clone(changes)
+  copy.prepareData()
+  return copy
+}
+
+/** Whether fitting a mod on its drone would be refused, asked before its install test is rolled rather than once the
+ *  hours are spent (Lancelot, E3). A lifted lock is left to the fitting itself, which tells the gamemaster */
+export function modFitRefused(mod) {
+  if (mod?.type !== "itemVehicleMod" || mod.parent?.type !== "actorDrone" || !ruleLockBinds("objects")) return false
+  return vehicleModSlotsRefused(mod.parent, mod, preparedCopy(mod, {
+    system: {
+      isActive: true
+    }
+  }))
+}
+
+/**
+ * Override and extend the basic :class:`Item` implementation
+ */
+export class SR5Item extends Item {
+  //Effects aimed at the former key of the Negotiation skill (datamodels/common/negotiationMigration.js)
+  static migrateData(source) {
+    migrateNegotiationTargets(source?.system)
+    //The skill itself on a contact, under the former key
+    migrateNegotiationSkill(source?.system)
+    //Links to sustained effects stored as {} (datamodels/common/targetOfEffectMigration.js)
+    migrateTargetOfEffect(source?.system)
+    //A template's matrix noise stored negative before N32 (datamodels/common/templateNoiseMigration.js)
+    migrateTemplateNoise(source)
+    //The V12 icon of an item imported after the world migration (datamodels/common/v12ImportMigration.js)
+    migrateLegacyImages(source)
+    return super.migrateData(source)
+  }
+
+  static async create(data, options) {
+    if (!data.img) data.img = `systems/sr5/assets/img/items/${data.type}.svg`
+    return super.create(data, options)
+  }
+
+  /**
+   * Système sensible: "Le bioware, quel que soit sa conception ou son type de culture, est rejeté" (SR5 p. 89).
+   * Read once per batch, so a quality created with the bioware counts. The last guard for a drop on the sheet:
+   * the transfers (shop, vendor, loot, pickpocket, delivery) screen BEFORE anything moves and come here with
+   * the gamemaster's confirmation, honoured for a gamemaster only.
+   */
+  static async _preCreateOperation(documents, operation, user) {
+    if ((await super._preCreateOperation(documents, operation, user)) === false) return false
+    const actor = operation.parent
+    if (!(actor instanceof Actor) || !documents.some(d => d.type === "itemAugmentation")) return
+    if (operation[IMPLANT_REJECTION_CONFIRMED] && game.user.isGM) return
+    const {
+      refused
+    } = await screenRejectedImplants(actor, documents)
+    for (const doc of refused) documents.splice(documents.indexOf(doc), 1)
+    if (!documents.length) return false
+  }
+
+  async _preCreate(data, options, user) {
+    await super._preCreate(data, options, user)
+    // An item exported prepared, or dragged from a prepared sheet, arrives without its computed modifiers
+    cleanCreatedSource(this)
+    // Chrome Flesh (séance G, G16, G19): Adapsine and Prototype de transhumain read on the body at the installation
+    if (this.type === "itemAugmentation" && this.parent instanceof Actor) {
+      const flags = installationFlags(this.parent, this.system, {
+        isGM: game.user.isGM, creation: creationModeFor(this.parent)
+      })
+      this.updateSource(Object.fromEntries(Object.entries(flags).map(([key, value]) => [`system.${key}`, value])))
+    } else if (!game.user.isGM && this.type === "itemQuality") this.updateSource({
+      "system.transhumanEssence": 1
+    })
+    //SR5 p. 422: hidden on someone's body, not on whoever gets a copy of it (pickpocket, loot, gift, duplicate)
+    if (data.flags?.sr5?.[CONCEALED_FLAG] !== undefined) this.updateSource({
+      [`flags.sr5.-=${CONCEALED_FLAG}`]: null
+    })
+    //Rigger 5.0 p. 156: the Mégapack's factory flag becomes the box of the sheet, which the player can untick
+    if (this.type === "itemVehicleMod" && data.flags?.sr5?.isFactory === true) this.updateSource({
+      "system.isFactory": true, "flags.sr5.-=isFactory": null
+    })
+    //Rigger 5.0 p. 153: no slot beyond the vehicle's. Only on a drone already in the world: a drone being deployed
+    //brings its mods along with it
+    if (this.type === "itemVehicleMod" && this.parent?.type === "actorDrone" && droneInWorld(this.parent) &&
+      vehicleModSlotsRefused(this.parent, null, preparedCopy(this))) return false
+    //Relecture djamz.13 (arbitrage de DjamZ): a communication device set on a character comes with its commcode
+    if (this.parent instanceof Actor && needsCommcode(this, this.parent.type)) {
+      const commcode = generateCommcode(worldCommcodes())
+      if (commcode) this.updateSource({
+        "system.commcode": commcode, "system.commcodeEdited": false
+      })
+    }
+    //API pour CONTACTS: a contact brought from before the field keeps the commcode the Landing Page flagged on it
+    const contactCommcode = contactCommcodeFromFlag(this)
+    if (!foundry.utils.isEmpty(contactCommcode)) this.updateSource(contactCommcode)
+    const defaultImg = `systems/sr5/assets/img/items/${data.type}.svg`
+    if (!data.img || data.img === "icons/svg/item-bag.svg") {
+      this.updateSource({
+        img: defaultImg
+      })
+    }
+  }
+
+  async _preUpdate(changes, options, user) {
+    // Chrome Flesh (séance G): the Adapsine box, the lot and Prototype de transhumain's counter are the gamemaster's.
+    // Read after the merge, every form of update counts; the whole update is refused. The active GM checks again
+    // what gets through (implant-register.js)
+    if (!game.user.isGM && reservedChangedBy(this._source, changes, GM_ONLY_FIELDS[this.type], options).length) {
+      ui.notifications?.warn(game.i18n.localize("SR5.WARN_GMOnlyField"))
+      return false
+    }
+    //Relecture djamz.13 (arbitrage de DjamZ): the owner changes the commcode once, the gamemaster as often as he likes
+    if (this.type === "itemDevice" && foundry.utils.hasProperty(changes, "system.commcode")) {
+      const verdict = commcodeChange({
+        isGM: game.user.isGM, before: this._source.system?.commcode,
+        after: foundry.utils.getProperty(changes, "system.commcode"), edited: this._source.system?.commcodeEdited
+      })
+      if (verdict === "refused") {
+        // Only the commcode is left out: the rest of the sheet's form goes through
+        ui.notifications?.warn(game.i18n.localize("SR5.WARN_CommcodeChangedOnce"))
+        delete changes["system.commcode"]
+        if (changes.system) delete changes.system.commcode
+      }
+      if (verdict === "first") foundry.utils.setProperty(changes, "system.commcodeEdited", true)
+    }
+    //SR5 p. 422: a hidden weapon made ready is taken out, its hidden state goes (arbitrage de DjamZ, 2026-10-07)
+    if (updateTakesOut(this, changes)) foundry.utils.setProperty(changes, `flags.sr5.-=${CONCEALED_FLAG}`, null)
+    //The factory box unticked: the Mégapack's flag goes with it, or it would tick it again (Rigger 5.0 p. 156)
+    if (foundry.utils.getProperty(changes, "system.isFactory") === false && this.flags?.sr5?.isFactory) foundry.utils.setProperty(changes, "flags.sr5.-=isFactory", null)
+    //Rigger 5.0 p. 153: fitting it, or making it bigger, beyond the slots left is refused
+    if (this.type === "itemVehicleMod" && this.parent?.type === "actorDrone" && changes.system &&
+      vehicleModSlotsRefused(this.parent, this, preparedCopy(this, changes))) return false
+    return super._preUpdate(changes, options, user)
+  }
+
+  prepareData() {
+    super.prepareData()
+
+    const item = this
+    const itemData = item.system
+    let owner
+
+    // Only an actor with skills can hold an item and use it. A storage (a
+    // crate at the stash) or a Matrix device has no skills, attributes or
+    // limits: what it carries computes its own values, and no dice pool,
+    // since nobody is holding it.
+    if (this.actor?.system?.skills) owner = this.actor
+
+    SR5_UtilityItem._resetItemModifiers(item)
+    switch (item.type) {
+      case "itemWeapon":
+        // Pour faire fonctionner l'ajout et la suppression d'accessoire (pas trouvé mieux :/)
+        if (typeof itemData.accessory === "object") itemData.accessory = Object.values(itemData.accessory)
+        if (itemData.damageElement === "toxin") SR5_UtilityItem._handleWeaponToxin(itemData, owner)
+        if (itemData.ammunition.value > itemData.ammunition.max) itemData.ammunition.value = itemData.ammunition.max
+        //A weapon accessory left marked plugged on no weapon can be mounted again
+        if (this.actor && itemData.isAccessory) itemData.isPlugged = !!SR5_UtilityItem.accessoryHost(item.id, this.actor)
+        //Capacity for vision enhancements and what the mounted ones take (SR5 p. 434-435, 447), for the sheets
+        if (itemData.category === "weaponAccessory") {
+          itemData.weaponAccessory.capacityTotal = accessoryCapacity(item)
+          itemData.weaponAccessory.capacityUsed = capacityTaken(itemData.weaponAccessory.visionEnhancements)
+        }
+        if (itemData.category === "meleeWeapon" && owner){
+          SR5_UtilityItem._checkIfWeaponIsFocus(this, owner)
+          if (itemData.isLinkedToFocus) SR5_UtilityItem._handleWeaponFocus(item, owner)
+          if (!owner.system.visions.astral.isActive) itemData.isUsedAsFocus = false
+        }
+        if (itemData.category === "rangedWeapon" && owner){
+          if (!itemData.isLinkedToMount) SR5_UtilityItem._handleWeaponMount(item, owner)
+          SR5_UtilityItem._checkIfWeaponIsMount(this, owner)
+        }
+        if (Object.keys(itemData.itemEffects).length) SR5_UtilityItem.applyItemEffects(item)
+        SR5_UtilityItem._handleBow(item)
+        SR5_UtilityItem._handleWeaponAccessory(itemData, owner)
+        SR5_UtilityItem._handleWeaponAmmunition(itemData, owner)
+        SR5_UtilityItem._generateWeaponRange(itemData, owner)
+        SR5_UtilityItem._generateWeaponDicepool(item, owner)
+        SR5_UtilityItem._generateWeaponDamage(itemData, owner, item.id)
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)				
+        SR5_UtilityItem._handleItemConcealment(itemData)
+        if (itemData.conditionMonitors.matrix.actual.value >= itemData.conditionMonitors.matrix.value) itemData.wirelessTurnedOn = false
+        break
+      case "itemSpell":
+        // Note: freeSustain for quickening is set in handleSustaining() after metamagic effects are applied
+        break
+      case "itemAmmunition":
+        SR5_UtilityItem._handleAmmoPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        break
+      case "itemPreparation":
+        if (owner) SR5_UtilityItem._handlePreparation(item, owner)
+        break
+      case "itemRitual":
+        if (owner) SR5_UtilityItem._handleRitual(item, owner)
+        break
+      case "itemKnowledge":
+        if (owner) SR5_CharacterUtility._generateKnowledgeSkills(item, owner)
+        break
+      case "itemLanguage":
+        if (owner) SR5_CharacterUtility._generateLanguageSkills(item, owner)
+        break
+      case "itemAugmentation":
+        SR5_UtilityItem._handleAugmentation(itemData)
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        if (itemData.conditionMonitors.matrix.actual.value >= itemData.conditionMonitors.matrix.value) itemData.wirelessTurnedOn = false
+        //GreyWare has no wireless at all (BTB p. 142)
+        if (!SR5ShopGrades.wirelessAllowed(itemData)) itemData.wirelessTurnedOn = false
+        if (this.actor && itemData.isAccessory){
+          SR5_UtilityItem._checkIfAccessoryIsPlugged(item, this.actor)
+          if (!itemData.isPlugged) {
+            itemData.isActive = false
+            itemData.wirelessTurnedOn = false
+          }
+        }
+        break
+      case "itemVehicleMod":
+        //The Mégapack marks its factory copies by a flag: the box of the sheet reads it too (Rigger 5.0 p. 156)
+        if (isFactoryMod(item)) itemData.isFactory = true
+        if (Object.keys(itemData.itemEffects).length) SR5_UtilityItem.applyItemEffects(item)
+        if (itemData.isWeaponMounted) SR5_UtilityItem._handleWeaponMounted(item)
+        SR5_UtilityItem._handleSlotsMultiplier(itemData)
+        SR5_UtilityItem._handleThresholdMultiplier(itemData)
+        break
+      case "itemArmor":
+      case "itemGear":
+        if (item.type === "itemGear"){
+          //Its item effects too: read only behind a system effect, one on the matrix monitor of a plain gear was lost
+          if (Object.keys(itemData.systemEffects).length || Object.keys(itemData.itemEffects).length) SR5_UtilityItem.applyItemEffects(item)
+        }
+        if (item.type === "itemArmor"){ 
+          if (Object.keys(itemData.itemEffects).length) SR5_UtilityItem.applyItemEffects(item)
+          SR5_UtilityItem._handleArmorValue(itemData)
+        }
+        if (itemData.canRollTest) SR5_UtilityItem.generateTestDicepool(itemData, this.actor)
+        SR5_UtilityItem._handleItemCapacity(itemData)
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        SR5_UtilityItem._handleItemConcealment(itemData)
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        if (itemData.conditionMonitors.matrix.actual.value >= itemData.conditionMonitors.matrix.value) itemData.wirelessTurnedOn = false
+        if (this.actor && itemData.isAccessory){
+          SR5_UtilityItem._checkIfAccessoryIsPlugged(item, this.actor)
+          if (!itemData.isPlugged) {
+            itemData.isActive = false
+            itemData.wirelessTurnedOn = false
+          }
+        }
+        break
+      case "itemDevice":
+        SR5_UtilityItem._handleCommlink(itemData)
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        if (Object.keys(itemData.itemEffects).length) SR5_UtilityItem.applyItemEffects(item)
+        SR5_UtilityItem._handleItemConcealment(itemData)
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        //A head case's monitor is sized by its owner's Nanite Volume, unknown here (monad-matrix.js): the actor decides
+        if ((itemData.conditionMonitors.matrix.actual.value >= itemData.conditionMonitors.matrix.value) && (itemData.type !== "baseDevice") && (itemData.type !== "headcase")) itemData.isActive = false
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        SR5_UtilityItem._handlePan(item)
+        break
+      case "itemFocus":
+        SR5_UtilityItem._handleFocus(itemData)     
+        break
+      case "itemSpirit":
+        if (typeof itemData.powers === "object") itemData.powers = Object.values(itemData.powers)
+        SR5_UtilityItem._handleSpirit(itemData)
+        break
+      case "itemAdeptPower":
+        SR5_UtilityItem._handleAdeptPower(itemData, owner)
+        break
+      case "itemMartialArt":    
+        if (owner) SR5_UtilityItem._handleMartialArt(itemData, owner)
+        break
+      case "itemPower":
+        if (owner) SR5_UtilityItem._handlePower(itemData, owner) 
+        break
+      case "itemSpritePower": 
+        if (typeof itemData.spritePowers === "object") itemData.spritePowers = Object.values(itemData.spritePowers)
+        if (owner) SR5_UtilityItem._handleSpritePower(itemData, owner)
+        break
+      case "itemProgram":
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        break
+      case "itemLifestyle":
+        if (typeof itemData.options === "object") itemData.options = Object.values(itemData.options)
+        SR5_UtilityItem._handleLifeStyle(itemData, this.actor)
+        SR5_UtilityItem._handleItemPrice(itemData)
+        break
+      case "itemStorage":
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        break
+      case "itemSin":
+        if (typeof itemData.license === "object") itemData.license = Object.values(itemData.license)
+        SR5_UtilityItem._handleSinLicense(itemData)
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        break
+      case "itemSprite":
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        break
+      case "itemVehicle":
+        SR5_UtilityItem._handleVehicle(itemData)
+        SR5_UtilityItem._handleVehicleSlots(itemData)
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        SR5_UtilityItem._handleMatrixMonitor(item)
+        if (itemData.type === "drone") itemData.conditionMonitors.condition.base = Math.ceil((itemData.attributes.body / 2) + 6)
+        else itemData.conditionMonitors.condition.base = Math.ceil((itemData.attributes.body / 2) + 12)
+        SR5_EntityHelpers.updateValue(itemData.conditionMonitors.condition, 1)
+        SR5_EntityHelpers.updateValue(itemData.conditionMonitors.condition.actual, 0)
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'condition')
+        SR5_EntityHelpers.GenerateMonitorBoxes(itemData, 'matrix')
+        //A bricked device stops working (SR5 p. 229)
+        if (itemData.conditionMonitors.matrix.actual.value >= itemData.conditionMonitors.matrix.value) itemData.wirelessTurnedOn = false
+        break
+      case "itemDrug":
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        itemData.vector.value = []
+        for (let key of Object.keys(SR5.propagationVectors)) {
+          if (itemData.vector[key]) itemData.vector.value.push(game.i18n.localize(SR5.propagationVectors[key]))
+        }
+        break
+      case "itemToxin":
+        SR5_UtilityItem._handleItemPrice(itemData)
+        SR5_UtilityItem._handleItemAvailability(itemData)
+        break
+      default:
+    }
+
+    //Etiquette pour afficher le label des jets.
+    const labels = {
+    }
+    this.labels = labels
+    return item
+  }
+
+  // Expand data is used in most dropdown infos
+  async getExpandData(htmlOptions) {
+    // Read directly from prepared system data. Do NOT use foundry.utils.duplicate()
+    // as it serializes via toJSON() and loses computed/derived values (e.g. value fields).
+    const itemData = this.system
+    let lists = SR5_EntityHelpers.sortTranslations(SR5)
+    let tags =[]
+    let accessories =[]    
+    let options =[]
+    let license =[]
+    let powers = []
+    let spritePowers = []
+    htmlOptions.async = false
+
+    const enrichedDescription = await foundry.applications.ux.TextEditor.implementation.enrichHTML(itemData.description || "", htmlOptions)
+
+    switch(this.type){
+      case "itemAugmentation":
+        tags.push(
+          game.i18n.localize(lists.augmentationTypes[itemData.type]),
+          game.i18n.localize(lists.augmentationCategories[itemData.category]),
+          game.i18n.localize(lists.augmentationGeneCategories[itemData.category]),
+        )
+        if (itemData.type === "bioware" || itemData.type === "culturedBioware" || itemData.type === "cyberware" || itemData.type === "nanocyber" || itemData.type === "symbionts") {
+          tags.push(game.i18n.localize(lists.augmentationGrades[itemData.grade]))
+        }
+        if (itemData.itemRating > 0) {
+          tags.push(game.i18n.localize("SR5.ItemRating") + ` ${itemData.itemRating}`)
+        }
+        if (itemData.marks.length){
+          for (let m of itemData.marks){
+            tags.push(game.i18n.localize("SR5.Mark") + game.i18n.localize(`SR5.Colons`) + ` ${m.ownerName} [${m.value}]`)
+          }
+        }
+        if (itemData.isSlavedToPan){
+          let panMaster = SR5_EntityHelpers.getRealActorFromID(itemData.panMaster)
+          tags.push(game.i18n.localize("SR5.DeviceSlavedToPan") + ` (${panMaster.name})`)
+        }
+        break
+      case "itemWeapon":
+        if (itemData.category === "rangedWeapon"){
+          tags.push(
+            game.i18n.localize(lists.rangedWeaponTypes[itemData.type]),
+            game.i18n.localize(`SR5.WeaponModesShort`) + game.i18n.localize(`SR5.Colons`) + ` ${itemData.firingMode.value.join("/")}`,
+            game.i18n.localize(`SR5.WeaponModeCurrent`) + game.i18n.localize(`SR5.Colons`) + ` ` + game.i18n.localize(lists.weaponModesCode[itemData.firingMode.current]),
+            game.i18n.localize(`SR5.RecoilCompensationShort`) + game.i18n.localize(`SR5.Colons`) + ` ${itemData.recoilCompensation.value}`,
+            game.i18n.localize(`SR5.WeaponRange`) + game.i18n.localize(`SR5.Colons`) + ` ${itemData.range.short.value}/${itemData.range.medium.value}/${itemData.range.long.value}/${itemData.range.extreme.value}` + game.i18n.localize(`SR5.MeterUnit`),
+            game.i18n.localize(`SR5.Ammunition`) + game.i18n.localize(`SR5.Colons`) + ` ` + SR5_EntityHelpers.resolveAmmoTypeLabel(itemData.ammunition.type),
+          )
+          if (itemData.type === "shotgun"){
+            tags.push(
+              game.i18n.localize(`SR5.ChokeSettings`) + game.i18n.localize(`SR5.Colons`) + ` ${game.i18n.localize(lists.chokeSettings[itemData.choke.current])}`
+            )	
+          }
+          if (itemData.accessory) {
+            for (let a of Object.values(itemData.accessory)){
+              if (a.system) {
+                // Item-based accessory — shown as interactive toggles, not tags
+                const liveActive = this.actor?.items?.get(a._id)?.system?.isActive ?? a.isActive
+                accessories.push({
+                  name: a.name, _id: a._id, isActive: liveActive 
+                })
+              } else if (a.name) {
+                // Legacy accessory — shown as tags
+                tags.push([game.i18n.localize(lists.weaponAccessories[a.name]), a.gameEffects])
+              }
+            }
+          }
+        } else if (itemData.category === "meleeWeapon"){
+          tags.push(
+            game.i18n.localize(lists.meleeWeaponTypes[itemData.type]),
+            game.i18n.localize(`SR5.WeaponReach`) + game.i18n.localize(`SR5.Colons`) + ` ${itemData.reach.value}`,
+          )
+        } else if (itemData.category === "grenade"){
+          tags.push(
+            game.i18n.localize(`SR5.WeaponRange`) + game.i18n.localize(`SR5.Colons`) + ` ${itemData.range.short.value}/${itemData.range.medium.value}/${itemData.range.long.value}/${itemData.range.extreme.value}` + game.i18n.localize(`SR5.MeterUnit`),
+          )
+        }
+        if (itemData.marks.length){
+          for (let m of itemData.marks){
+            tags.push(game.i18n.localize("SR5.Mark") + game.i18n.localize(`SR5.Colons`) + ` ${m.ownerName} [${m.value}]`)
+          }
+        }
+        if (itemData.isSlavedToPan){
+          let panMaster = SR5_EntityHelpers.getRealActorFromID(itemData.panMaster)
+          tags.push(game.i18n.localize("SR5.DeviceSlavedToPan") + ` (${panMaster.name})`)
+        }
+        break
+      case "itemPreparation":
+      case "itemSpell":
+        tags.push(`${game.i18n.localize('SR5.SpellType')}${game.i18n.localize('SR5.Colons')} ${game.i18n.localize(lists.spellTypes[itemData.type])}`)
+        tags.push(game.i18n.localize(lists.spellCategories[itemData.category]))
+        switch (itemData.category){
+          case "combat":
+            tags.push(game.i18n.localize(lists.spellCombatTypes[itemData.subCategory]))
+            break
+          case "detection":
+            tags.push(
+              game.i18n.localize(lists.spellDetectionTypes[itemData.subCategory]),
+              game.i18n.localize(lists.spellDetectionSens[itemData.detectionSense]),
+            )
+            break
+          case "health":
+            if (itemData.healthEssence){
+              tags.push(game.i18n.localize(`SR5.Essence`))
+            }
+            break
+          case "illusion":
+            tags.push(
+              game.i18n.localize(lists.spellIllusionTypes[itemData.subCategory]),
+              game.i18n.localize(lists.spellIllusionSens[itemData.illusionSense]),
+            )
+            break
+          case "manipulation":
+            tags.push(game.i18n.localize(lists.spellManipulationTypes[itemData.subCategory]))
+            if (itemData.manipulationDamaging){
+              tags.push(game.i18n.localize(`SR5.Damaging`))
+            }
+            break
+          default:
+        }
+        if (this.type === "itemSpell") {
+          let plus = (itemData.drain.value <= 0 ? "" : "+")
+          tags.push(`${game.i18n.localize('SR5.SpellDrain')}${game.i18n.localize('SR5.Colons')} ${game.i18n.localize('SR5.SpellForceShort')} ${plus}${itemData.drain.value}`)
+          tags.push(`${game.i18n.localize('SR5.SpellDrainActual')}${game.i18n.localize('SR5.Colons')} ${itemData.drainValue.value}`)
+        }
+        break
+      case "itemGear":
+        if (itemData.marks.length){
+          for (let m of itemData.marks){
+            tags.push(game.i18n.localize("SR5.Mark") + game.i18n.localize(`SR5.Colons`) + ` ${m.ownerName} [${m.value}]`)
+          }
+        }
+        if (itemData.isSlavedToPan){
+          let panMaster = SR5_EntityHelpers.getRealActorFromID(itemData.panMaster)
+          tags.push(game.i18n.localize("SR5.DeviceSlavedToPan") + ` (${panMaster.name})`)
+        }
+        break
+      case "itemRitual":
+        if (itemData.adeptRitual) tags.push(game.i18n.localize(`SR5.AdeptRitual`))
+        if (itemData.anchored) tags.push(game.i18n.localize(`SR5.Anchored`))
+        if (itemData.bloody) tags.push(game.i18n.localize(`SR5.Bloody`))
+        if (itemData.contractual) tags.push(game.i18n.localize(`SR5.Contractual`))
+        if (itemData.manaRitual) tags.push(game.i18n.localize(`SR5.ManaRitual`))
+        if (itemData.materialLink) tags.push(game.i18n.localize(`SR5.MaterialLink`))
+        if (itemData.minion) tags.push(game.i18n.localize(`SR5.Minion`))
+        if (itemData.organicalLink) tags.push(game.i18n.localize(`SR5.OrganicalLink`))
+        if (itemData.spotter) tags.push(game.i18n.localize(`SR5.Spotter`))
+        if (itemData.spell) tags.push(game.i18n.localize(`SR5.Spell`))
+        tags.push(`${game.i18n.localize('SR5.DurationToPerform')}${game.i18n.localize('SR5.Colons')} ${game.i18n.localize('SR5.SpellForceShort')} × ${game.i18n.localize(lists.ritualDurations[itemData.durationToPerform])}`)
+        break
+      case "itemAdeptPower":
+        tags.push(`${game.i18n.localize('SR5.PowerPointsCost')}${game.i18n.localize('SR5.Colons')} ${itemData.powerPointsCost.value}`)
+        tags.push(`${game.i18n.localize('SR5.ActionType')}${game.i18n.localize('SR5.Colons')} ${game.i18n.localize(lists.powerActionTypes[itemData.actionType])}`)
+        break
+      case "itemDrug":
+        if (itemData.onUse.duration) tags.push(`${game.i18n.localize('SR5.DrugDuration')}${game.i18n.localize('SR5.Colons')} ${itemData.onUse.duration}`)
+        if (itemData.onUse.contrecoup) tags.push(`${game.i18n.localize('SR5.DrugContrecoupDuration')}${game.i18n.localize('SR5.Colons')} ${itemData.onUse.contrecoup}`)
+        break
+      case "itemQuality":
+        tags.push(`${game.i18n.localize(lists.qualityTypes[itemData.type])}`)
+        if (itemData.itemRating !== 0) tags.push(`${game.i18n.localize('SR5.ItemRating')}${game.i18n.localize('SR5.Colons')} ${itemData.itemRating}`)
+        tags.push(`${game.i18n.localize('SR5.KarmaCost')}${game.i18n.localize('SR5.Colons')} ${itemData.karmaCost}`)
+        break
+      case "itemVehicle":
+        tags.push(`${game.i18n.localize(lists.vehiclesCategories[itemData.category])}`)
+        if (itemData.vehiclesMod.length){
+          for (let v of itemData.vehiclesMod){
+            tags.push(`${v.name}`)
+          }
+        }
+        if (itemData.marks.length){
+          for (let m of itemData.marks){
+            tags.push(game.i18n.localize("SR5.Mark") + game.i18n.localize(`SR5.Colons`) + ` ${m.ownerName} [${m.value}]`)
+          }
+        }
+        if (itemData.isSlavedToPan){
+          let panMaster = SR5_EntityHelpers.getRealActorFromID(itemData.panMaster)
+          tags.push(game.i18n.localize("SR5.DeviceSlavedToPan") + ` (${panMaster.name})`)
+        }        
+        break
+      case "itemLifestyle":
+        tags.push(
+          [`${game.i18n.localize('SR5.LifestyleComforts')}${game.i18n.localize('SR5.Colons')} ${itemData.comforts.value}`, itemData.comforts.gameEffects],
+          [`${game.i18n.localize('SR5.LifestyleSecurity')}${game.i18n.localize('SR5.Colons')} ${itemData.security.value}`, itemData.security.gameEffects],
+          [`${game.i18n.localize('SR5.LifestyleNeighborhood')}${game.i18n.localize('SR5.Colons')} ${itemData.neighborhood.value} (${itemData.neighborhood.zone})`, itemData.neighborhood.gameEffects]
+        )
+        if (itemData.options) {
+          for (let option of itemData.options){
+            if(option.type != "modification") {
+              options.push(`${option.name}`)
+              tags.push([game.i18n.localize(lists.allLifestyleOptions[option.name]), option.gameEffects])
+            }
+          }       
+        }
+        break
+      case "itemSin":
+        if (itemData.license) {
+          for (let l of itemData.license){
+            license.push(`${l.name}`)
+            tags.push(`${l.name} ${l.rating}`)
+          }
+        }
+        break
+      case "itemSpirit":
+        if (itemData.powers) {
+          for (let power of itemData.powers){
+            powers.push(`${power.name}${game.i18n.localize("SR5.Colons")} ${power.system?.gameEffect}`)
+            tags.push([power.name, power.system.gameEffect])
+          }
+        }
+        if (Object.keys(itemData.sustainedSpell).length) {
+          let actor = SR5_EntityHelpers.getRealActorFromID(itemData.conjurer)
+          let spells = []
+          for (let sustained of Object.values(itemData.sustainedSpell)){
+            let sustainedSpellName = actor.items.find(s => s.type === "itemSpell" && s.id === sustained.name)
+            tags.push([`${game.i18n.localize('SR5.Sustaining')}${game.i18n.localize('SR5.Colons')} ${sustainedSpellName.name}`, sustainedSpellName.system.gameEffect])
+            spells.push(sustainedSpellName.name)
+          } 
+        }
+        break
+      case "itemSprite":
+        if (itemData.spritePowers) {
+          for (let power of itemData.spritePowers){
+            spritePowers.push(`${power.name}${game.i18n.localize("SR5.Colons")} ${power.system?.gameEffect}`)
+            tags.push([power.name, power.system.gameEffect])
+          }
+        }
+        if (Object.keys(itemData.sustainedComplexForm).length) {
+          let actor = SR5_EntityHelpers.getRealActorFromID(itemData.compiler)
+          for (let sustained of Object.values(itemData.sustainedComplexForm)) {                     
+            let sustainedComplexFormName = actor.items.find(s => s.type === "itemComplexForm" && s.id === sustained.name)
+            tags.push([`${game.i18n.localize('SR5.Sustaining')}${game.i18n.localize('SR5.Colons')} ${sustainedComplexFormName.name}`, sustainedComplexFormName.system.gameEffect])
+          }
+        }
+        break
+      case "itemContact":
+        if (itemData.paymentMethod) {
+          tags.push(`${game.i18n.localize('SR5.PreferedPaymentTypeShort')}${game.i18n.localize('SR5.Colons')} ${itemData.paymentMethod}`)
+        }
+        if (itemData.hobby) {
+          tags.push(`${game.i18n.localize('SR5.HobbiesVices')}${game.i18n.localize('SR5.Colons')} ${itemData.hobby}`)
+        }
+        if (itemData.familySituation) {
+          tags.push(`${game.i18n.localize('SR5.PersonalLife')}${game.i18n.localize('SR5.Colons')} ${itemData.familySituation}`)
+        }
+        break
+      case "itemKarma":
+      case "itemNuyen": {
+        const locateDate = new Date(itemData.date).toLocaleDateString(game.i18n.localize(`SR5.LocateDate`))
+        tags.push(game.i18n.localize("SR5.Date") + game.i18n.localize(`SR5.Colons`) + ` ${locateDate}`)
+        itemData.gameEffect = enrichedDescription
+        break
+      }
+      default:
+    }
+
+    return {
+      description: enrichedDescription,
+      gameEffect: itemData.gameEffect || enrichedDescription,
+      properties: tags.filter(p => !!p),
+      accessories: accessories.filter(p => !!p),
+      options: options.filter(p => !!p),
+      license: license.filter(p => !!p),
+      powers: powers.filter(p => !!p),
+      spritePowers: spritePowers.filter(p => !!p),
+    }
+  }
+
+  //Reload ammo based on weapon type && ammunitions
+  async reloadAmmo(option) {
+    let lists = SR5_EntityHelpers.sortTranslations(SR5)
+    let actor = (this.actor.isToken ? SR5_EntityHelpers.getRealActorFromID(this.actor.token.id) : SR5_EntityHelpers.getRealActorFromID(this.actor.id))
+    let weapon = foundry.utils.duplicate(this),
+      weaponData = weapon.system,
+      ammoSpent = weaponData.ammunition.max - weaponData.ammunition.value,
+      ammoNeeded, action, stop = false, falseAmmo = false
+
+    //SR5 p. 167: a clip is removed from a ready weapon, full or not (M2-4); a full weapon takes no more rounds
+    if (ammoSpent < 1 && option !== "remove") return ui.notifications.info(game.i18n.localize("SR5.INFO_AmmoAlreadyFull"))
+    if (weaponData.ammunition.casing === "")return ui.notifications.warn(game.i18n.localize("SR5.WARN_MissingCasing"))
+
+    //House rule (world setting, off by default): with the right rounds in the inventory, reloading spends no action
+    let hasAmmo = actor.items.some((i) => i.type === "itemAmmunition" && (i.system.type === weaponData.ammunition.type) && (i.system.class === weaponData.type) && i.system.quantity > 0)
+    let freeReload = reloadIsFree({
+      houseRule: game.settings.get("sr5", "sr5FreeReload"), option, hasAmmo
+    })
+
+    //Manage action in combat, eventually return if no action available
+    //Cap & Ball (Gun H(e)aven 3 p. 3): round by round, three Complex Actions each, one per click
+    //B13, lot 2: the "ammo" rule lock family refuses; lifted, the gamemaster hears of it once the reload really goes
+    const liftedAmmo = []
+    const ammoRefused = key => {
+      if (ruleLockActive("ammo")) return refuseByRule("ammo", key, null, {
+        actor
+      })
+      liftedAmmo.push(key)
+      return false
+    }
+    //Lifted, it reloads like any other weapon of its casing
+    let isCapBall = hasWeaponTrait(weaponData, "capBall") && game.combat && !freeReload
+    if (isCapBall && option !== "insertRound") {
+      if (ammoRefused("SR5.WARN_CapBallRoundByRound")) return
+      isCapBall = false
+    }
+
+    if (game.combat && !freeReload){
+      if (isCapBall) option = "capBall"
+      switch (option){
+        case "capBall":
+          action = [{
+            type: "complex", value: 1, source: "insertRound"
+          }]
+          option = "insertRound"
+          break
+        case "insert":
+          if (weaponData.ammunition.casing === "clip") action = [{
+            type: "simple", value: 1, source: "insertClip"
+          }]
+          else action = [{
+            type: "complex", value: 1, source: "insertClip"
+          }]
+          break
+        case "replace":
+          if (weaponData.ammunition.casing === "clip") {
+            //SR5 p. 427 and 435: a wireless firearm and a DNI eject the clip as a free action (decision H21)
+            if (firearmCommandIsFree(weaponData, actor, game.settings.get("sr5", "sr5WifiRequiresDNI"))){
+              action = [{
+                type: "free", value: 1, source: "removeClip"
+              }, {
+                type: "simple", value: 1, source: "insertClip"
+              }]
+            } else action = [{
+              type: "simple", value: 2, source: "replaceClip"
+            }]
+          }
+          else action = [{
+            type: "complex", value: 2, source: "replaceClip"
+          }]
+          break
+        case "insertRound":
+          if (weaponData.type === "bow")  action = [{
+            type: "simple", value: 1, source: "insertRound"
+          }]
+          else action = [{
+            type: "complex", value: 1, source: "insertRound"
+          }]
+          break
+        case "insertRoundFull":
+          //B13, lot 2: the "ammo" rule lock family lifted, any casing fills round by round as a cylinder does
+          if (weaponData.ammunition.casing !== "cylinder" && ammoRefused("SR5.WARN_NotPossibleInCombat")) return
+          action = [{
+            type: "complex", value: 1, source: "insertRound"
+          }]
+          break
+        case "remove":
+          if (weaponData.ammunition.casing === "clip") {
+            if (firearmCommandIsFree(weaponData, actor, game.settings.get("sr5", "sr5WifiRequiresDNI"))) action = [{
+              type: "free", value: 1, source: "removeClip"
+            }]
+            else action = [{
+              type: "simple", value: 1, source: "removeClip"
+            }]
+          }
+          else action = [{
+            type: "complex", value: 1, source: "removeClip"
+          }]
+          break
+      }
+
+      //chek if actor has enought action left. B13: it refused in every world, whatever sr5BlockMissingActions said,
+      //so it follows the "actions" rule lock family, checked in every world, and not its "missing actions" box
+      let short = action.find(a => a.value > actor.system.specialProperties.actions[a.type].current)
+      if (short && refuseByRule("actions", 'SR5.WARN_NotEnoughAction', {
+        value: short.value, action: game.i18n.localize(SR5.actionTypes[short.type])
+      }, {
+        actor
+      })) return
+    }
+
+    if (isCapBall) {
+      const reload = capBallReloadStep(this.getFlag("sr5", "capBallStep"))
+      if (!reload.loaded) {
+        await this.setFlag("sr5", "capBallStep", reload.step)
+        SR5Combat.changeActionInCombat(this.actor.isToken ? this.actor.token.id : this.actor.id, action)
+        return ui.notifications.info(game.i18n.format("SR5.INFO_CapBallStep", {
+          done: reload.done, total: CAP_BALL_STEPS
+        }))
+      }
+      await this.unsetFlag("sr5", "capBallStep")
+    }
+
+    //Manage removing clip/belt/drum
+    if (option === "remove"){
+      weaponData.ammunition.value = 0
+      weaponData.ammunition.clipInserted = false
+      this.update({
+        system: weaponData
+      })
+
+      //Update actions in combat
+      if (game.combat){
+        let actorId = (this.actor.isToken ? this.actor.token.id : this.actor.id)
+        SR5Combat.changeActionInCombat(actorId, action)
+      }
+      return
+    }
+
+    //Check if actor has good type of rounds in inventory: a pile that still holds rounds first,
+    //so an empty pile listed before it neither blocks the reload nor gets drawn from
+    const fits = (i) => i.type === "itemAmmunition" && (i.system.type === weaponData.ammunition.type) && (i.system.class === weaponData.type)
+    let ammo = actor.items.find((i) => fits(i) && i.system.quantity > 0) || actor.items.find(fits)
+    let ammoData = ammo ? foundry.utils.duplicate(ammo.system) : {
+    }
+
+    if (!ammo || ammo.system.quantity <= 0) {
+      const confirmed = await foundry.applications.api.DialogV2.confirm({
+        window: {
+          title: game.i18n.localize('SR5.DIALOG_WarningNoAmmoTypeTitle') 
+        },
+        content: "<h3>" + game.i18n.localize('SR5.DIALOG_Warning') + "</h3><p>" + 
+          game.i18n.format('SR5.DIALOG_WarningNoAmmoType', 
+            {
+              actor: actor.name, ammoType: SR5_EntityHelpers.resolveAmmoTypeLabel(weaponData.ammunition.type),
+              weaponType: game.i18n.localize(lists.rangedWeaponTypes[weaponData.type]),
+              itemName: weapon.name
+            }) + "</p>",
+        rejectClose: false,
+      })
+      if (confirmed) {
+        falseAmmo = true
+        ammoData.quantity = 1000
+      } else {
+        stop = true
+      }
+    }
+    if (stop) return
+    //One gesture, one whisper: a Cap & Ball whose casing is not a cylinder, filled round by round, lifts two rules
+    //at once (review 12); the first one tells the gamemaster enough
+    if (liftedAmmo.length) refuseByRule("ammo", liftedAmmo[0], null, {
+      actor
+    })
+
+    switch (option){
+      case "insert":
+      case "replace":
+      case "insertRoundFull":
+        if (option === "insert" && weaponData.ammunition.clipInserted && game.combat && refuseByRule("ammo", "SR5.WARN_RemoveClipFirst", null, {
+          actor
+        })) return
+        if (ammoSpent > ammoData.quantity) ammoNeeded = ammoData.quantity
+        else ammoNeeded = ammoSpent
+        weaponData.ammunition.value += ammoNeeded
+        weaponData.ammunition.clipInserted = true
+        break
+      case "insertRound":
+        if (isCapBall) ammoNeeded = Math.min(1, ammoData.quantity)
+        else if (weaponData.ammunition.casing === "breakAction"){
+          if (ammoData.quantity < 2) ammoNeeded = ammoData.quantity
+          else ammoNeeded = 2
+        } else {
+          if (actor.system.attributes.agility.augmented.value > ammoData.quantity) ammoNeeded = ammoData.quantity
+          else ammoNeeded = actor.system.attributes.agility.augmented.value
+          if (ammoNeeded > ammoSpent) ammoNeeded = ammoSpent
+        }
+        weaponData.ammunition.value += ammoNeeded
+        break
+    }
+
+
+    //update weapon
+    this.update({
+      system: weaponData
+    })
+
+    //Update ammo in inventory if needed
+    if (!falseAmmo){
+      ammoData.quantity -= ammoNeeded
+      ammo.update({
+        system: ammoData
+      })
+    }
+
+    //Update actions in combat
+    if (game.combat && !freeReload){
+      let actorId = (this.actor.isToken ? this.actor.token.id : this.actor.id)
+      SR5Combat.changeActionInCombat(actorId, action)
+    }
+  }
+
+  async placeGabarit(messageId) {
+    let actorPosition = SR5_EntityHelpers.getActorCanvasPosition(this.parent)
+    if (canvas.scene && actorPosition !==0) {
+      const template = await AbilityTemplate.fromItem(this, messageId)
+      if (template) {
+        await template.drawPreview()
+        if (this.type === "itemWeapon") this.rollTest("weapon")
+        if (messageId) SR5_RollMessage.updateChatButtonHelper(messageId, "templatePlace")
+      }
+    } else if (this.type === "itemWeapon") this.rollTest("weapon")
+    if (this.actor.sheet._element) {
+      if (this.isOwner && this.actor.sheet) this.actor.sheet.minimize()
+    }
+  }
+
+  //Roll a test
+  rollTest(rollType, rollKey, chatData){
+    SR5_PrepareRollTest.rollTest(this, rollType, rollKey, chatData)
+  }
+
+  /** Overide Item's create Dialog to hide certain items and sort them alphabetically*/
+  static async createDialog(data={
+  }, {
+    parent=null, pack=null, ..._options
+  }={
+  }) {
+    // Collect data
+    const documentName = this.metadata.name
+    const hiddenTypes = ["itemKarma", "itemMark", "itemNuyen", "itemEffect", "base"]
+    const originalTypes = game.documentTypes[documentName]
+    const types = originalTypes.filter((itemType) => !hiddenTypes.includes(itemType))
+    const folders = parent ? [] : game.folders.filter(f => (f.type === documentName) && f.displayed)
+    const title = game.i18n.localize('SR5.DIALOG_CreateNewItem')
+		
+    // Render the document creation form
+    const defaultType = data.type || types[0]
+    const html = await foundry.applications.handlebars.renderTemplate(`templates/sidebar/document-create.html`, {
+      name: data.name || '',
+      defaultName: this.defaultName({
+        type: defaultType, parent, pack
+      }),
+      folder: data.folder,
+      folders: folders,
+      hasFolders: folders.length >= 1,
+      type: defaultType,
+      types: types.reduce((obj, t) => {
+        const label = CONFIG[documentName]?.typeLabels?.[t] ?? t
+        obj[t] = game.i18n.has(label) ? game.i18n.localize(label) : t
+        return SR5_EntityHelpers.sortObjectValue(obj)
+      }, {
+      }),
+      hasTypes: types.length > 1,
+      presets: CONFIG.Cards.presets
+    })
+		
+    // Render the confirmation dialog window
+    return foundry.applications.api.DialogV2.wait({
+      window: {
+        title 
+      },
+      content: html,
+      buttons: [
+        {
+          action: "ok",
+          label: title,
+          icon: CONFIG[documentName]?.sidebarIcon,
+          default: true,
+          callback: async (event, button, dialog) => {
+            const form = dialog.element.querySelector("form")
+            const fd = new foundry.applications.ux.FormDataExtended(form)
+            foundry.utils.mergeObject(data, fd.object, {
+              inplace: true
+            })
+            if ( !data.folder ) delete data["folder"]
+            if ( !data.name?.trim() ) data.name = this.defaultName({
+              type: data.type, parent, pack
+            })
+            const preset = CONFIG.Cards.presets[data.preset]
+            if ( preset && (preset.type === data.type) ) {
+              const presetData = await fetch(preset.src).then(r => r.json())
+              data = foundry.utils.mergeObject(presetData, data)
+            }
+            return this.create(data, {
+              parent, pack, renderSheet: true
+            })
+          },
+        },
+      ],
+      rejectClose: false,
+    })
+  }
+
+
+}

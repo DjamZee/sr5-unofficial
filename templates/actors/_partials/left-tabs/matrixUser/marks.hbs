@@ -1,0 +1,18 @@
+<!-- MARKS -->
+{{#if system.isGM}}
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete">
+			<div class="col-11 SR-TextUppercase">{{localize 'SR5.Marks'}}</div>
+			<div class="col-1">
+			</div>
+		</li>
+		{{#each system.matrix.marks}}
+		<li class="item grid" data-item-id="{{item._id}}">
+			<div class="col-11">{{ownerName}}</div>
+			<div class="col-1 SR-TextCenter">{{value}}</div>
+		</li>
+		{{/each}}
+	</ul>
+</div>
+{{/if}}

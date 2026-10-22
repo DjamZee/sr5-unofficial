@@ -1,0 +1,794 @@
+import {
+  SR5_SystemHelpers 
+} from "./system/utilitySystem.js"
+import {
+  updateLedger
+} from "./system/gm-ledger.js"
+import {
+  MEGAPACK_IDS, MEGAPACK_SYSTEM_ID, MEGAPACK_LITE_ID, litePathUpdate
+} from "./system/megapack.js"
+import {
+  contactCommcodeFromFlag
+} from "./interface/contact-commcode.js"
+
+export default class Migration {
+
+  // Modules whose compendiums are kept up to date at their source, for the current system: the migration
+  // leaves them alone instead of unlocking and rewriting them in each world (Megapack: arbitrage de DjamZ,
+  // séance H, H19), in its three editions; the system's own packs (the Lite, the manual) are rebuilt with it
+  static SOURCE_MAINTAINED_PACKAGES = ["sr5-compendiums", ...MEGAPACK_IDS, MEGAPACK_SYSTEM_ID]
+
+  static isMaintainedAtSource(pack) {
+    return Migration.SOURCE_MAINTAINED_PACKAGES.includes(pack?.metadata?.packageName)
+  }
+
+  async migrateWorld() {
+    ui.notifications.info(game.i18n.format("SR5.INFO_MigrationStart", {
+      version: game.system.version
+    }), {
+      permanent: true 
+    })
+
+    // Migrate World Items
+    for (let i of game.items.contents) {
+      try {
+        const updateData = this.migrateItemData(i.toObject())
+        if (!foundry.utils.isEmpty(updateData)) {
+          SR5_SystemHelpers.srLog(2, `Migrating Item documment ${i.name}`)
+          await i.update(updateData, {
+            enforceTypes: false 
+          })
+        }
+      } catch (err) {
+        err.message = `Failed sr5 system migration for Item ${i.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+
+    // Migrate World Compendium Packs
+    for (let p of game.packs) {
+      if (Migration.isMaintainedAtSource(p)) continue
+      if (!["Actor", "Item", "Scene"].includes(p.documentName)) continue
+      await this.migrateCompendium(p)
+    }
+
+    // Migrate World Actors
+    for (let a of game.actors.contents) {
+      try {
+        const updateData = this.migrateActorData(a)
+        if (!foundry.utils.isEmpty(updateData)) {
+          SR5_SystemHelpers.srLog(2, `Migrating Actor entity ${a.name}`)
+          await a.update(updateData, {
+            enforceTypes: false 
+          })
+        }
+      } catch (err) {
+        err.message = `Failed sr5 system migration for Actor ${a.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+
+    // Migrate Actor Override Tokens
+    for (let s of game.scenes.contents) {
+      try {
+        const updateData = this.migrateSceneData(s)
+        if (!foundry.utils.isEmpty(updateData)) {
+          SR5_SystemHelpers.srLog(2, `Migrating Scene entity ${s.name}`)
+          await s.update(updateData, {
+            enforceTypes: false 
+          })
+          // If we do not do this, then synthetic token actors remain in cache
+          // with the un-updated actorData.
+          s.tokens.contents.forEach(t => t._actor = null)
+        }
+      } catch (err) {
+        err.message = `Failed sr5 system migration for Scene ${s.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+
+    // Set the migration as complete
+    game.settings.set("sr5", "systemMigrationVersion", game.system.version)
+    ui.notifications.info(game.i18n.format("SR5.INFO_MigrationDone", {
+      version: game.system.version
+    }), {
+      permanent: true 
+    })
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Head cases used to store their Nanite Volume in Resonance: move it to the dedicated special attribute.
+   * Idempotent: once moved, Resonance is 0 and the actor is left alone.
+   * @param actor   An Actor document or its data (type, system, items)
+   * @return {object} The update data, empty when nothing is to move
+   */
+  static migrateHeadcaseNaniteData(actor) {
+    const updateData = {
+    }
+    if (actor.type !== "actorPc" && actor.type !== "actorGrunt") return updateData
+    if (!actor.system?.specialAttributes?.resonance) return updateData
+    const items = actor.items ?? []
+    let hasHeadcaseDevice = false
+    for (const i of items) {
+      if (i.type === "itemDevice" && i.system?.type === "headcase") hasHeadcaseDevice = true
+    }
+    const resonanceBase = actor.system.specialAttributes.resonance.natural?.base ?? 0
+    const naniteBase = actor.system.specialAttributes.nanite?.natural?.base ?? 0
+    if (hasHeadcaseDevice && resonanceBase > 0 && naniteBase === 0) {
+      updateData["system.specialAttributes.nanite.natural.base"] = resonanceBase
+      updateData["system.specialAttributes.resonance.natural.base"] = 0
+      updateData["system.activeSpecialAttribute"] = "nanite"
+    }
+    return updateData
+  }
+
+  /**
+   * Run the head case migration once per world, whatever the system version the world was migrated to.
+   * World actors, unlinked tokens (their delta) and unlocked world compendiums; module packs are not touched.
+   * The world setting is only set when every update went through, so a failure is retried at the next load.
+   * @return {Promise<boolean>} true when the migration is done (now or before)
+   */
+  async migrateHeadcaseNanite() {
+    if (game.settings.get("sr5", "migrationHeadcaseNanite")) return true
+    const actors = [...game.actors.contents]
+    for (const s of game.scenes.contents) {
+      for (const t of s.tokens.contents) {
+        if (!t.actorLink && t.actor) actors.push(t.actor)
+      }
+    }
+    for (const p of game.packs) {
+      if (p.documentName !== "Actor" || p.metadata.packageType !== "world" || p.locked) continue
+      actors.push(...await p.getDocuments())
+    }
+
+    let failed = false
+    for (const a of actors) {
+      try {
+        const updateData = Migration.migrateHeadcaseNaniteData(a)
+        if (foundry.utils.isEmpty(updateData)) continue
+        SR5_SystemHelpers.srLog(2, `Migrating head case Nanite Volume of ${a.name}`)
+        await a.update(updateData)
+      } catch (err) {
+        failed = true
+        err.message = `Failed sr5 head case migration for Actor ${a.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+    if (failed) return false
+    // The world flag is written as every GM register is, in its turn (gm-ledger.js)
+    await updateLedger("migrationHeadcaseNanite", () => true)
+    return true
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * The commcodes the Landing Page's CONTACTS kept in its flag become the contact's field (API pour CONTACTS).
+   * At every load, by the active gamemaster: it only writes the contacts that have a flag and no commcode, so it is
+   * cheap and catches up with the flags the module still writes until it moves to the API. World actors, unlinked
+   * tokens and world items; compendiums are not read (the module flags a contact when its character calls it).
+   * @return {Promise<number>} the contacts written
+   */
+  async migrateContactCommcodes() {
+    if (!game.user?.isActiveGM) return 0
+    let written = 0
+    const holders = [...game.actors.contents]
+    for (const s of game.scenes.contents) {
+      for (const t of s.tokens.contents) {
+        if (!t.actorLink && t.actor) holders.push(t.actor)
+      }
+    }
+    for (const holder of holders) {
+      const updates = holder.items.filter(i => i.type === "itemContact").map(i => ({
+        _id: i.id, ...contactCommcodeFromFlag(i)
+      })).filter(u => Object.keys(u).length > 1)
+      if (!updates.length) continue
+      try {
+        await holder.updateEmbeddedDocuments("Item", updates, {
+          render: false
+        })
+        written += updates.length
+      } catch (err) {
+        err.message = `Failed sr5 contact commcode migration for Actor ${holder.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+    for (const item of game.items.contents) {
+      const updateData = contactCommcodeFromFlag(item)
+      if (foundry.utils.isEmpty(updateData)) continue
+      try {
+        await item.update(updateData)
+        written++
+      } catch (err) {
+        err.message = `Failed sr5 contact commcode migration for Item ${item.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+    if (written) SR5_SystemHelpers.srLog(2, `Contact commcodes taken from the Landing Page's flags: ${written}`)
+    return written
+  }
+
+  /* -------------------------------------------- */
+
+  // The embedded collections a document's Lite media are looked for in, each updated as documents of their own
+  static LITE_EMBEDDED = {
+    Actor: {
+      items: "Item", effects: "ActiveEffect" 
+    },
+    Item: {
+      effects: "ActiveEffect" 
+    },
+    RollTable: {
+      results: "TableResult" 
+    },
+    Scene: {
+      tokens: "Token" 
+    },
+    Macro: {
+    },
+  }
+
+  /**
+   * The Lite inside the system (arbitrage de DjamZ, 23/10): the images of the documents drawn from the Lite module
+   * (modules/megapack-sr5-lite/…) are sent to the system's copy (systems/sr5/megapack/…), the same files. Their links
+   * need nothing: they follow CONFIG.compendium.uuidRedirects (system/megapack.js). Left alone while the Lite module is
+   * active, it still serves its files. At each load, idempotent: a world without such a path writes nothing.
+   */
+  async migrateMegapackLitePaths() {
+    if (!game.user?.isActiveGM || game.modules?.get(MEGAPACK_LITE_ID)?.active) return 0
+    let written = 0
+    const fix = async (doc, skip = []) => {
+      const update = litePathUpdate(doc.toObject(), skip)
+      if (foundry.utils.isEmpty(update)) return
+      await doc.update(update, {
+        render: false 
+      })
+      written++
+    }
+    const collections = [["Actor", game.actors], ["Item", game.items], ["RollTable", game.tables], ["Macro", game.macros],
+      ["Scene", game.scenes]]
+    for (const [type, collection] of collections) {
+      const embedded = Migration.LITE_EMBEDDED[type]
+      for (const doc of collection?.contents ?? []) {
+        try {
+          await fix(doc, Object.keys(embedded))
+          for (const [field, embeddedType] of Object.entries(embedded)) {
+            const updates = (doc[field]?.contents ?? []).map(e => ({
+              _id: e.id, ...litePathUpdate(e.toObject(), ["effects", "delta"])
+            })).filter(u => Object.keys(u).length > 1)
+            if (!updates.length) continue
+            await doc.updateEmbeddedDocuments(embeddedType, updates, {
+              render: false 
+            })
+            written += updates.length
+          }
+        } catch (err) {
+          err.message = `Failed sr5 Megapack Lite paths migration for ${type} ${doc.name}: ${err.message}`
+          console.error(err)
+        }
+      }
+    }
+    if (written) SR5_SystemHelpers.srLog(2, `Megapack Lite images sent to the system's copy: ${written}`)
+    return written
+  }
+
+  /* -------------------------------------------- */
+
+  // Names the standard flashlight was created under while its catalog entry had no effect (Run & Gun p. 69)
+  static FLASHLIGHT_NAMES = ["Lampe torche", "Flash Light", "Flashlight"]
+
+  static isStandardFlashlight(accessory) {
+    const wa = accessory?.system?.weaponAccessory
+    if (!wa || wa.specialEffect) return false
+    const names = [...Migration.FLASHLIGHT_NAMES, globalThis.game?.i18n?.localize("SR5.AccessoryFlashLight")]
+    return names.includes(accessory.name)
+  }
+
+  /**
+   * The standard flashlight is recognised by its specialEffect only: give it "flashLight" when it has none, on the
+   * accessory item itself and on the copies a weapon keeps of its mounted accessories. Idempotent.
+   * @param item   An Item document or its data
+   * @return {object} The update data, empty when nothing is to change
+   */
+  static migrateFlashlightData(item) {
+    const updateData = {
+    }
+    if (item?.type !== "itemWeapon") return updateData
+    if (Migration.isStandardFlashlight(item)) updateData["system.weaponAccessory.specialEffect"] = "flashLight"
+    const source = item._source?.system?.accessory ?? item.system?.accessory
+    if (source && typeof source === "object") {
+      const accessory = foundry.utils.deepClone(source)
+      let changed = false
+      for (const a of Object.values(accessory)) {
+        if (!Migration.isStandardFlashlight(a)) continue
+        a.system.weaponAccessory.specialEffect = "flashLight"
+        changed = true
+      }
+      if (changed) updateData["system.accessory"] = accessory
+    }
+    return updateData
+  }
+
+  /**
+   * Run the flashlight migration once per world: world items, the items of world actors and unlinked tokens, and
+   * unlocked world compendiums; module packs are fixed at their source (the Megapack carries the effect).
+   * @return {Promise<boolean>} true when the migration is done (now or before)
+   */
+  async migrateFlashlightEffect() {
+    if (game.settings.get("sr5", "migrationFlashlightEffect")) return true
+    const items = [...game.items.contents]
+    const actors = [...game.actors.contents]
+    for (const s of game.scenes.contents) {
+      for (const t of s.tokens.contents) {
+        if (!t.actorLink && t.actor) actors.push(t.actor)
+      }
+    }
+    for (const p of game.packs) {
+      if (p.metadata.packageType !== "world" || p.locked) continue
+      if (p.documentName === "Actor") actors.push(...await p.getDocuments())
+      else if (p.documentName === "Item") items.push(...await p.getDocuments())
+    }
+    for (const a of actors) items.push(...(a.items?.contents ?? a.items ?? []))
+
+    let failed = false
+    for (const i of items) {
+      try {
+        const updateData = Migration.migrateFlashlightData(i)
+        if (foundry.utils.isEmpty(updateData)) continue
+        SR5_SystemHelpers.srLog(2, `Migrating flashlight effect of ${i.name}`)
+        await i.update(updateData)
+      } catch (err) {
+        failed = true
+        err.message = `Failed sr5 flashlight migration for Item ${i.name}: ${err.message}`
+        console.error(err)
+      }
+    }
+    if (failed) return false
+    // The world flag is written as every GM register is, in its turn (gm-ledger.js)
+    await updateLedger("migrationFlashlightEffect", () => true)
+    return true
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	 * Apply migration rules to all Entities within a single Compendium pack
+	 * @param pack
+	 * @return {Promise}
+	 */
+  async migrateCompendium(pack) {
+    const documentName = pack.documentName
+    if (!["Actor", "Item", "Scene"].includes(documentName)) return
+
+    // Unlock the pack for editing
+    const wasLocked = pack.locked
+    await pack.configure({
+      locked: false 
+    })
+
+    // Begin by requesting server-side data model migration and get the migrated content
+    await pack.migrate()
+    const documents = await pack.getDocuments()
+
+    // Iterate over compendium entries - applying fine-tuned migration functions
+    for (let doc of documents) {
+      let updateData = {
+      }
+      try {
+        switch (documentName) {
+          case "Actor":
+            updateData = this.migrateActorData(doc.data)
+            break
+          case "Item":
+            updateData = this.migrateItemData(doc.toObject())
+            break
+          case "Scene":
+            updateData = this.migrateSceneData(doc.data)
+            break
+        }
+
+        // Save the entry, if data was changed
+        if (foundry.utils.isEmpty(updateData)) continue
+        await doc.update(updateData)
+        SR5_SystemHelpers.srLog(2, `Migrated ${document} document ${doc.name} in Compendium ${pack.collection}`)
+      }
+
+      // Handle migration failures
+      catch (err) {
+        err.message = `Failed sr5 system migration for document ${doc.name} in pack ${pack.collection}: ${err.message}`
+        console.error(err)
+      }
+    }
+
+    // Apply the original locked status for the pack
+    await pack.configure({
+      locked: wasLocked 
+    })
+    SR5_SystemHelpers.srLog(2, `Migrated all ${document} entities from Compendium ${pack.collection}`)
+  }
+
+  /* -------------------------------------------- */
+  /*  Entity Type Migration Helpers               */
+  /* -------------------------------------------- */
+
+  /**
+		* Migrate a single Actor entity to incorporate latest data model changes
+		* Return an Object of updateData to be applied
+		* @param {object} actor    The actor data object to update
+		* @return {Object}         The updateData to apply
+		*/
+  migrateActorData(actor) {
+    const updateData = {
+    }
+    // Actor Data Updates
+    if (actor.system) {
+      //Do stuff on Actor
+      if (actor.type !== "actorDrone") updateData["system.penalties.-=resonance"] = null
+      if (actor.system.vision) updateData["system.-=vision"] = null
+      if (actor.type === "actorSpirit") {
+        if (actor.system.magic.magicType === "") updateData["system.magic.magicType"] = "spirit"
+      }
+
+      //Change on conditionMonitors template to handle temporary damage
+      if (actor.system.conditionMonitors) {
+        for (let key of Object.keys(actor.system.conditionMonitors)) {
+          if (actor.system.conditionMonitors[key].current) {
+            if (key === "condition") {
+              updateData["system.conditionMonitors.condition.actual.base"] = actor.system.conditionMonitors.condition.current
+              updateData["system.conditionMonitors.condition.-=current"] = null
+            }
+            if (key === "matrix") {
+              updateData["system.conditionMonitors.matrix.actual.base"] = actor.system.conditionMonitors.matrix.current
+              updateData["system.conditionMonitors.matrix.-=current"] = null
+            }
+            if (key === "stun") {
+              updateData["system.conditionMonitors.stun.actual.base"] = actor.system.conditionMonitors.stun.current
+              updateData["system.conditionMonitors.stun.-=current"] = null
+            }
+            if (key === "physical") {
+              updateData["system.conditionMonitors.physical.actual.base"] = actor.system.conditionMonitors.physical.current
+              updateData["system.conditionMonitors.physical.-=current"] = null
+            }
+            if (key === "edge") {
+              updateData["system.conditionMonitors.edge.actual.base"] = actor.system.conditionMonitors.edge.current
+              updateData["system.conditionMonitors.edge.-=current"] = null
+            }
+            if (key === "overflow") {
+              updateData["system.conditionMonitors.overflow.actual.base"] = actor.system.conditionMonitors.overflow.current
+              updateData["system.conditionMonitors.overflow.-=current"] = null
+            }
+          }
+        }
+      }
+
+      // Migrate old img/ paths to assets/img/
+      if (actor.img?.startsWith("systems/sr5/img/")) {
+        updateData["img"] = actor.img.replace("systems/sr5/img/", "systems/sr5/assets/img/")
+      }
+      if (actor.prototypeToken?.texture?.src?.startsWith("systems/sr5/img/")) {
+        updateData["prototypeToken.texture.src"] = actor.prototypeToken.texture.src.replace("systems/sr5/img/", "systems/sr5/assets/img/")
+      }
+
+      //Change astralCombat limit
+      if (actor.system.skills?.astralCombat) {
+        updateData["system.skills.astralCombat.limit.base"] = "astralLimit"
+      }
+
+      //Fix locksmith limit (was mentalLimit, should be physicalLimit)
+      if (actor.system.skills?.locksmith?.limit?.base === "mentalLimit") {
+        updateData["system.skills.locksmith.limit.base"] = "physicalLimit"
+      }
+
+      //Rename legacy biography keys (characterMetatype → metatype)
+      if (actor.system.biography?.characterMetatype) {
+        if (!actor.system.biography.metatype) updateData["system.biography.metatype"] = actor.system.biography.characterMetatype
+        updateData["system.biography.-=characterMetatype"] = null
+      }
+      if (actor.system.biography?.characterMetatypeVariant) {
+        if (!actor.system.biography.metatypeVariant) updateData["system.biography.metatypeVariant"] = actor.system.biography.characterMetatypeVariant
+        updateData["system.biography.-=characterMetatypeVariant"] = null
+      }
+
+      //Rename negociation skill to negotiation (French → English)
+      if (actor.system.skills?.negociation) {
+        updateData["system.skills.negotiation"] = actor.system.skills.negociation
+        updateData["system.skills.-=negociation"] = null
+      }
+
+      //v10 embedded items in actor
+      if (actor.system.creatorData) {
+        let newCreatorData = foundry.utils.duplicate(actor.system.creatorData)
+        if (newCreatorData.items) {
+          for (let i of newCreatorData.items) {
+            i.system = i.data
+            if (i.system.customEffects) {
+              for (let e of Object.values(i.system.customEffects)) {
+                if (e.target) {
+                  if (e.target.includes("data.")) e.target = e.target.replace('data.', 'system.')
+                }
+              }
+            }
+          }
+        }
+        if (newCreatorData.data) newCreatorData.system = newCreatorData.data
+        updateData["system.creatorData"] = newCreatorData
+      }
+
+      if (actor.flags?.sr5?.vehicleControler) {
+        let newFlag = foundry.utils.duplicate(actor.flags.sr5.vehicleControler)
+        newFlag.system = newFlag.data
+        if (newFlag.items) {
+          for (let i of newFlag.items) {
+            i.system = i.data
+            if (i.system.customEffects) {
+              for (let e of Object.values(i.system.customEffects)) {
+                if (e.target) {
+                  if (e.target.includes("data.")) e.target = e.target.replace('data.', 'system.')
+                }
+              }
+            }
+          }
+        }
+        updateData["system.vehicleOwner.system"] = newFlag.system
+        updateData["system.vehicleOwner.items"] = newFlag.items
+        updateData["flags.sr5.-=vehicleControler"] = null
+      }
+
+      Object.assign(updateData, Migration.migrateHeadcaseNaniteData(actor))
+
+      //Change on hardened armors
+      if (actor.system.specialProperties) {
+        updateData["system.specialProperties.-=hardenedArmorType"] = null
+        updateData["system.specialProperties.-=hardenedArmorRating"] = null
+        updateData["system.specialProperties.-=hardenedArmor"] = null
+        updateData["system.specialProperties.-=hardenedAstralArmorType"] = null
+        updateData["system.specialProperties.-=hardenedAstralArmorRating"] = null
+        updateData["system.specialProperties.-=hardenedAstralArmor"] = null
+      }
+    }
+
+    // Migrate Owned Items
+    if (actor.items) {
+      const items = actor.items.reduce((arr, i) => {
+        // Migrate the Owned Item
+        const itemData = i instanceof CONFIG.Item.documentClass ? i.toObject() : i
+        let itemUpdate = this.migrateItemData(itemData, !actor.prototypeToken)
+
+        // Update the Owned Item
+        if (!foundry.utils.isEmpty(itemUpdate)) {
+          itemUpdate._id = itemData._id
+          arr.push(foundry.utils.expandObject(itemUpdate))
+        }
+        return arr
+      }, [])
+      if (items.length > 0) updateData.items = items
+    }
+
+    return updateData
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	* Migrate a single Item entity to incorporate latest data model changes
+	*
+	* @param {object} item  Item data to migrate
+	* @return {object}      The updateData to apply
+	*/
+  migrateItemData(item, isToken) {
+    const updateData = {
+    }
+
+    //v10 migrate item's token
+    if (isToken) {
+      item.system = item.data
+      updateData["system"] = item.data
+    }
+
+    // Migrate old img/ paths to assets/img/
+    if (item.img?.startsWith("systems/sr5/img/")) {
+      updateData["img"] = item.img.replace("systems/sr5/img/", "systems/sr5/assets/img/")
+    }
+
+    //Migrate Items
+    if (item.type == "itemQuality") {
+      updateData["system.isActive"] = true
+    }
+
+    //SR5 p. 207: armors gain the full armor flag, unchecked
+    if (item.type === "itemArmor" && item.system?.isFullArmor === undefined) {
+      updateData["system.isFullArmor"] = false
+    }
+
+    if (item.type == "itemWeapon") {
+      if (item.system?.type === "amt_special") updateData["system.type"] = "exoticMeleeWeapon"
+      if (item.system?.type === "adt_special") updateData["system.type"] = "exoticRangedWeapon"
+      if (item.system?.type === "unarmed") updateData["system.type"] = "unarmedCombat"
+      if (item.system?.weaponSkill?.category === "amt_special") updateData["system.weaponSkill.category"] = "exoticMeleeWeapon"
+      if (item.system?.weaponSkill?.category === "adt_special") updateData["system.weaponSkill.category"] = "exoticRangedWeapon"
+      if (item.system?.category === "grenade") {
+        updateData["system.range.short.base"] = 2
+        updateData["system.range.medium.base"] = 4
+        updateData["system.range.long.base"] = 6
+        updateData["system.range.extreme.base"] = 10
+      }
+      // Migrate legacy ammunition type keys
+      if (item.system?.ammunition?.type === "regularAmmo") updateData["system.ammunition.type"] = "regular"
+      if (item.system?.ammunition?.type === "taser") updateData["system.ammunition.type"] = "taserDart"
+    }
+
+    if (item.system?.conditionMonitors) {
+      if (item.system.conditionMonitors.matrix) {
+        updateData["system.conditionMonitors.matrix.actual.base"] = item.system.conditionMonitors.matrix.current
+        updateData["system.conditionMonitors.matrix.-=current"] = null
+      }
+      if (item.system.conditionMonitors.condition) {
+        updateData["system.conditionMonitors.condition.actual.base"] = item.system.conditionMonitors.condition.current
+        updateData["system.conditionMonitors.condition.-=current"] = null
+      }
+      if (item.system.conditionMonitors.stun) {
+        updateData["system.conditionMonitors.stun.actual.base"] = item.system.conditionMonitors.stun.current
+        updateData["system.conditionMonitors.stun.-=current"] = null
+      }
+      if (item.system.conditionMonitors.physical) {
+        updateData["system.conditionMonitors.physical.actual.base"] = item.system.conditionMonitors.physical.current
+        updateData["system.conditionMonitors.physical.-=current"] = null
+      }
+    }
+
+    if (item.type == "itemSpell") {
+      if (item.system.drainModifier) {
+        updateData["system.drain.base"] = item.system.drainModifier
+        updateData["system.-=drainModifier"] = null
+      }
+    }
+
+    if (item.type === "itemKnowledge" || item.type === "itemLanguage") {
+      if (item.system.base) {
+        updateData["system.rating.base"] = item.system.base
+        updateData["system.-=base"] = null
+        updateData["system.-=value"] = null
+        updateData["system.-=modifiers"] = null
+      }
+    }
+
+    // Remove obsolete item-level boolean fields from martial arts items
+    // Called shot flags are now handled via custom effects on the actor
+    if (item.type === "itemMartialArt") {
+      if (item.system?.pin !== undefined) updateData["system.-=pin"] = null
+      if (item.system?.entanglement !== undefined) updateData["system.-=entanglement"] = null
+      if (item.system?.feint !== undefined) updateData["system.-=feint"] = null
+      if (item.system?.disarm !== undefined) updateData["system.-=disarm"] = null
+      if (item.system?.breakWeapon !== undefined) updateData["system.-=breakWeapon"] = null
+    }
+
+    // Migrate date fields from 0 to "" (empty string) for date inputs
+    if (item.type === "itemKarma" || item.type === "itemNuyen" || item.type === "itemReputation") {
+      if (item.system?.date === 0 || item.system?.date === "0") {
+        updateData["system.date"] = ""
+      }
+    }
+    if (item.type === "itemReputation") {
+      if (item.system?.gameDate === 0 || item.system?.gameDate === "0") {
+        updateData["system.gameDate"] = ""
+      }
+    }
+
+    //v10 migrate custom effects path
+    if (item.system?.customEffects) {
+      let newCustomEffects = item.system.customEffects
+      for (let e of Object.values(newCustomEffects)) {
+        if (e.target) {
+          if (e.target.includes("data.")) e.target = e.target.replace('data.', 'system.')
+          //Change to hardened armor
+          if (e.target === "system.specialProperties.hardenedAstralArmorType") {
+            e.category = "hardenedArmors"
+            e.target = "system.specialProperties.hardenedArmors.astral"
+          }
+          if (e.target === "system.specialProperties.hardenedArmorType") {
+            e.category = "hardenedArmors"
+            e.target = "system.specialProperties.hardenedArmors.normalWeapon"
+          }
+        }
+        if (e.type === "unarmed") e.type = "unarmedCombat"
+      }
+      updateData["system.customEffects"] = newCustomEffects
+    }
+
+    //v10 migrate items effects path
+    if (item.system?.itemEffects) {
+      let newItemEffects = item.system.itemEffects
+      for (let e of Object.values(newItemEffects)) {
+        if (e.target) {
+          if (e.target.includes("data.")) e.target = e.target.replace('data.', 'system.')
+        }
+      }
+      updateData["system.itemEffects"] = newItemEffects
+    }
+
+    //v10 migrate system effects path
+    if (item.system?.systemEffects) {
+      let newSystemEffects = item.system.systemEffects
+      for (let e of Object.values(newSystemEffects)) {
+        if (e.target) {
+          if (e.target.includes("data.")) e.target = e.target.replace('data.', 'system.')
+        }
+      }
+      updateData["system.systemEffects"] = newSystemEffects
+    }
+
+    //v10 migrate agent item
+    if (item.system?.decks) {
+      let newDecks = item.system.decks
+      for (let i of Object.values(newDecks)) {
+        if (i.data) i.system = i.data
+      }
+      updateData["system.decks"] = newDecks
+    }
+
+    // Migrate Effects
+    if (item.effects) {
+      const effects = item.effects.reduce((arr, e) => {
+        // Migrate the Owned Item
+        const effectData = e instanceof CONFIG.ActiveEffect.documentClass ? e.toObject() : e
+        let effectUpdate = this.migrateEffectData(effectData)
+
+        // Update the Owned Item
+        if (!foundry.utils.isEmpty(effectUpdate)) {
+          effectUpdate._id = effectData._id
+          arr.push(foundry.utils.expandObject(effectUpdate))
+        }
+
+        return arr
+      }, [])
+      if (effects.length > 0) updateData.effects = effects
+    }
+
+    return updateData
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	 * Migrate a single Scene entity to incorporate changes to the data model of it's actor data overrides
+	 * Return an Object of updateData to be applied
+	 * @param {Object} scene  The Scene data to Update
+	 * @return {Object}       The updateData to apply
+	 */
+  migrateSceneData(scene) {
+    const tokens = scene.tokens.map(token => {
+      const t = token.toJSON()
+      if (!t.actorId || t.actorLink) {
+        t.delta = {
+        }
+      }
+      else if (!game.actors.has(t.actorId)) {
+        t.actorId = null
+        t.delta = {
+        }
+      }
+      else if (!t.actorLink) {
+        const actorData = foundry.utils.duplicate(t.delta)
+        actorData.type = token.actor?.type
+        const update = this.migrateActorData(actorData);
+        ['items', 'effects'].forEach(embeddedName => {
+          if (!update[embeddedName]?.length) return
+          const updates = new Map(update[embeddedName].map(u => [u._id, u]))
+          t.delta[embeddedName]?.forEach(original => {
+            const update = updates.get(original._id)
+            if (update) foundry.utils.mergeObject(original, update)
+          })
+          delete update[embeddedName]
+        })
+
+        foundry.utils.mergeObject(t.delta, update)
+      }
+      return t
+    })
+    return {
+      tokens 
+    }
+  }
+}

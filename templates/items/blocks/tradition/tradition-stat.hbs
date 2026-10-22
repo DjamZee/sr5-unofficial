@@ -1,0 +1,15 @@
+<!-- General Stat -->
+<ul>
+	<!-- General information title -->
+	{{> systems/sr5/templates/items/_partial/title/generalInformation.hbs}}
+	<!-- Drain Attribute -->
+	{{> systems/sr5/templates/items/_partial/editable/tradition/drain-edit.hbs}}
+	<!-- Spirit Type -->
+	{{> systems/sr5/templates/items/_partial/editable/tradition/spirits-edit.hbs}}
+	<!-- Possession -->
+	{{> systems/sr5/templates/items/_partial/editable/tradition/possession-edit.hbs}}
+	<!-- Hybrid tradition (Forbidden Arcana p. 98): nothing changes in the rolls, only what is shown here -->
+	<li class="grid">
+		<div class="col-12 SR-GreyColor SR-TextSmall">{{localize 'SR5.TraditionHybridHint'}}</div>
+	</li>
+</ul>

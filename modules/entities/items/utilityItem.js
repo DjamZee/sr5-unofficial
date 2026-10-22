@@ -1,0 +1,2955 @@
+import {
+  applyVintageWireless, vintageAccessoryPrice, hasWeaponTrait, osmiumProfile, weaponDamageBonusApplies
+} from './weaponTraits.js'
+import {
+  SR5, AUGMENTATION_GRADE_TABLE 
+} from "../../config.js"
+import {
+  SR5_SystemHelpers
+} from "../../system/utilitySystem.js"
+import {
+  implantEssenceEffects, roundImplantEssence, essenceSettingOn, AUGMENTATION_BUNDLE_SETTING, takesBoneDamage, essenceCostFor
+} from "../../system/implant-essence.js"
+import {
+  SR5_EntityHelpers 
+} from "../helpers.js"
+import {
+  WEAPON_ACCESSORY_CATALOG 
+} from "../../data/weaponAccessoryCatalog.js"
+import {
+  isAccessoryKind, ignoredRecoilAccessories, accessoryCapacity, capacityTaken, SMARTGUN_ACCURACY, triggerRemovalAccuracy
+} from "./weapon-accessory-rules.js"
+import {
+  SR5_Toxins
+} from "./toxins.js"
+import {
+  lifestyleMetatypeSurcharge
+} from "./lifestyle-metatype.js"
+import {
+  purityStateArmorPenetration
+} from "./adept-powers-btb.js"
+import {
+  deathSowerAdeptDamage
+} from "./magic-masteries.js"
+import {
+  weaponRatingModifiers
+} from "./weapon-ratings.js"
+import {
+  streamOf, streamFadingReduction, reducedFading
+} from "../actors/technomancer-streams.js"
+import {
+  rccAutosoftsForDrone, droneAutopilot, localAutosoftRating
+} from "../actors/rcc.js"
+import {
+  swarmTargetingRating
+} from "../../system/swarm.js"
+import {
+  dataProcessingCapModifier
+} from "../../system/rigging-rules.js"
+import {
+  weaponLimb, limbAttributes, weaponAttribute, withLimbAgility
+} from "../../system/cyberlimb.js"
+import {
+  isFactoryMod
+} from "../../system/vehicle-factory.js"
+import {
+  isMountedWeapon, vehicleMeleeStrength, vehicleMeleeSpeedBonus, vehicleWeaponSkill, droneArmProfile
+} from "../../system/vehicle-melee.js"
+import {
+  sizeMismatchModifier, holderMetatype
+} from "../../system/size-mismatch.js"
+
+/**
+ * The implant on a sheet as a line of sr5.essenceCostFor (context "sheet"): what a subscriber reads of it, copied from
+ * the prepared data (a data model is not copied whole, it holds its parent).
+ */
+export function sheetLine(itemData, item) {
+  const cost = itemData.essenceCost ?? {
+  }
+  return {
+    type: "itemAugmentation", name: item?.name ?? "", uuid: item?.uuid ?? null, grade: itemData.grade, quantity: 1,
+    flags: item?.flags ?? {
+    }, _stats: item?._stats ?? {
+    },
+    system: {
+      type: itemData.type, grade: itemData.grade, itemRating: itemData.itemRating, isAccessory: !!itemData.isAccessory,
+      reversibleEssence: !!itemData.reversibleEssence, essenceCost: {
+        base: cost.base, multiplier: cost.multiplier, value: cost.value
+      }
+    }
+  }
+}
+
+// The implants whose unknown grade the gamemaster was told of, once each per session
+const unknownGradesTold = new Set()
+function warnUnknownGrade(itemData, actor) {
+  // Told with the character it is on: the item alone is also computed, without it
+  if (!actor || !globalThis.game?.user?.isGM || !globalThis.ui?.notifications) return
+  const key = `${actor?.id ?? ""}|${itemData.grade}|${itemData.type}|${itemData.essenceCost?.base}`
+  if (unknownGradesTold.has(key)) return
+  unknownGradesTold.add(key)
+  ui.notifications.warn(game.i18n.format("SR5.WARN_UnknownAugmentationGrade", {
+    grade: String(itemData.grade), actor: actor?.name ?? ""
+  }))
+}
+
+export class SR5_UtilityItem extends Actor {
+  //************************************************//
+  //                     ITEMS                      //
+  //************************************************//
+
+  // Returns the display name of item types
+  static findDisplayName(type) {
+    var displayName = ""
+    switch (type) {
+      case "itemKnowledge":
+        displayName = game.i18n.localize("SR5.KnowledgeSkillNew")
+        break
+      case "itemLanguage":
+        displayName = game.i18n.localize("SR5.LanguageNew")
+        break
+      case "itemDevice":
+        displayName = game.i18n.localize("SR5.DeviceNew")
+        break
+      case "itemWeapon":
+        displayName = game.i18n.localize("SR5.WeaponNew")
+        break
+      case "itemArmor":
+        displayName = game.i18n.localize("SR5.ArmorNew")
+        break
+      case "itemMark":
+        displayName = game.i18n.localize("SR5.MarkNew")
+        break
+      case "itemFile":
+        displayName = game.i18n.localize("SR5.FileNew")
+        break
+      case "itemProgram":
+        displayName = game.i18n.localize("SR5.ProgramNew")
+        break
+      case "itemGear":
+        displayName = game.i18n.localize("SR5.GearNew")
+        break
+      case "itemVehicle":
+        displayName = game.i18n.localize("SR5.VehicleNew")
+        break
+      case "itemVehicleMod":
+        displayName = game.i18n.localize("SR5.VehicleModNew")
+        break
+      case "itemAugmentation":
+        displayName = game.i18n.localize("SR5.AugmentationNew")
+        break
+      case "itemSpell":
+        displayName = game.i18n.localize("SR5.SpellNew")
+        break
+      case "itemPower":
+        displayName = game.i18n.localize("SR5.PowerNew")
+        break
+      case "itemAdeptPower":
+        displayName = game.i18n.localize("SR5.AdeptPowerNew")
+        break
+      case "itemFocus":
+        displayName = game.i18n.localize("SR5.FocusNew")
+        break
+      case "itemSpirit":
+        displayName = game.i18n.localize("SR5.SpiritNew")
+        break
+      case "itemMetamagic":
+        displayName = game.i18n.localize("SR5.MetamagicNew")
+        break
+      case "itemMartialArt":
+        displayName = game.i18n.localize("SR5.MartialArtNew")
+        break
+      case "itemContact":
+        displayName = game.i18n.localize("SR5.ContactNew")
+        break
+      case "itemSin":
+        displayName = game.i18n.localize("SR5.SystemIdentificationNumberNew")
+        break
+      case "itemLifestyle":
+        displayName = game.i18n.localize("SR5.LifestyleNew")
+        break
+      case "itemStorage":
+        displayName = game.i18n.localize("SR5.StorageNew")
+        break
+      case "itemQuality":
+        displayName = game.i18n.localize("SR5.QualityNew")
+        break
+      case "itemKarmaLoss":
+        displayName = game.i18n.localize("SR5.KarmaNewLoss")
+        break
+      case "itemKarma":
+        displayName = game.i18n.localize("SR5.KarmaNew")
+        break
+      case "itemNuyen":
+        displayName = game.i18n.localize("SR5.NuyenNew")
+        break
+      case "itemReputation":
+        displayName = game.i18n.localize("SR5.ReputationNew")
+        break
+      case "itemPreparation":
+        displayName = game.i18n.localize("SR5.PreparationNew")
+        break
+      case "itemComplexForm":
+        displayName = game.i18n.localize("SR5.ComplexFormNew")
+        break
+      case "itemAmmunition":
+        displayName = game.i18n.localize("SR5.AmmunitionNew")
+        break
+      case "itemSprite":
+        displayName = game.i18n.localize("SR5.SpriteNew")
+        break
+      case "itemSpritePower":
+        displayName = game.i18n.localize("SR5.SpritePowerNew")
+        break
+      case "itemEcho":
+        displayName = game.i18n.localize("SR5.EchoNew")
+        break
+      case "itemTradition":
+        displayName = game.i18n.localize("SR5.TraditionNew")
+        break
+      case "itemMentorSpirit":
+        displayName = game.i18n.localize("SR5.MentorSpiritNew")
+        break
+      case "itemRitual":
+        displayName = game.i18n.localize("SR5.RitualNew")
+        break
+      case "itemEffect":
+        displayName = game.i18n.localize("SR5.EffectNew")
+        break
+      default:
+        displayName = false
+        SR5_SystemHelpers.srLog(1, `Unknown '${type}' item type`)
+    }
+    return displayName
+  }
+
+  // Reset les modifs de prix et de dispo des items
+  static _resetItemModifiers(item) {
+    let itemData = item.system
+
+    //Reset accessory
+    if (item.type === "itemAugmentation" || item.type === "itemGear"){
+      if (!item.isOwned) itemData.accessory = []
+      itemData.isMedkit = false
+    }
+
+    //Reset price & availability
+    if (itemData.price) itemData.price.modifiers = []
+    if (itemData.availability) itemData.availability.modifiers = []
+    if (itemData.essenceCost) itemData.essenceCost.modifiers = []
+    if (itemData.capacityTaken) itemData.capacityTaken.modifiers = []
+    if (item.type === "itemLifestyle" && itemData.point) itemData.point.modifiers = []
+
+    //Rest test dicepool
+    if (itemData.test){
+      itemData.test.modifiers = []
+      itemData.test.dicePool = 0
+    }
+
+    //Rest rating value
+    if (item.type === "itemKnowledge" || item.type === "itemLanguage"){
+      itemData.rating.value = 0
+      itemData.rating.modifiers = []
+    }
+
+    //Reset weapon modifiers
+    if (item.type === "itemWeapon") {
+      itemData.firingMode.value = []
+      itemData.damageValue.modifiers = []
+      itemData.armorPenetration.modifiers = []
+      itemData.recoilCompensation.modifiers = []
+      itemData.weaponSkill.base = 0
+      itemData.weaponSkill.modifiers = []
+      itemData.concealment.modifiers = []
+      itemData.accuracy.modifiers = []
+      itemData.reach.modifiers = []
+      itemData.range.short.modifiers = []
+      itemData.range.medium.modifiers = []
+      itemData.range.long.modifiers = []
+      itemData.range.extreme.modifiers = []
+      // Reset damage type, element & strength-based flag to base values (ammo can override these)
+      itemData.damageType = item._source?.system?.damageType ?? itemData.damageType
+      itemData.damageElement = item._source?.system?.damageElement ?? itemData.damageElement
+      itemData.damageElementSecond = item._source?.system?.damageElementSecond ?? itemData.damageElementSecond
+      itemData.damageValue.isStrengthBased = item._source?.system?.damageValue?.isStrengthBased ?? itemData.damageValue.isStrengthBased
+      for (let key of Object.keys(SR5.propagationVectors)) {
+        itemData.toxin.vector[key] = false
+      }
+      for (let key of Object.keys(SR5.toxinEffects)) {
+        itemData.toxin.effect[key] = false
+      }
+    }
+
+    if (item.type === "itemDrug"){
+      itemData.vector.value = []
+    }
+
+    if (item.type === "itemArmor"){
+      itemData.armorValue.value = 0
+      itemData.armorValue.modifiers = []
+    }
+
+    if (itemData.isWireless){
+      itemData.conditionMonitors.matrix.value = 0
+      itemData.conditionMonitors.matrix.modifiers = []
+      itemData.conditionMonitors.matrix.actual.value = 0
+      itemData.conditionMonitors.matrix.actual.modifiers = []
+    }
+
+    if (itemData.conditionMonitors?.condition) {
+      itemData.conditionMonitors.condition.value = 0
+      itemData.conditionMonitors.condition.modifiers = []
+      itemData.conditionMonitors.condition.actual.value = 0
+      itemData.conditionMonitors.condition.actual.modifiers = []
+    }
+
+    if (item.type === "itemSpell") {
+      itemData.freeSustain = false
+      itemData.damageValue.modifiers = []
+      itemData.armorPenetration.modifiers = []
+      itemData.drain.modifiers = []
+      itemData.drainValue.modifiers = []
+      itemData.spellAreaOfEffect.modifiers = []
+    }
+
+    if (item.type === "itemComplexForm") {
+      itemData.freeSustain = false
+    }
+
+    if (item.type === "itemAdeptPower"){
+      itemData.drainValue.modifiers = []
+    }
+
+    // itemMartialArt: called shot flags are now handled via custom effects on the actor
+    // (category "martialArts" → system.itemsProperties.martialArts.X.isActive)
+		
+    if (item.type === "itemVehicleMod"){
+      itemData.slots.modifiers = []
+      itemData.threshold.modifiers = []
+    }
+
+    if (typeof itemData.systemEffects === "object") {
+      itemData.systemEffects = Object.values(itemData.systemEffects)
+    }
+
+    if (typeof itemData.itemEffects === "object") {
+      itemData.itemEffects = Object.values(itemData.itemEffects)
+    }
+
+    //Debugger for PAN's problem
+    if (itemData.isSlavedToPan && itemData.panMaster === "") itemData.isSlavedToPan = false
+  }
+
+  static _handleItemCapacity(item) {
+    let valueMultiplier = 0, valueTakenMultiplier = 0
+
+    //Capacity
+    if (item.capacity.multiplier == "rating") valueMultiplier = item.itemRating
+    if (item.capacity.multiplier) {
+      let modifierSource = game.i18n.localize(SR5.valueMultipliers[item.capacity.multiplier])
+      SR5_EntityHelpers.updateModifier(item.capacity, modifierSource, "multiplier", valueMultiplier, true, false)
+    }
+    SR5_EntityHelpers.updateValue(item.capacity, 0)
+
+    //Capacity taken
+    if (item.capacityTaken.multiplier == "rating") valueTakenMultiplier = item.itemRating
+    if (item.capacityTaken.multiplier) {
+      let modifierSource = game.i18n.localize(SR5.valueMultipliers[item.capacityTaken.multiplier])
+      SR5_EntityHelpers.updateModifier(item.capacityTaken, modifierSource, "multiplier", valueTakenMultiplier, true, false)
+    }
+    SR5_EntityHelpers.updateValue(item.capacityTaken, 0)
+  }
+
+  static _handleItemPrice(item) {
+    let multiplier
+    switch (item.price.multiplier) {
+      case "rating":
+        multiplier = item.itemRating
+        break
+      case "capacity":
+        multiplier = item.capacity.value
+        break
+      case "acceleration":
+        multiplier = item.vehiclePriceMultiplier.acceleration
+        break
+      case "handling":
+        multiplier = item.vehiclePriceMultiplier.handling
+        break
+      case "speed":
+        multiplier = item.vehiclePriceMultiplier.speed
+        break
+      case "body":
+        multiplier = item.vehiclePriceMultiplier.body
+        break
+      case "seating":
+        multiplier = item.vehiclePriceMultiplier.seating
+        break
+      case "vehicle":
+        multiplier = item.vehiclePriceMultiplier.vehicle
+        break
+      default:
+    }
+    if (item.price.multiplier) SR5_EntityHelpers.updateModifier(item.price, game.i18n.localize(SR5.valueMultipliersAll[item.price.multiplier]), "multiplier", multiplier, true, false)
+    //A factory mod is paid with the vehicle (Rigger 5.0 p. 156)
+    //(a product of 0 is read as 1, hence the sum brought back to 0)
+    if (item.isFactory === true) SR5_EntityHelpers.updateModifier(item.price, game.i18n.localize("SR5.VehicleModFactory"), "factory", -((item.price.base || 0) + SR5_EntityHelpers.modifiersSum(item.price.modifiers)), false, false)
+    SR5_EntityHelpers.updateValue(item.price, 0)
+  }
+
+  static _handleAmmoPrice(item) {
+    let multiplier = item.quantity
+    SR5_EntityHelpers.updateModifier(item.price, game.i18n.localize('SR5.Quantity'), game.i18n.localize('SR5.Multiplier'), multiplier, true, false)
+    SR5_EntityHelpers.updateValue(item.price, 0)
+  }
+
+  static _handleItemEssenceCost(item) {
+    let multiplier
+    switch (item.essenceCost.multiplier) {
+      case "rating":
+        multiplier = item.itemRating
+        break
+      case "capacity":
+        multiplier = item.capacity.value
+        break
+      default:
+    }
+    if (item.essenceCost.multiplier) SR5_EntityHelpers.updateModifier(item.essenceCost, game.i18n.localize(SR5.valueMultipliers[item.essenceCost.multiplier]), "multiplier", multiplier, true, false)
+    SR5_EntityHelpers.updateValue(item.essenceCost, 0)
+  }
+
+  static _handleItemAvailability(item) {
+    let multiplier
+    switch (item.availability.multiplier) {
+      case "rating":
+        multiplier = item.itemRating
+        break
+      case "capacity":
+        multiplier = item.capacity.value
+        break
+      case "acceleration":
+        multiplier = item.vehiclePriceMultiplier.acceleration
+        break
+      case "handling":
+        multiplier = item.vehiclePriceMultiplier.handling
+        break
+      case "speed":
+        multiplier = item.vehiclePriceMultiplier.speed
+        break
+      case "body":
+        multiplier = item.vehiclePriceMultiplier.body
+        break
+      case "seating":
+        multiplier = item.vehiclePriceMultiplier.seating
+        break
+      case "vehicle":
+        multiplier = item.vehiclePriceMultiplier.vehicle
+        break
+      default:
+    }
+    if (item.availability.multiplier && multiplier !== undefined) SR5_EntityHelpers.updateModifier(item.availability, game.i18n.localize(SR5.valueMultipliersAll[item.availability.multiplier]), "multiplier", multiplier, true, false)
+    SR5_EntityHelpers.updateValue(item.availability, 0)
+  }
+
+  //No floor at 0: what hides well goes down to -6, an RFID tag (SR5 p. 422)
+  static _handleItemConcealment(item) {
+    SR5_EntityHelpers.updateValue(item.concealment)
+  }
+
+  static _handleArmorValue(item) {
+    SR5_EntityHelpers.updateValue(item.armorValue, 0)
+  }
+
+  static _handleMatrixMonitor(item){
+    switch (item.type){
+      case "itemSprite":
+        item.system.conditionMonitors.matrix.base = Math.ceil(item.system.itemRating/ 2) + 8
+        break
+      case "itemVehicle":
+        item.system.conditionMonitors.matrix.base = Math.ceil(item.system.attributes.pilot / 2) + 8
+        break
+      default: item.system.conditionMonitors.matrix.base = Math.ceil(item.system.deviceRating / 2) + 8
+    }
+		
+    SR5_EntityHelpers.updateValue(item.system.conditionMonitors.matrix.actual, 0)
+    SR5_EntityHelpers.updateValue(item.system.conditionMonitors.matrix, 0)
+  }
+
+  ////////////////////// ARMES ///////////////////////
+  // Manage bow specific
+  static _handleBow(item) {
+    let itemData = item.system
+    if (itemData.type === "bow") {
+      SR5_EntityHelpers.updateModifier(itemData.price, item.name, "itemRating", ((itemData.price.base * itemData.itemRating) - 100))
+      SR5_EntityHelpers.updateModifier(itemData.availability, item.name, "itemRating", itemData.itemRating)
+      SR5_EntityHelpers.updateModifier(itemData.armorPenetration, item.name, "itemRating", -Math.floor(itemData.itemRating / 4))
+      let value = Math.min(itemData.itemRating,itemData.ammunition.rating)
+      SR5_EntityHelpers.updateModifier(itemData.damageValue, item.name, "itemRating", value)
+    }
+  }
+
+  // Generate Weapon dicepool
+  static _generateWeaponDicepool(item, actor) {
+    let itemData = item.system
+    if (actor) {
+      if (actor.type === "actorDrone") {
+        let controlerData
+        if (actor.system.vehicleOwner.id) controlerData = actor.system.vehicleOwner.system
+        itemData.weaponSkill.base = 0
+        //Gunnery for a mounted weapon, the weapon's melee skill for a drone arm (SR5 p. 134, Rigger 5.0 p. 129)
+        const skillKey = vehicleWeaponSkill(itemData.category, isMountedWeapon(item.id, actor.items), itemData.weaponSkill.category)
+        const skillLabel = `${game.i18n.localize('SR5.Controler')} (${game.i18n.localize(SR5.skills[skillKey] ?? 'SR5.SkillGunnery')})`
+        const controlerSkill = controlerData?.skills?.[skillKey]
+
+        switch (actor.system.controlMode){
+          case "autopilot": {
+            //Autopilot + Targeting [Weapon] (SR5 p. 272): the drone's own autosoft, capped by its autopilot (Rigger 5.0
+            //p. 131), or, when it runs none, the one its console shares; never both (SR5 p. 269)
+            const local = actor.items.find(i => i.type === "itemProgram" && i.system.isActive && i.system.model === item.name)
+            const shared = local ? null : rccAutosoftsForDrone(actor.system, actor.items).find(i => i.system.model === item.name)
+            //A melee weapon in a drone arm: the arm's Agility replaces the Pilot (Rigger 5.0 p. 129)
+            const arm = skillKey === "gunnery" ? null : droneArmProfile(actor.items, actor.system.attributes.body.augmented.value, actor.system.attributes.pilot.augmented.value)
+            //A swarm's member: the highest Targeting of the swarm and its console (Rigger 5.0 p. 35)
+            const usedTargeting = local ? localAutosoftRating(local.system.itemRating, droneAutopilot(actor.system, actor.items)) : (Number(shared?.system.itemRating) || 0)
+            const swarmTargeting = Math.max(0, swarmTargetingRating(actor, item.name) - usedTargeting)
+            if (local || shared || swarmTargeting) {
+              if (arm) SR5_EntityHelpers.updateModifier(itemData.weaponSkill, `${arm.name} (${game.i18n.localize('SR5.AgilityShort')})`, "linkedAttribute", arm.agility)
+              else SR5_EntityHelpers.updateModifier(itemData.weaponSkill, game.i18n.localize('SR5.VehicleStat_PilotShort'), "linkedAttribute", actor.system.attributes.pilot.augmented.value)
+            }
+            if (local) SR5_EntityHelpers.updateModifier(itemData.weaponSkill, local.name, "program", localAutosoftRating(local.system.itemRating, droneAutopilot(actor.system, actor.items)))
+            if (shared) SR5_EntityHelpers.updateModifier(itemData.weaponSkill, shared.name, "controlerProgram", shared.system.itemRating)
+            if (swarmTargeting) SR5_EntityHelpers.updateModifier(itemData.weaponSkill, game.i18n.localize('SR5.SwarmValue'), "swarm", swarmTargeting)
+            itemData.weaponSkill.modifiers = itemData.weaponSkill.modifiers.concat(actor.system.penalties.special.actual.modifiers)
+            if (actor.system.passiveTargeting) itemData.accuracy.base = actor.system.attributes.sensor.augmented.value
+            break
+          }
+          case "manual":
+            SR5_EntityHelpers.updateModifier(itemData.weaponSkill, skillLabel, "controleMode", controlerSkill.test.dicePool)
+            if (actor.system.passiveTargeting) itemData.accuracy.base = actor.system.attributes.sensor.augmented.value
+            break
+          case "remote":
+            SR5_EntityHelpers.updateModifier(itemData.weaponSkill, skillLabel, "controleMode", controlerSkill.rating.value, false, true)
+            SR5_EntityHelpers.updateModifier(itemData.weaponSkill, `${game.i18n.localize('SR5.Controler')} (${game.i18n.localize('SR5.Logic')})`, "controleMode", controlerData.attributes.logic.augmented.value, false, true)
+            //The Data Processing cap on Accuracy is set once the Accuracy is final, in _generateWeaponDamage
+            if (actor.system.passiveTargeting) itemData.accuracy.base = actor.system.attributes.sensor.augmented.value
+            break
+          case "rigging":
+            SR5_EntityHelpers.updateModifier(itemData.weaponSkill, skillLabel, "controleMode", controlerSkill.test.dicePool)
+            //Jumped in, the control rig rating adds to piloting skill tests, Gunnery among them (SR5 p. 149, 268, 455), and to the Accuracy of a mounted weapon (SR5 p. 268)
+            if (controlerData.specialProperties.controlRig.value) {
+              //A melee weapon in a drone arm uses the controller's melee skill, not a piloting skill: no dice
+              if (skillKey === "gunnery") SR5_EntityHelpers.updateModifier(itemData.weaponSkill, game.i18n.localize('SR5.ControlRig'), "augmentations", controlerData.specialProperties.controlRig.value)
+              SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.ControlRig'), "augmentations", controlerData.specialProperties.controlRig.value)
+            }
+            if (controlerData.matrix.userMode === "hotsim") SR5_EntityHelpers.updateModifier(itemData.weaponSkill, game.i18n.localize('SR5.VirtualRealityHotSimShort'), "matrixUserMode", 1)
+            if (actor.system.passiveTargeting) itemData.accuracy.base = actor.system.attributes.sensor.augmented.value
+            SR5_EntityHelpers.updateValue(itemData.accuracy)
+            break
+          default:
+            SR5_SystemHelpers.srLog(1, `Unknown controle mode '${actor.system.controlMode}' in '_generateWeaponDicepool()'`)
+        }
+      } else {
+        if (itemData.weaponSkill.specialization === true) {
+          SR5_EntityHelpers.updateModifier(itemData.weaponSkill, `${game.i18n.localize('SR5.Specialization')}`, "specialization", 2, false, true)
+        }
+        let actorSkill = itemData.weaponSkill.category
+        if (!actorSkill) {
+          return
+        }
+        if(actor.system.skills[actorSkill] === undefined){
+          SR5_SystemHelpers.srLog(1, `Unknown weapon skill '${actorSkill}' in '_generateWeaponDicepool()'`)
+          itemData.weaponSkill.base = 0
+        } else {
+          itemData.weaponSkill.base = 0
+          if ((actor.system.initiatives.astralInit.isActive || itemData.isUsedAsFocus) && itemData.isLinkedToFocus) itemData.weaponSkill.modifiers = itemData.weaponSkill.modifiers.concat(actor.system.skills.astralCombat.test.modifiers)
+          else itemData.weaponSkill.modifiers = itemData.weaponSkill.modifiers.concat(actor.system.skills[actorSkill].test.modifiers)
+          //A weapon held by a cyberlimb attacks with the limb's Agility (SR5 p. 459)
+          const limb = weaponLimb(itemData, actor.items)
+          if (limb) itemData.weaponSkill.modifiers = withLimbAgility(itemData.weaponSkill.modifiers, game.i18n.localize('SR5.Agility'), limbAttributes(limb, actor.items).agility.value)
+          //Special case : bow
+          const strength = weaponAttribute("strength", itemData, actor)
+          if (itemData.type === "bow" && (strength < itemData.itemRating)){
+            let malus = (strength - itemData.itemRating) * 3
+            SR5_EntityHelpers.updateModifier(itemData.weaponSkill, `${game.i18n.localize('SR5.WeaponTypeBow')}`, "itemRating", malus, false, true)
+          }
+          //Not made for its holder's size (SR5 p. 423), lifted by Doigts délicats (The Complete Trog p. 179)
+          const sizeMismatch = sizeMismatchModifier(itemData, holderMetatype(actor), actor.items)
+          if (sizeMismatch) SR5_EntityHelpers.updateModifier(itemData.weaponSkill, game.i18n.localize('SR5.NotSizeAdapted'), "sizeMismatch", sizeMismatch, false, true)
+        }
+      }
+    }  
+    SR5_EntityHelpers.updateDicePool(itemData.weaponSkill, 0)
+  }
+
+  static _generateWeaponDamage(itemData, actor, itemId) {
+    if (actor) {
+      if (itemData.accuracy.isPhysicalLimitBased) itemData.accuracy.base = actor.system.limits.physicalLimit.value
+      //A melee weapon of a drone: half its Body mounted, the Strength of its drone arm otherwise, and its Speed (Rigger 5.0 p. 129, 182)
+      if (actor.type === "actorDrone" && itemData.category === "meleeWeapon") {
+        const attributes = actor.system.attributes
+        const mounted = isMountedWeapon(itemId, actor.items)
+        const arm = mounted ? null : droneArmProfile(actor.items, attributes.body.augmented.value, attributes.pilot.augmented.value)
+        const label = arm ? `${arm.name} (${game.i18n.localize('SR5.StrengthShort')})` : game.i18n.localize('SR5.VehicleStat_BodyShort')
+        if (itemData.damageValue.isStrengthBased) SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "linkedAttribute", vehicleMeleeStrength(attributes.body.augmented.value, mounted, arm?.strength))
+        const speed = vehicleMeleeSpeedBonus(attributes.speed.augmented.value)
+        if (speed) SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.VehicleStat_SpeedShort'), "linkedAttribute", speed)
+      }
+      if (itemData.damageValue.isStrengthBased && actor.type !=="actorDrone") {
+        if ((actor.system.initiatives.astralInit.isActive || itemData.isUsedAsFocus) && itemData.isLinkedToFocus) SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.Charisma'), "linkedAttribute", actor.system.attributes.charisma.augmented.value)
+        else SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.Strength'), "linkedAttribute", weaponAttribute("strength", itemData, actor))
+      }
+      //A natural weapon or an engulf that follows the creature's ratings (SR5 p. 399, Howling Shadows p. 138)
+      const astral = (actor.system.initiatives?.astralInit?.isActive || itemData.isUsedAsFocus) && itemData.isLinkedToFocus
+      for (const modifier of weaponRatingModifiers(itemData, actor.system, astral)) {
+        SR5_EntityHelpers.updateModifier(itemData[modifier.target], game.i18n.localize(modifier.label), "linkedAttribute", modifier.value)
+      }
+      //Death Sower, adept side (Forbidden Arcana p. 40): +1 DV with the melee skills
+      const deathSower = deathSowerAdeptDamage(actor.system.magic?.magicType, actor.system.magic?.masteries?.deathSower?.value, itemData.category)
+      if (deathSower) SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.MagicMasteryDeathSower'), "itemQuality", deathSower)
+      //Osmium mace (The Complete Trog p. 177): the listed profile only holds for Strength 5-6
+      if (hasWeaponTrait(itemData, "osmium") && actor.type !== "actorDrone") {
+        const profile = osmiumProfile(weaponAttribute("strength", itemData, actor))
+        if (profile) {
+          const label = game.i18n.localize('SR5.AccessoryOsmium')
+          SR5_EntityHelpers.updateModifier(itemData.accuracy, label, "weaponAccessory", profile.accuracy - (itemData.accuracy.base || 0), false, true)
+          SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "weaponAccessory", profile.damageBonus - (itemData.damageValue.base || 0), false, true)
+        }
+      }
+      if (actor.system.itemsProperties?.weapon) {
+        for (let modifier of actor.system.itemsProperties.weapon.accuracy.modifiers) {
+          if (modifier.details === itemData.weaponSkill.category) itemData.accuracy.modifiers = itemData.accuracy.modifiers.concat(modifier)
+        }
+        for (let modifier of actor.system.itemsProperties.weapon.damageValue.modifiers) {
+          if (!weaponDamageBonusApplies(itemData, modifier.details)) continue
+          if (!modifier.damageType) itemData.damageValue.modifiers = itemData.damageValue.modifiers.concat(modifier)
+        }
+        //The bone augmentations (SR5 p. 458 and 463) are not compatible with each other: should several be
+        //carried anyway, only the highest counts, as for any SR5 bonus. They change the bare-handed damage alone: a
+        //weapon with its own Damage Value (retractable blades, SR5 p. 461) keeps it, and so does one without a category.
+        const bones = takesBoneDamage(itemData) ? actor.system.itemsProperties.weapon.damageValue.modifiers
+          .filter(m => m.damageType && m.details === itemData.weaponSkill.category) : []
+        if (bones.length) {
+          const highest = bones.reduce((a, b) => (b.value > a.value ? b : a))
+          itemData.damageValue.modifiers = itemData.damageValue.modifiers.concat(highest)
+          itemData.damageType = highest.damageType
+        }
+      }
+
+      if (actor.type === "actorDrone"){
+        if (actor.system.controlMode === "manual" && actor.system.passiveTargeting){
+          // intentionally empty
+        }
+      }
+    }
+
+    itemData.firingMode.value = []
+    for (let key of Object.keys(SR5.weaponModes)) {
+      if (itemData.firingMode[key]) {
+        itemData.firingMode.value.push(game.i18n.localize(SR5.weaponModesAbbreviated[key]))
+      }
+    }
+
+    itemData.choke.value = []
+    for (let key of Object.keys(SR5.chokeSettings)) {
+      if (itemData.choke[key]) {
+        itemData.choke.value.push(game.i18n.localize(SR5.chokeSettings[key]))
+      }
+    }
+
+    //Purity State (Better Than Bad p. 143): the bare hands deal (Magic + Strength), "no further DV can be added",
+    //AP -(Magic x 0.5), Physical or Stun as the adept chooses
+    if (actor?.system?.specialProperties?.purityState && takesBoneDamage(itemData)) {
+      const magic = actor.system.specialAttributes?.magic?.augmented?.value || 0
+      const label = game.i18n.localize('SR5.AdeptPowerPurityState')
+      itemData.damageValue.modifiers = itemData.damageValue.modifiers.filter(m => m.type === "linkedAttribute")
+      SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "adeptPower", magic)
+      SR5_EntityHelpers.updateModifier(itemData.armorPenetration, label, "adeptPower", purityStateArmorPenetration(magic))
+      itemData.damageType = actor.system.specialProperties.purityStateStun ? "stun" : "physical"
+    }
+
+    SR5_EntityHelpers.updateValue(itemData.damageValue, 0)
+    SR5_EntityHelpers.updateValue(itemData.armorPenetration)
+    SR5_EntityHelpers.updateValue(itemData.recoilCompensation)
+    SR5_EntityHelpers.updateValue(itemData.accuracy)
+    //Remote control: Accuracy capped by the controller's Data Processing (SR5 p. 239-240)
+    if (actor?.type === "actorDrone" && actor.system.controlMode === "remote" && actor.system.vehicleOwner.id) {
+      const mod = dataProcessingCapModifier(itemData.accuracy.value, actor.system.vehicleOwner.system.matrix.attributes.dataProcessing.value)
+      if (mod) {
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.DataProcessingLimit'), "controleMode", mod)
+        SR5_EntityHelpers.updateValue(itemData.accuracy)
+      }
+    }
+  }
+
+  // Apply effects from a linked itemAmmunitionType (custom ammo)
+  static _applyAmmoTypeEffects(itemData, fx, label) {
+    if (fx.overrideBaseAP && fx.apMod) {
+      const apMod = -itemData.armorPenetration.base + fx.apMod
+      SR5_EntityHelpers.updateModifier(itemData.armorPenetration, label, "ammunitionType", apMod)
+    } else if (fx.apMod) {
+      SR5_EntityHelpers.updateModifier(itemData.armorPenetration, label, "ammunitionType", fx.apMod)
+    }
+
+    if (fx.flatDamage) {
+      const counteract = fx.flatDamage - Math.min(itemData.itemRating || 0, itemData.ammunition.rating || 0)
+      SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "ammunitionType", counteract)
+      if (fx.disableStrDamage) itemData.damageValue.isStrengthBased = false
+    } else if (fx.damageMod) {
+      SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "ammunitionType", fx.damageMod)
+    }
+
+    if (fx.accuracyMod) {
+      SR5_EntityHelpers.updateModifier(itemData.accuracy, label, "ammunitionType", fx.accuracyMod)
+    }
+
+    if (fx.damageType) itemData.damageType = fx.damageType
+    if (fx.damageElement) itemData.damageElement = fx.damageElement
+    itemData.blast.radius = fx.blastRadius || 0
+    itemData.blast.damageFallOff = fx.blastFallOff || 0
+  }
+
+  // Modif des munitions & grenades
+  static _handleWeaponAmmunition(itemData, actor) {
+    if (!itemData.ammunition.type) return
+
+    // Try custom ammo path: check actor's ammo items first, then resolve from world ammo types
+    if (actor) {
+      const ammoItem = actor.items.find(i =>
+        i.type === "itemAmmunition" &&
+        i.system.type === itemData.ammunition.type &&
+        (i.system.class === itemData.type || !i.system.class)
+      )
+      if (ammoItem?.system.ammunitionTypeUuid && ammoItem.system.ammunitionTypeUuid !== 'pending') {
+        this._applyAmmoTypeEffects(itemData, ammoItem.system.effects, ammoItem.name)
+        return
+      }
+    }
+
+    // Try resolving custom ammo type directly from world items (weapon may not have matching ammo on actor)
+    if (!SR5.allAmmunitionTypes[itemData.ammunition.type] && game.items) {
+      const slug = itemData.ammunition.type
+      const ammoTypeItem = game.items.find(i => {
+        if (i.type !== 'itemAmmunitionType') return false
+        return i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug
+      })
+      if (ammoTypeItem) {
+        this._applyAmmoTypeEffects(itemData, ammoTypeItem.system, ammoTypeItem.name)
+        return
+      }
+    }
+
+    // Fallback: legacy hard-coded switch
+    let armorPenetration = 0,
+      damageValue = 0,
+      damageType = itemData.damageType,
+      damageElement = itemData.damageElement,
+      blastRadius = 0,
+      blastDamageFallOff = 0
+    switch (itemData.ammunition.type) {
+      case "regular":
+      case "assaultCannon":
+      case "taserDart":
+      case "injection":
+      case "tracer":
+      case "flashPack":
+      case "gyrojet":
+      case "gauss":
+      case "special":
+      case "grenade":
+      case "missile":
+        // No modification
+        break
+      case "capsuleDmso":
+        armorPenetration = 4
+        damageValue = -4
+        break
+      case "av":
+        armorPenetration = -1
+        break
+      case "apds":
+        armorPenetration = -4
+        break
+      case "capsule":
+        armorPenetration = 4
+        damageValue = -4
+        break
+      case "explosive":
+        armorPenetration = -1
+        damageValue = 1
+        break
+      case "exExplosive":
+        armorPenetration = -1
+        damageValue = 2
+        break
+      case "flechette":
+        armorPenetration = 5
+        damageValue = 2
+        break
+      case "frangible":
+        armorPenetration = 4
+        damageValue = -1
+        break
+      case "gel":
+        armorPenetration = 1
+        damageType = "stun"
+        break
+      case "hollowPoint":
+        armorPenetration = 2
+        damageValue = 1
+        break
+      case "gyrojetTaser":
+        armorPenetration = -5
+        damageValue = -2
+        damageType = "stun"
+        damageElement = "electricity"
+        break
+      case "stickNShock":
+        armorPenetration = -itemData.armorPenetration.base -5
+        damageValue = -2
+        damageType = "stun"
+        damageElement = "electricity"
+        break
+      case "tracker":
+        armorPenetration = 2
+        damageValue = -2
+        break
+      case "flare":
+        armorPenetration = 2
+        damageValue = -2        
+        damageElement = "fire"
+        break
+      case "flashBang":
+      case "flashBangMini":
+        armorPenetration = -4
+        damageValue = 10
+        damageType = "stun"
+        blastRadius = 10
+        break
+      case "fragmentation":
+      case "fragmentationMini":
+        armorPenetration = 5
+        damageValue = 18
+        //18P (f) (SR5 p. 437), and the mini-grenades have the same effects as the normal grenades
+        damageType = "physical"
+        blastDamageFallOff = -1
+        blastRadius = 18
+        break
+      case "fragmentationRocket":
+      case "fragmentationMissile":
+        armorPenetration = 5
+        damageValue = 23
+        damageType = "physical"
+        blastDamageFallOff = -1
+        blastRadius = 23
+        break
+      case "smoke":
+      case "smokeMini":
+      case "smokeThermal":
+      case "smokeThermalMini":
+      case "gas":
+      case "gasMini":
+      case "paint":
+        //Paint grenade (Run & Gun p. 116-117, errata p. 102: "10m radius"): no damage, splashes everyone in its blast
+        damageType = ""
+        blastRadius = 10
+        break
+      case "highlyExplosiveRocket":
+      case "highlyExplosiveMissile":
+        armorPenetration = -2
+        damageValue = 21
+        blastDamageFallOff = -2
+        blastRadius = 10
+        break
+      case "highlyExplosiveMini":
+      case "highlyExplosive":
+        armorPenetration = -2
+        damageValue = 16
+        blastDamageFallOff = -2
+        blastRadius = 8
+        break
+      case "antivehicleRocket":
+      case "antivehicleMissile":
+        armorPenetration = -4
+        damageValue = 24
+        blastDamageFallOff = -4
+        blastRadius = 6
+        break
+      case "bolt":
+      case "boltInjection":
+      case "arrow":
+      case "arrowInjection":
+        // No modification - base damage handled by _handleBow
+        break
+      case "arrowBarbedHead":
+        damageValue = 1
+        break
+      case "arrowExplosiveHead":
+        damageValue = 2
+        armorPenetration = -1
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.AmmunitionTypeArrowExplosiveHead'), "ammunitionType", -1)
+        break
+      case "arrowHammerhead":
+        damageValue = 1
+        damageType = "stun"
+        armorPenetration = +2
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.AmmunitionTypeArrowHammerhead'), "ammunitionType", -1)
+        break
+      case "arrowIncendiaryHead":
+        damageElement = "fire"
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.AmmunitionTypeArrowIncendiaryHead'), "ammunitionType", -1)
+        break
+      case "arrowScreamerHead":
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.AmmunitionTypeArrowScreamerHead'), "ammunitionType", -2)
+        armorPenetration = +6	
+        break
+      case "arrowStickNShock":
+        SR5_EntityHelpers.updateModifier(itemData.accuracy, game.i18n.localize('SR5.AmmunitionTypeArrowStickNShock'), "ammunitionType", -1)
+        // Flat 8S(e) — counteract bow's base damage and disable STR-based damage
+        damageValue = 8 - Math.min(itemData.itemRating || 0, itemData.ammunition.rating || 0)
+        itemData.damageValue.isStrengthBased = false
+        damageType = "stun"
+        damageElement = "electricity"
+        armorPenetration = -5
+        break
+      case "arrowStaticShaft":
+        damageValue = 4
+        damageType = "stun"
+        damageElement = "electricity"
+        break
+      default:
+        // Custom ammo types are handled above when actor context is available; silence warning for those
+        if (!SR5.allAmmunitionTypes[itemData.ammunition.type]) return
+        SR5_SystemHelpers.srLog(1, "_handleWeaponAmmunition", `Unknown ammunition type: '${itemData.ammunition.type}'`)
+        return
+    }
+    if (armorPenetration) SR5_EntityHelpers.updateModifier(itemData.armorPenetration, game.i18n.localize(SR5.allAmmunitionTypes[itemData.ammunition.type]), "ammunitionType", armorPenetration)
+    if (damageValue) SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize(SR5.allAmmunitionTypes[itemData.ammunition.type]), "ammunitionType", damageValue)
+    itemData.damageType = damageType
+    itemData.damageElement = damageElement
+    itemData.blast.damageFallOff = blastDamageFallOff
+    itemData.blast.radius = blastRadius
+  }
+
+  // Génére les spec des toxines pour les munitions & grenades
+  static _handleWeaponToxin(itemData, actor) {
+    const profile = SR5_Toxins.profileOf(itemData.toxin)
+    if (!profile) return SR5_SystemHelpers.srLog(1, "_handleWeaponToxin", `Unknown toxin type: '${itemData.toxin.type}'`)
+    //Magic is read only for creature toxins: a drone has no special attributes
+    const needsMagic = profile.powerMagic || profile.penetrationMagic
+    SR5_Toxins.apply(itemData.toxin, profile, needsMagic ? actor?.system?.specialAttributes?.magic?.augmented?.value : undefined)
+  }
+
+  //Calcule la distance des armes de jet en fonction de la force
+  static _generateWeaponRange(itemData, actor) {
+    if (itemData.range.isStrengthBased) {
+      if (actor !== undefined) {
+        //Thrown by a cyberlimb: the limb's Strength (SR5 p. 459)
+        let actorStrength = weaponAttribute("strength", itemData, actor)
+
+        SR5_EntityHelpers.updateModifier(itemData.range.short, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * itemData.range.short.base) - itemData.range.short.base)
+        SR5_EntityHelpers.updateModifier(itemData.range.medium, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * itemData.range.medium.base) - itemData.range.medium.base)
+        if (itemData.aerodynamic){
+          SR5_EntityHelpers.updateModifier(itemData.range.long, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * (itemData.range.long.base +2)) - itemData.range.long.base)
+          SR5_EntityHelpers.updateModifier(itemData.range.extreme, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * (itemData.range.extreme.base +5)) - itemData.range.extreme.base)
+        } else {
+          SR5_EntityHelpers.updateModifier(itemData.range.long, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * itemData.range.long.base) - itemData.range.long.base)
+          SR5_EntityHelpers.updateModifier(itemData.range.extreme, game.i18n.localize('SR5.Strength'), "linkedAttribute", (actorStrength * itemData.range.extreme.base) - itemData.range.extreme.base)
+        }
+      }
+    }
+
+    if (actor !== undefined) {
+      if (itemData.category === "meleeWeapon" && actor.system.reach) {
+        itemData.reach.modifiers = itemData.reach.modifiers.concat(actor.system.reach.modifiers)
+      }
+      //"Weapons / Reach" effects: the melee weapons of a type (or the kicks), as the "Weapons / DV" ones
+      if (itemData.category === "meleeWeapon") {
+        for (let modifier of actor.system.itemsProperties?.weapon?.reach?.modifiers ?? []) {
+          if (weaponDamageBonusApplies(itemData, modifier.details)) itemData.reach.modifiers = itemData.reach.modifiers.concat(modifier)
+        }
+      }
+      if (itemData.systemEffects.length){
+        for (let systemEffect of Object.values(itemData.systemEffects)){
+          if (systemEffect.value === "noxiousBreath" || systemEffect.value === "corrosiveSpit"){
+            SR5_EntityHelpers.updateModifier(itemData.range.short, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value)
+            SR5_EntityHelpers.updateModifier(itemData.range.medium, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value * 2)
+            SR5_EntityHelpers.updateModifier(itemData.range.long, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value * 3)
+            SR5_EntityHelpers.updateModifier(itemData.range.extreme, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value * 4)
+          }
+        }
+      }
+    } 
+
+    for (let key of Object.keys(SR5.weaponRanges)) {
+      SR5_EntityHelpers.updateValue(itemData.range[key])
+    }
+    SR5_EntityHelpers.updateValue(itemData.reach)
+  }
+
+  // Modifie les armes en fonction des accessoires (data-driven via catalog)
+  static _handleWeaponAccessory(itemData, actor) {
+    // Normalize legacy object-with-numeric-keys to array
+    if (typeof itemData.accessory === "object" && !Array.isArray(itemData.accessory)) {
+      itemData.accessory = Object.values(itemData.accessory)
+    }
+
+    // Vintage (Gun H(e)aven 3 p. 3): never wireless, physical upgrades cost twice the listed amount
+    const isVintage = applyVintageWireless(itemData)
+
+    for (let a of itemData.accessory) if (a.system) SR5_UtilityItem._syncAccessoryActive(a, actor)
+    // Run & Gun p. 71: within a group of recoil systems, only the one that compensates the most counts
+    const ignoredRecoil = ignoredRecoilAccessories(itemData, SR5_UtilityItem._accessoryRecoil)
+
+    for (let a of itemData.accessory) {
+      // Item-based accessory (has a.system from a cloned itemGear)
+      if (a.system) {
+        SR5_UtilityItem._handleItemBasedWeaponAccessory(a, itemData, actor, isVintage, ignoredRecoil.has(a))
+        continue
+      }
+
+      // Legacy accessory (has a.name as a config key)
+      const catalog = WEAPON_ACCESSORY_CATALOG[a.name]
+      if (!catalog) {
+        if (a.name) SR5_SystemHelpers.srLog(1, `Unknown '${a.name}' accessory in _handleWeaponAccessory()`)
+        continue
+      }
+
+      const label = game.i18n.localize(SR5.weaponAccessories[a.name]) || a.name
+
+      // Assign slot from catalog if not already set
+      if (!a.slot && catalog.slot) a.slot = catalog.slot
+
+      // Calculate price
+      if (catalog.priceMultiplier) {
+        a.price = catalog.priceMultiplier * itemData.price.base
+      } else {
+        a.price = catalog.price || 0
+      }
+      a.price = vintageAccessoryPrice(a.price, catalog.type, isVintage)
+
+      // Apply standard item effects (modifiers)
+      if (a.isActive && catalog.itemEffects) {
+        for (const effect of catalog.itemEffects) {
+          // Skip wifi-only effects if wireless is off
+          if (effect.wifi && !itemData.wirelessTurnedOn) continue
+          if (SR5_UtilityItem._skipAccessoryEffect(a, effect, ignoredRecoil.has(a))) continue
+
+          const targetObject = SR5_EntityHelpers.resolveObjectPath(effect.target.replace(/^system\./, ''), itemData)
+          if (targetObject) {
+            const cumulative = effect.cumulative !== undefined ? effect.cumulative : true
+            SR5_EntityHelpers.updateModifier(targetObject, label, "weaponAccessory", effect.value, false, cumulative)
+          }
+        }
+      }
+
+      // Apply special-case system effects
+      if (catalog.systemEffects) {
+        for (const sEffect of catalog.systemEffects) {
+          SR5_UtilityItem._handleSpecialWeaponAccessory(sEffect.value, a, itemData, actor, label)
+        }
+      }
+
+      // Game effects description
+      if (a.name) {
+        let nameString = a.name.charAt(0).toUpperCase() + a.name.slice(1)
+        a.gameEffects = game.i18n.localize('SR5.Accessory' + nameString + '_GE')
+      }
+
+      // Add price modifier to weapon
+      if (a.name && !a.isFree) {
+        SR5_EntityHelpers.updateModifier(itemData.price, label, "weaponAccessory", a.price)
+      }
+    }
+
+    // Trigger removal (Hard Targets p. 182), once the other Accuracy bonuses are known: it adds to the smartgun's
+    const trigger = triggerRemovalAccuracy(itemData)
+    if (trigger) {
+      const label = trigger.accessory.system ? trigger.accessory.name : game.i18n.localize(SR5.weaponAccessories[trigger.accessory.name])
+      SR5_EntityHelpers.updateModifier(itemData.accuracy, label, "weaponAccessory", 1, false, trigger.cumulative)
+    }
+  }
+
+  /** Handle accessories with conditional / actor-dependent logic */
+  static _handleSpecialWeaponAccessory(effectType, accessory, itemData, actor, label) {
+    switch (effectType) {
+      case "chameleonCoating":
+        if (accessory.isActive && itemData.requiredHands == 1) {
+          SR5_EntityHelpers.updateModifier(itemData.concealment, label, "weaponAccessory", -2)
+        }
+        if (accessory.isActive && itemData.requiredHands == 2) {
+          SR5_EntityHelpers.updateModifier(itemData.concealment, label, "weaponAccessory", -1)
+        }
+        break
+
+      case "concealableHolster":
+        if (accessory.isActive) {
+          if (itemData.wirelessTurnedOn) {
+            SR5_EntityHelpers.updateModifier(itemData.concealment, label, "weaponAccessory", -2)
+          } else {
+            SR5_EntityHelpers.updateModifier(itemData.concealment, label, "weaponAccessory", -1)
+          }
+        }
+        break
+
+      case "overclocked":
+        if (accessory.isActive && itemData.damageType == "stun") {
+          itemData.damageType = "physical"
+          SR5_EntityHelpers.updateModifier(itemData.damageValue, label, "weaponAccessory", -2, false, false)
+        }
+        break
+
+      //Flamethrowers deal Fire damage (Gun H(e)aven 3 p. 3, SR5 p. 171)
+      case "flamethrower":
+        itemData.damageElement = "fire"
+        break
+
+      case "silencerSuppressor":
+        // No weapon-level effects; handled elsewhere if needed
+        break
+
+      case "smartgunInternal":
+        if (!accessory.isFree) {
+          SR5_EntityHelpers.updateModifier(itemData.availability, label, "weaponAccessory", 2)
+        }
+        if (accessory.isActive && actor !== undefined && actor.type !== "actorDrone") {
+          let smartlink = actor.system.specialProperties.smartlink.value
+          if (smartlink) {
+            SR5_EntityHelpers.updateModifier(itemData.accuracy, label, "weaponAccessory", 2, false, false, SMARTGUN_ACCURACY)
+            if (itemData.wirelessTurnedOn) {
+              SR5_EntityHelpers.updateModifier(itemData.weaponSkill, label, "weaponAccessory", smartlink >= 2 ? 2 : 1, false, false)
+            }
+          }
+        }
+        break
+
+      case "smartgunExternal":
+        if (accessory.isActive && actor !== undefined && actor.type !== "actorDrone") {
+          let smartlink = actor.system.specialProperties.smartlink.value
+          if (smartlink) {
+            SR5_EntityHelpers.updateModifier(itemData.accuracy, label, "weaponAccessory", 2, false, false, SMARTGUN_ACCURACY)
+            if (itemData.wirelessTurnedOn) {
+              SR5_EntityHelpers.updateModifier(itemData.weaponSkill, label, "weaponAccessory", smartlink >= 2 ? 2 : 1, false, false)
+            }
+          }
+        }
+        break
+
+      default:
+        // Vision-related effects (flashLightInfrared, flashLightLowLight, imagingScope)
+        // are handled in _handleVisionAccessory at actor level, not here
+        break
+    }
+  }
+
+  /** Handle an item-based weapon accessory (cloned itemWeapon with system data) */
+  static _handleItemBasedWeaponAccessory(a, itemData, actor, isVintage = false, recoilIgnored = false) {
+    const accData = a.system
+    const label = a.name || 'Accessory'
+
+    SR5_UtilityItem._syncAccessoryActive(a, actor)
+
+    // Slot from item data
+    if (!a.slot && accData.weaponAccessory?.slot) a.slot = accData.weaponAccessory.slot
+
+    // Price
+    if (accData.weaponAccessory?.priceMultiplier) {
+      a.price = accData.weaponAccessory.priceMultiplier * itemData.price.base
+    } else {
+      a.price = accData.price?.base || 0
+    }
+    a.price = vintageAccessoryPrice(a.price, accData.weaponAccessory?.type, isVintage)
+
+    // Apply itemEffects from the accessory item
+    if (a.isActive && accData.itemEffects) {
+      const effects = Array.isArray(accData.itemEffects) ? accData.itemEffects : Object.values(accData.itemEffects)
+      for (const effect of effects) {
+        if (!effect.target || !effect.type) continue
+        if (effect.wifi && !itemData.wirelessTurnedOn) continue
+        if (SR5_UtilityItem._skipAccessoryEffect(a, effect, recoilIgnored)) continue
+
+        const targetObject = SR5_EntityHelpers.resolveObjectPath(effect.target.replace(/^system\./, ''), itemData)
+        if (targetObject) {
+          const cumulative = effect.cumulative !== undefined ? effect.cumulative : true
+          SR5_EntityHelpers.updateModifier(targetObject, label, "weaponAccessory", effect.value, false, cumulative)
+        }
+      }
+    }
+
+    // Apply special weapon accessory effects
+    const specialEffect = accData.weaponAccessory?.specialEffect
+    if (specialEffect) {
+      SR5_UtilityItem._handleSpecialWeaponAccessory(specialEffect, a, itemData, actor, label)
+    }
+
+    // Game effects description
+    a.gameEffects = accData.gameEffect || ''
+
+    // Price modifier
+    if (!a.isFree) {
+      SR5_EntityHelpers.updateModifier(itemData.price, label, "weaponAccessory", a.price)
+    }
+  }
+
+  //Sync isActive of an item-based accessory from the actor's live item (the actor sheet toggles the item, not the clone)
+  static _syncAccessoryActive(a, actor) {
+    if (!actor || !a._id) return
+    const liveItem = actor.items?.get(a._id)
+    if (!liveItem) return
+    //An accessory waiting for its installation test works only once it is over (RG p. 67, item-workshop-apply.js)
+    a.isActive = liveItem.system.isActive && liveItem.flags?.sr5?.installPending !== true
+    a.installPending = liveItem.flags?.sr5?.installPending === true
+    //Its Capacity and the vision enhancements mounted in it since it was put on the weapon (SR5 p. 434), for the sheets
+    let mounted = liveItem.system.weaponAccessory?.visionEnhancements ?? []
+    if (!Array.isArray(mounted)) mounted = Object.values(mounted)
+    a.capacityTotal = accessoryCapacity(liveItem)
+    a.capacityUsed = capacityTaken(mounted)
+    a.visionEnhancementNames = mounted.map(e => e?.name).filter(Boolean).join(", ")
+  }
+
+  //The recoil compensation an accessory brings (catalog entry or item), for Run & Gun p. 71
+  static _accessoryRecoil(a) {
+    let effects = a.system ? a.system.itemEffects : WEAPON_ACCESSORY_CATALOG[a.name]?.itemEffects
+    if (effects && !Array.isArray(effects)) effects = Object.values(effects)
+    return (effects ?? []).filter(e => e?.target === "system.recoilCompensation").reduce((sum, e) => sum + (Number(e.value) || 0), 0)
+  }
+
+  //An accessory effect left to the roll or cancelled by another accessory:
+  //- the red dot sight's Accuracy depends on the range (Street Lethal p. 49): the attack adds it (rollData-Weapon.js)
+  //- a recoil system that does not stack with a better one on the weapon (Run & Gun p. 71)
+  static _skipAccessoryEffect(a, effect, recoilIgnored) {
+    if (effect.target === "system.accuracy" && isAccessoryKind(a, "redDotSight")) return true
+    //- the trigger removal's Accuracy, applied after the others (Hard Targets p. 182, triggerRemovalAccuracy)
+    if (effect.target === "system.accuracy" && isAccessoryKind(a, "triggerRemoval")) return true
+    if (recoilIgnored && effect.target === "system.recoilCompensation") return true
+    return false
+  }
+
+  //Light rows taken off by a flashlight mounted on the weapon being used (0 or -1).
+  //Run & Gun p. 69: the flashlight lights "in the direction the weapon points", and a low-light (or infrared) one
+  //takes the light penalty one row down for a character using low-light (or thermographic) vision. So it only
+  //counts for a roll made with that weapon, not for the actor's other weapons; and a second flashlight on the
+  //same weapon does not take a second row.
+  static getWeaponLightCompensation(itemData, actor) {
+    if (!itemData?.isActive || !actor?.system?.visions) return 0
+    let accessories = itemData.accessory
+    if (accessories && typeof accessories === "object" && !Array.isArray(accessories)) accessories = Object.values(accessories)
+    if (!Array.isArray(accessories)) return 0
+
+    const visions = actor.system.visions
+    for (let a of accessories) {
+      if (!a?.isActive) continue
+      const effectType = SR5_UtilityItem.weaponAccessoryEffect(a)
+      if (effectType === "flashLightLowLight" && visions.lowLight?.isActive) return -1
+      if (effectType === "flashLightInfrared" && visions.thermographic?.isActive) return -1
+    }
+    return 0
+  }
+
+  //Light row a standard flashlight mounted on the weapon being used brings the scene down to, or null.
+  //Run & Gun p. 69: "standard flashlights provide partial light" (row 1 of the Light column, SR5 p. 176), in the
+  //direction the weapon points: like the other flashlights, only for a roll made with that weapon.
+  static getWeaponLightCap(itemData) {
+    if (!itemData?.isActive) return null
+    let accessories = itemData.accessory
+    if (accessories && typeof accessories === "object" && !Array.isArray(accessories)) accessories = Object.values(accessories)
+    if (!Array.isArray(accessories)) return null
+    return accessories.some(a => a?.isActive && SR5_UtilityItem.weaponAccessoryEffect(a) === "flashLight") ? 1 : null
+  }
+
+  //Special effect of a weapon accessory: an item carries it in weaponAccessory.specialEffect, a catalog entry
+  //(a weapon's built-in accessory, stored by name) in its systemEffects.
+  static weaponAccessoryEffect(a) {
+    if (!a) return null
+    if (!a.system) return WEAPON_ACCESSORY_CATALOG[a.name]?.systemEffects?.[0]?.value || null
+    const effect = a.system.weaponAccessory?.specialEffect
+    return effect || null
+  }
+
+  //Handle if an accessory gives environmental modifiers (actor-level effects)
+  static _handleVisionAccessory(itemData, actor) {
+    if (itemData.isActive && itemData.ammunition.type) {
+      // Check custom ammo env mods first
+      let envHandled = false
+      if (actor) {
+        const ammoItem = actor.items.find(i =>
+          i.type === "itemAmmunition" &&
+          i.system.type === itemData.ammunition.type &&
+          (i.system.class === itemData.type || !i.system.class)
+        )
+        let fx = ammoItem?.system.ammunitionTypeUuid && ammoItem.system.ammunitionTypeUuid !== 'pending' ? ammoItem.system.effects : null
+        let fxLabel = ammoItem?.name
+        // Resolve from world ammo type items if not found on actor
+        if (!fx && !SR5.allAmmunitionTypes[itemData.ammunition.type] && game.items) {
+          const slug = itemData.ammunition.type
+          const ammoTypeItem = game.items.find(i => i.type === 'itemAmmunitionType' && i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug)
+          if (ammoTypeItem) {
+            fx = ammoTypeItem.system
+            fxLabel = ammoTypeItem.name
+          }
+        }
+        if (fx?.envRangeMod || fx?.envWindMod) {
+          const label = fxLabel
+          if (fx.envRangeMod) SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.environmentalMod.range, label, "ammunitionType", fx.envRangeMod, false, false)
+          if (fx.envWindMod) SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.environmentalMod.wind, label, "ammunitionType", fx.envWindMod, false, false)
+          envHandled = true
+        }
+      }
+      // Fallback: legacy tracer check
+      if (!envHandled && itemData.ammunition.type === "tracer") {
+        SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.environmentalMod.range, game.i18n.localize('SR5.AmmunitionTypeTracer'), "ammunitionType", -1, false, false)
+        SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.environmentalMod.wind, game.i18n.localize('SR5.AmmunitionTypeTracer'), "ammunitionType", -1, false, false)
+      }
+    }
+
+    // Normalize legacy object-with-numeric-keys to array
+    if (typeof itemData.accessory === "object" && !Array.isArray(itemData.accessory)) {
+      itemData.accessory = Object.values(itemData.accessory)
+    }
+
+    for (let a of itemData.accessory) {
+      // Determine special effect: from item data or from catalog
+      let effectType = null
+      if (a.system) {
+        effectType = a.system.weaponAccessory?.specialEffect
+      } else {
+        const catalog = WEAPON_ACCESSORY_CATALOG[a.name]
+        if (!catalog?.systemEffects) continue
+        effectType = catalog.systemEffects[0]?.value
+      }
+      if (!effectType) continue
+
+      switch (effectType) {
+        // flashLightInfrared and flashLightLowLight light where the weapon points (Run & Gun p. 69): they are
+        // not written on the actor, see getWeaponLightCompensation
+        // imagingScope: its zoom takes a row off range for the shots of its own weapon only, not for the actor's
+        // other weapons (scopeVision, rollData-Weapon.js)
+        case "smartgunInternal":
+        case "smartgunExternal": {
+          let hasSmartlink = false
+          for (let i of actor.items) {
+            if ((i.type === "itemAugmentation" || i.type === "itemGear") && i.system.isActive && Object.keys(i.system.customEffects).length) {
+              for (let [, value] of Object.entries(i.system.customEffects)) {
+                if (value.target === 'system.specialProperties.smartlink' && (value.value > 0)) hasSmartlink = true
+              }
+            }
+          }
+          if (a.isActive && itemData.isActive && hasSmartlink) {
+            SR5_EntityHelpers.updateModifier(actor.system.itemsProperties.environmentalMod.wind, game.i18n.localize('SR5.Smartlink'), "weaponAccessory", -1, false, false)
+          }
+          break
+        }
+      }
+    }
+  }
+
+  ////////////////////// AUGMENTATIONS ///////////////////////
+  /**
+   * @param {object} itemData the implant's system data, prepared here
+   * @param {Actor} [actor] the body it is installed in
+   * @param {Item} [item] the implant itself, read by the subscribers of sr5.essenceCostFor (sheetLine)
+   */
+  static _handleAugmentation(itemData, actor, item) {
+    let modifierSource, essenceMultiplier, deviceRating, availabilityModifier, priceMultiplier
+
+    if (itemData.category === "cyberlimbs"){
+      let cyberlimbs = itemData.cyberlimbs
+      cyberlimbs.agility.value = cyberlimbs.agility.base + cyberlimbs.agility.customization
+      cyberlimbs.strength.value = cyberlimbs.strength.base + cyberlimbs.strength.customization
+      let cyberlimbsPriceMod = (cyberlimbs.agility.customization + cyberlimbs.strength.customization) * 5000
+      let cyberlimbsAvailabilityMod = (cyberlimbs.agility.customization + cyberlimbs.strength.customization)
+      SR5_EntityHelpers.removeElementFromArray(itemData.price.modifiers, 'type', 'CustomCyberlimb')
+      SR5_EntityHelpers.removeElementFromArray(itemData.availability.modifiers, 'type', 'CustomCyberlimb')
+      SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.AugmentationCyberlimbs'), 'CustomCyberlimb', cyberlimbsAvailabilityMod)
+      SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.AugmentationCyberlimbs'), 'CustomCyberlimb', cyberlimbsPriceMod)
+    }
+
+    // One table for the sheet and the shop: AUGMENTATION_GRADE_TABLE (SR5 p. 454, CF p. 74, BTB p. 142)
+    // A grade the table does not know (written by hand, "alpha" for "alphaware") is read as standard, never as an
+    // implant that costs nothing; the gamemaster is told once per implant (Apollinaire's review)
+    let grade = AUGMENTATION_GRADE_TABLE[itemData.grade]
+    if (!grade) {
+      SR5_SystemHelpers.srLog(1, `Unknown '${itemData.grade}' grade in _handleAugmentation(): read as standard`)
+      warnUnknownGrade(itemData, actor)
+      grade = AUGMENTATION_GRADE_TABLE.standard
+    }
+    essenceMultiplier = grade.essence
+    deviceRating = grade.deviceRating
+    availabilityModifier = grade.availability
+    priceMultiplier = grade.price
+    itemData.deviceRating = deviceRating
+    modifierSource = `${game.i18n.localize(SR5.augmentationGrades[itemData.grade] ?? SR5.augmentationGrades.standard)}`
+    SR5_EntityHelpers.updateModifier(itemData.availability, modifierSource, "augmentationGrade", availabilityModifier, false, false)
+    SR5_EntityHelpers.updateModifier(itemData.price, modifierSource, "augmentationGrade", priceMultiplier, true, false)
+
+    // Système sensible, Biocompatibilité, Adapsine, lot: the same function prices the implant at the shop
+    // (implant-essence.js). Adapsine lowers the grade's multiplier itself (Chrome Flesh p. 165).
+    const bodyEffects = implantEssenceEffects(actor?.items ?? [], itemData.type, {
+      underAdapsine: itemData.underAdapsine,
+      bundle: itemData.augmentationBundle && essenceSettingOn(AUGMENTATION_BUNDLE_SETTING),
+      reversibleEssence: itemData.reversibleEssence,
+    })
+    // A Tatouage de mana gris costs the Essence of its data, whatever its grade (Better Than Bad p. 141)
+    if (itemData.reversibleEssence) {
+      essenceMultiplier = 1
+      modifierSource = game.i18n.localize("SR5.GradeNoEffectTattoo")
+    }
+    for (const m of bodyEffects.multipliers) SR5_EntityHelpers.updateModifier(itemData.essenceCost, m.name, m.type, m.value, true, false)
+    if (bodyEffects.gradeReduction) {
+      essenceMultiplier = Math.max(0, Math.round((essenceMultiplier - bodyEffects.gradeReduction) * 100) / 100)
+      modifierSource += ` + ${game.i18n.localize("SR5.UnderAdapsine")}`
+    }
+
+    SR5_EntityHelpers.updateModifier(itemData.essenceCost, modifierSource, "augmentationGrade", (itemData.isRatingBased ? essenceMultiplier * itemData.itemRating : essenceMultiplier), true, false)
+    this._handleItemCapacity(itemData)
+    this._handleItemPrice(itemData)
+    this._handleItemAvailability(itemData)
+    this._handleItemEssenceCost(itemData)
+    // A module's house rule may change what the implant takes from this body (sr5.essenceCostFor, context "sheet"):
+    // the hook the till asks too, so the sheet, the shop and the peak (implant-register.js) count the same cost. Asked
+    // before the final rounding; an accessory takes no Essence (entityActor.js). Without a subscriber, the book's cost
+    // is kept, exactly as before the hook (relecture du 21/10)
+    if (actor && !itemData.isAccessory) itemData.essenceCost.value = essenceCostFor(actor, sheetLine(itemData, item), itemData.essenceCost.value, {
+      context: "sheet"
+    })
+    if (actor || bodyEffects.roundDownTenth || bodyEffects.multipliers.length) itemData.essenceCost.value = roundImplantEssence(itemData.essenceCost.value, bodyEffects)
+  }
+
+  ////////////////// SORTS ////////////////////
+
+  //Spell area and detection range (SR5 p. 287): Force × caster's Magic metres, × 10 when extended.
+  //Called from the actor's second pass on items, once the caster's Magic is computed:
+  //in the first pass, magic.augmented.value is still 0.
+  //A preparation passes its Force as magic and its Potency as areaRadius (SR5 p. 309): its Force stands for
+  //the Magic, and an area preparation's radius is its Potency in metres.
+  static _handleSpellRange(itemData, magic, areaRadius = null) {
+    itemData.spellAreaOfEffect.base = 0
+    itemData.spellAreaOfEffect.modifiers = []
+    if (areaRadius !== null && itemData.category !== "detection"){
+      if (itemData.range === "area") SR5_EntityHelpers.updateModifier(itemData.spellAreaOfEffect, game.i18n.localize('SR5.PreparationPotency'), "spell", parseInt(areaRadius || 0), false, true)
+    }
+    else if (itemData.range === "area" || itemData.category === "detection"){
+      SR5_EntityHelpers.updateModifier(itemData.spellAreaOfEffect, game.i18n.localize('SR5.SpellForce'), "spell", parseInt(itemData.force || 0), false, true)
+    }
+    //Range for detection spell
+    if (itemData.category === "detection") {
+      SR5_EntityHelpers.updateModifier(itemData.spellAreaOfEffect, game.i18n.localize('SR5.SpellRangeShort'), "spell", magic, true, true)
+      if (itemData.spellAreaExtended === true) {
+        SR5_EntityHelpers.updateModifier(itemData.spellAreaOfEffect, game.i18n.localize('SR5.ExtendedRange'), "spell", 10, true, true)
+      }
+    }
+    SR5_EntityHelpers.updateValue(itemData.spellAreaOfEffect, 0)
+  }
+
+  //Handle spell
+  static _handleSpell(item, actor) {
+    let itemData = item.system
+    //Damage based on spell type
+    if (itemData.category === "combat") {
+      itemData.damageValue.base = 0
+      if (itemData.subCategory === "indirect") {
+        SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.SpellForce'), "spell", parseInt(itemData.force || 0), false, true)
+        SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.DiceHits'), "spell", parseInt(itemData.hits || 0), false, true)
+        SR5_EntityHelpers.updateValue(itemData.damageValue, 0)
+        SR5_EntityHelpers.updateModifier(itemData.armorPenetration, game.i18n.localize('SR5.SpellForce'), "spell", -(itemData.force || 0), false, true)
+        SR5_EntityHelpers.updateValue(itemData.armorPenetration)
+      } else {
+        SR5_EntityHelpers.updateModifier(itemData.damageValue, game.i18n.localize('SR5.DiceHits'), "spell", (itemData.hits || 0), false, true)
+        SR5_EntityHelpers.updateValue(itemData.damageValue, 0)
+      }
+    }
+
+    //Handle range: computed in the actor's second pass, see _handleSpellRange
+
+    //Modified drain value
+    itemData.drainValue.base = 0
+    SR5_EntityHelpers.updateModifier(itemData.drainValue, game.i18n.localize('SR5.SpellForce'), "spell", (itemData.force || 0), false, true)
+    SR5_EntityHelpers.updateModifier(itemData.drainValue, game.i18n.localize('SR5.SpellDrain'), "drainModifier", itemData.drain.base, false, true)
+    if (itemData.fetish){
+      SR5_EntityHelpers.updateModifier(itemData.drainValue, game.i18n.localize('SR5.Fetish'), "drainModifier", -2, false, true)
+      SR5_EntityHelpers.updateModifier(itemData.drain, game.i18n.localize('SR5.Fetish'), "spell", -2, false, true)
+    }
+    SR5_EntityHelpers.updateValue(itemData.drainValue, 2)
+    SR5_EntityHelpers.updateValue(itemData.drain)
+
+    //Check if spell is sustained by a spirit
+    for (let itemSpirit of actor.items){
+      if (itemSpirit.type === "itemSpirit" && itemSpirit.system.isBounded){
+        for (let s of Object.values(itemSpirit.system.sustainedSpell)){
+          if (s.name === item.id) itemData.freeSustain = true
+        }
+      }
+    }
+
+    //Check if spell is sustrained by a focus
+    for (let itemFocus of actor.items){
+      if (itemFocus.type === "itemFocus" && itemFocus.system.type === "sustaining"){
+        let focusData = itemFocus.system
+        if (focusData.sustainedSpell === item.name && (focusData.itemRating >= itemData.force)) itemData.freeSustain = true
+      }
+    }
+  }
+
+  //Handle Preparation
+  static _handlePreparation(item, actor){
+    let itemData = item.system
+    itemData.test.base = 0
+    SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize('SR5.PreparationPotency'), "spell", (itemData.potency || 0), false, true)
+    SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize('SR5.Force'), "linkedAttribute", (itemData.force || 0), false, true)
+    //Background count modifier
+    if (actor.system.magic.bgCount.value < 0) itemData.test.modifiers = itemData.test.modifiers.concat(actor.system.magic.bgCount.modifiers)
+    SR5_EntityHelpers.updateDicePool(itemData.test)
+  }
+
+  //Handle power point cost
+  static _handleAdeptPower(itemData, actor) {
+    let firstAttribute, secondAttribute
+
+    if (itemData.powerPointsCost.isRatingBased) itemData.powerPointsCost.value = itemData.powerPointsCost.base * itemData.itemRating
+    else itemData.powerPointsCost.value = itemData.powerPointsCost.base
+
+    if (itemData.needRoll && actor) {
+      let firstLabel = game.i18n.localize(SR5.allAttributes[itemData.testFirstAttribute])
+      if (itemData.testFirstAttribute){
+        if (SR5.characterSpecialAttributes[itemData.testFirstAttribute]){
+          firstAttribute = actor.system.specialAttributes[itemData.testFirstAttribute].augmented.value
+        } else if (itemData.testFirstAttribute === "rating") {
+          firstAttribute = itemData.itemRating
+          firstLabel = game.i18n.localize("SR5.ItemRating")
+        } else if (itemData.testFirstAttribute === "running") {
+          firstAttribute = actor.system.skills.running.rating.value
+          firstLabel = game.i18n.localize("SR5.Skill")
+        } else if (itemData.testFirstAttribute === "leadership") {
+          firstAttribute = actor.system.skills.leadership.rating.value
+          firstLabel = game.i18n.localize("SR5.Skill")
+        } else firstAttribute = actor.system.attributes[itemData.testFirstAttribute].augmented.value
+      }
+	
+      let secondLabel = game.i18n.localize(SR5.allAttributes[itemData.testSecondAttribute])
+      if (itemData.testSecondAttribute){
+        if (SR5.characterSpecialAttributes[itemData.testSecondAttribute]){
+          secondAttribute = actor.system.specialAttributes[itemData.testSecondAttribute].augmented.value
+        } else if (itemData.testSecondAttribute === "rating") {
+          secondAttribute = itemData.itemRating
+          secondLabel = game.i18n.localize("SR5.ItemRating")
+        } else if (itemData.testSecondAttribute === "running") {
+          secondAttribute = actor.system.skills.running.rating.value
+          secondLabel = game.i18n.localize("SR5.Skill")
+        } else if (itemData.testSecondAttribute === "leadership") {
+          secondAttribute = actor.system.skills.leadership.rating.value
+          secondLabel = game.i18n.localize("SR5.Skill")
+        } else secondAttribute = actor.system.attributes[itemData.testSecondAttribute].augmented.value
+      }
+
+      itemData.test.base = 0
+      if (firstAttribute) SR5_EntityHelpers.updateModifier(itemData.test, firstLabel, "linkedAttribute", firstAttribute, false, true)
+      if (secondAttribute) SR5_EntityHelpers.updateModifier(itemData.test, secondLabel, "linkedAttribute", secondAttribute, false, true)
+      //Background count modifier
+      if (actor.system.magic.bgCount.value < 0) itemData.test.modifiers = itemData.test.modifiers.concat(actor.system.magic.bgCount.modifiers)
+      SR5_EntityHelpers.updateDicePool(itemData.test)
+    }
+
+    if (itemData.hasDrain){
+      itemData.drainValue.base = 0
+      if (itemData.drainType === "rating") SR5_EntityHelpers.updateModifier(itemData.drainValue, game.i18n.localize('SR5.ItemRating'), "adeptPower", Math.ceil(itemData.itemRating * (itemData.drainMultiplier || 1)), false, true)
+      if (itemData.drainType === "magic") {
+        if (actor) SR5_EntityHelpers.updateModifier(itemData.drainValue, game.i18n.localize('SR5.Magic'), "adeptPower", Math.ceil(actor.system.specialAttributes.magic.augmented.value * (itemData.drainMultiplier || 1)), false, true)
+      }
+      SR5_EntityHelpers.updateValue(itemData.drainValue)
+    }
+  }
+
+  //Handle Martial Art test
+  static _handleMartialArt(itemData, actor) {
+    let firstAttribute, secondAttribute
+
+    if (itemData.needRoll && actor) {
+      let firstLabel = game.i18n.localize(SR5.allAttributes[itemData.testFirstAttribute])
+      if (itemData.testFirstAttribute){
+        if (SR5.characterSpecialAttributes[itemData.testFirstAttribute]){
+          firstAttribute = actor.system.specialAttributes[itemData.testFirstAttribute].augmented.value
+        } else if (itemData.testFirstAttribute === "body" || itemData.testFirstAttribute === "agility" || itemData.testFirstAttribute === "reaction" || itemData.testFirstAttribute === "strength" || itemData.testFirstAttribute === "willpower" || itemData.testFirstAttribute === "logic" || itemData.testFirstAttribute === "intuition" || itemData.testFirstAttribute === "charisma") {
+          firstAttribute = actor.system.attributes[itemData.testFirstAttribute].augmented.value
+        } else {
+          firstAttribute = actor.system.skills[itemData.testFirstAttribute].rating.value
+          firstLabel = game.i18n.localize(SR5.skills[itemData.testFirstAttribute])
+        }
+      }
+	
+      let secondLabel = game.i18n.localize(SR5.allAttributes[itemData.testSecondAttribute])
+      if (itemData.testSecondAttribute){
+        if (SR5.characterSpecialAttributes[itemData.testSecondAttribute]){
+          secondAttribute = actor.system.specialAttributes[itemData.testSecondAttribute].augmented.value
+        } else if (itemData.testSecondAttribute === "body" || itemData.testSecondAttribute === "agility" || itemData.testSecondAttribute === "reaction" || itemData.testSecondAttribute === "strength" || itemData.testSecondAttribute === "willpower" || itemData.testSecondAttribute === "logic" || itemData.testSecondAttribute === "intuition" || itemData.testSecondAttribute === "charisma") {
+          secondAttribute = actor.system.attributes[itemData.testSecondAttribute].augmented.value
+        } else {
+          secondAttribute = actor.system.skills[itemData.testSecondAttribute].rating.value
+          secondLabel = game.i18n.localize(SR5.skills[itemData.testSecondAttribute])
+        }
+      }
+
+      itemData.test.base = 0
+      if (firstAttribute) SR5_EntityHelpers.updateModifier(itemData.test, firstLabel, "linkedAttribute", firstAttribute, false, true)
+      if (secondAttribute) SR5_EntityHelpers.updateModifier(itemData.test, secondLabel, "linkedAttribute", secondAttribute, false, true)
+      SR5_EntityHelpers.updateDicePool(itemData.test)
+    }
+  }
+
+  ////////////////////// RITUALS ///////////////////////
+  static _generateSpellList(actor) {
+    let spellList = []
+    for (let i of actor.items) {
+      if (i.type === "itemSpell" && !i.system.preparation) {
+        spellList.push(i)
+      }
+    }
+    return spellList
+  }
+
+  static _handleRitual(item, actor){
+    if (item.system.spellLinked){
+      let spellLinked = actor.items.find(s => s.id === item.system.spellLinked)
+      item.system.spellLinkedType = spellLinked.system.category
+      item.system.spellLinkedName = spellLinked.name
+    }
+    if (item.system.durationMultiplier === "force") {
+      if (item.system.force > 0) item.system.durationValue = item.system.force
+      else item.system.durationValue = `(${game.i18n.localize('SR5.SpellForceShort')})`
+    }
+    if (item.system.durationMultiplier === "netHits") {
+      if (item.system.netHits > 0) item.system.durationValue = item.system.netHits
+      else item.system.durationValue = `(${game.i18n.localize('SR5.NetHits')})`
+    }
+  }
+
+  ////////////////////// FOCUS ///////////////////////
+  static _handleFocus(focus) {
+    this._handleItemPrice(focus)
+    this._handleItemAvailability(focus)
+  }
+
+  static _generateSustainFocusSpellList(itemData, actor) {
+    let spellList = []
+    for (let i of actor.items) {
+      if (i.type === "itemSpell" && i.system.category === itemData.subType && !i.system.preparation) {
+        spellList.push({
+          name: i.name
+        })
+      }
+    }
+    return spellList
+  }
+
+  static _generateWeaponFocusWeaponList(actor) {
+    let weaponList = []
+    for (let i of actor.items) {
+      if (i.type === "itemWeapon" && i.system.category === "meleeWeapon") {
+        if (i.system.systemEffects.length) continue
+        let weapon = {
+          "name": i.name,
+          "id": i.id,
+        }
+        weaponList.push(weapon)
+      }
+    }
+    return weaponList
+  }
+
+  static _generateQiFocusAdeptPowerList(actor) {
+    let powerList = []
+    for (let i of actor.items) {
+      if (i.type === "itemAdeptPower") {
+        powerList.push({
+          "name": i.name,
+          "id": i.id,
+        })
+      }
+    }
+    return powerList
+  }
+
+  static async _checkIfWeaponIsFocus(item, actor){
+    let focus = actor.items.find(w => w.system.linkedWeapon === item.id)
+    if (focus) item.system.isLinkedToFocus = true
+    else item.system.isLinkedToFocus = false
+
+    //Remove old effect if still present
+    if (!item.system.isLinkedToFocus){
+      let focusEffect = item.system.itemEffects.find(e => e.target === "system.weaponSkill")
+      if (focusEffect){
+        let arrayEffects = foundry.utils.duplicate(item.system.itemEffects)
+        arrayEffects= arrayEffects.filter(e => e.target !== "system.weaponSkill")
+        item.system.itemEffects = arrayEffects
+        item.system.isMagical= false
+      }
+    }
+  }
+
+  static async _handleWeaponFocus(item, actor){
+    let focus = actor.items.find(w => w.system.linkedWeapon === item.id)
+    if (!focus) return
+
+    //check if focus effect is present. Add it if not.
+    let focusEffect = item.system.itemEffects.find(e => e.ownerItem === focus.id)
+    if (focus.system.isActive) item.system.isMagical = true
+    if (focus.system.isActive && !focusEffect){
+      let effect = {
+        "name": `${focus.name}`,
+        "target": "system.weaponSkill",
+        "wifi": false,
+        "transfer": false,
+        "ownerItem": focus.id,
+        "type": "value",
+        "value": focus.system.itemRating,
+        "multiplier": 1
+      }
+      item.system.itemEffects.push(effect)
+    }
+    //remove effect if focus is off
+    if (!focus.system.isActive && focusEffect){
+      let arrayEffects = foundry.utils.duplicate(item.system.itemEffects)
+      arrayEffects= arrayEffects.filter(e => e.ownerItem !== focus.id)
+      item.system.itemEffects = arrayEffects
+      item.system.isMagical = false
+    }
+  }
+
+  ////////////////////// DECK & PROGRAMMES ///////////////////////
+  static _handleCommlink(itemData) {
+    if (!itemData.module) return
+    switch (itemData.module){
+      case "standard":
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.ModuleStandardSim'), 'module', 100)
+        break
+      case "hotsim":
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.ModuleHotSim'), 'module', 250)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.ModuleHotSim'), 'module', 4)
+        break
+      default:
+        SR5_SystemHelpers.srLog(1,"_handleCommlink",`Unknown module : '${itemData.module}'`)
+    }
+  }
+
+  //Handle complex form
+  static _handleComplexForm(item, actor) {
+    // Fading calculation
+    //Lowered by the technomancer's stream when the form aims at what it knows best (Kill Code p. 100-101, 145-146)
+    item.system.fadingValue = reducedFading(item.system.fadingModifier + (item.system.level || 0), streamFadingReduction(streamOf(actor), item.system.target))
+
+    //Check if complex form is sustained by a sprite
+    for (let i of actor.items){
+      if (i.type === "itemSprite" && i.system.isRegistered){
+        for (let c of Object.values(i.system.sustainedComplexForm)){
+          if (c.name === item.id) item.system.freeSustain = true
+        }
+      }
+    }
+  }
+
+  //handle PAN
+  static _handlePan(item){
+    item.system.pan.current = 0
+    item.system.pan.content.forEach(() => item.system.pan.current++)
+  }
+
+  ////////////////////// SIN /////////////////////////////////
+  static _handleSinLicense(itemData) {
+    itemData.price.base = 2500 * itemData.itemRating
+    itemData.availability.base = 3 * itemData.itemRating
+    itemData.legality = "F"
+    for (let l of itemData.license) {
+      l.price = l.rating * 200
+      l.availability = l.rating * 3
+      l.legality = "F"
+    }
+  }
+
+  ////////////////////// STYLE DE VIE  ///////////////////////
+  // Calcul le loyer et les attributs des styles de vie
+  static _handleLifeStyle(itemData, owner = null) {
+    switch (itemData.type) {
+      case "luxury":
+        itemData.price.base = 100000
+        itemData.comforts.base = 5
+        itemData.comforts.max = 7
+        itemData.security.base = 5
+        itemData.security.max = 8
+        itemData.neighborhood.base = 5
+        itemData.neighborhood.max = 7
+        itemData.point.base = 12
+        itemData.level = 6
+        break
+      case "high":
+        itemData.price.base = 10000
+        itemData.comforts.base = 4
+        itemData.comforts.max = 6
+        itemData.security.base = 4
+        itemData.security.max = 6
+        itemData.neighborhood.base = 5
+        itemData.neighborhood.max = 6
+        itemData.point.base = 6
+        itemData.level = 5
+        break
+      case "medium":
+        itemData.price.base = 5000
+        itemData.comforts.base = 3
+        itemData.comforts.max = 4
+        itemData.security.base = 3
+        itemData.security.max = 4
+        itemData.neighborhood.base = 4
+        itemData.neighborhood.max = 5
+        itemData.point.base = 4
+        itemData.level = 4
+        break
+      case "low":
+        itemData.price.base = 2000
+        itemData.comforts.base = 2
+        itemData.comforts.max = 3
+        itemData.security.base = 2
+        itemData.security.max = 3
+        itemData.neighborhood.base = 2
+        itemData.neighborhood.max = 3
+        itemData.point.base = 3
+        itemData.level = 3
+        break
+      case "squatter":
+        itemData.price.base = 500
+        itemData.comforts.base = 1
+        itemData.comforts.max = 2
+        itemData.security.base = 1
+        itemData.security.max = 2
+        itemData.neighborhood.base = 1
+        itemData.neighborhood.max = 2
+        itemData.point.base = 2
+        itemData.level = 2
+        break
+      case "streets":
+        itemData.price.base = 0
+        itemData.comforts.base = 0
+        itemData.comforts.max = 1
+        itemData.security.base = 0
+        itemData.security.max = 1
+        itemData.neighborhood.base = 0
+        itemData.neighborhood.max = 1
+        itemData.point.base = 2
+        itemData.level = 1
+        break
+      case "boltHole":
+        itemData.price.base = 1000
+        itemData.comforts.base = 1
+        itemData.comforts.max = 2
+        itemData.security.base = 1
+        itemData.security.max = 4
+        itemData.neighborhood.base = 1
+        itemData.neighborhood.max = 4
+        itemData.point.base = 4
+        itemData.level = 0
+        if (itemData.options.map(c => c.name).indexOf("notAHome") == -1) itemData.options.push({
+          name: "notAHome"
+        })
+        break
+      case "traveler":
+        itemData.price.base = 3000
+        itemData.comforts.base = 2
+        itemData.comforts.max = 4
+        itemData.security.base = 2
+        itemData.security.max = 4
+        itemData.neighborhood.base = 2
+        itemData.neighborhood.max = 4
+        itemData.level = 0
+        break
+      case "commercial":
+        itemData.price.base = 8000
+        itemData.comforts.base = 3
+        itemData.comforts.max = 4
+        itemData.security.base = 2
+        itemData.security.max = 4
+        itemData.neighborhood.base = 4
+        itemData.neighborhood.max = 6
+        itemData.point.base = 4
+        itemData.level = 7
+        break
+      default:
+        itemData.price.base = 0
+        itemData.level = 0
+    }
+
+    let lists = SR5
+    for (let option of itemData.options) {
+      switch (option.name){
+        case "specialWorkArea":
+          option.type = 'positiveOption'
+          option.price = 1000
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          break
+        case "cramped":          
+          option.type = 'negativeOption'
+          option.price = -itemData.price.base * 0.1
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          break
+        case "difficultToFind":          
+          option.type = 'negativeOption'
+          option.price = itemData.price.base * 0.1
+          option.point = 1
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.point)
+          break
+        case "extraSecure":
+          option.price = itemData.price.base * 0.2
+          option.type = 'positiveOption'
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          break
+        case "dangerousArea":
+          option.price = -itemData.price.base * 0.2
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          break
+        case "armory":
+          option.type = 'asset'
+          option.level = 'high'
+          option.point = -2
+          if (itemData.level < 5) {
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "cleaningServiceStandard":
+          option.level = 'high'
+          option.point = -1
+          option.type = 'service'
+          if (itemData.level < 5) {              
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "cleaningServiceMage":
+          option.level = 'high'
+          option.type = 'service'
+          option.point = -1
+          if (itemData.level < 5) {              
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "cleaningServicePollution":
+          option.level = 'high'
+          option.point = -1
+          option.type = 'service'
+          if (itemData.level < 5) {              
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "discreetCleaningService":
+          option.level = 'high'
+          option.point = -4
+          option.type = 'service'
+          if (itemData.level < 5) {              
+            option.price = 10000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "discreetDeliveryman":
+          option.price = 100
+          option.type = 'service'
+          option.point = -3
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "garageAirplane":
+          option.level = 'luxury'
+          option.type = 'asset'
+          option.point = -4
+          if (itemData.level < 6) {
+            option.price = 20000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, -4)
+          break
+        case "garageBoat":
+          option.level = 'high'
+          option.point = -3
+          option.type = 'asset'
+          if (itemData.level < 5) {
+            option.price = 5000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "garageSmallCar":
+          option.level = 'medium'
+          option.type = 'asset'
+          option.point = -1
+          if (itemData.level < 4) {              
+            option.price = 50
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "garageLargeCar":
+          option.level = 'medium'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 100
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "garageHelicopter":
+          option.level = 'luxury'
+          option.point = -4
+          option.type = 'asset'
+          if (itemData.level < 6) {
+            option.price = 10000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "greenHouse":
+          option.level = 'high'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 5) {              
+            option.price = 500
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "gridSubscription":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 50
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "gym":
+          option.level = 'medium'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 300
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "indoorArboretum":
+          option.level = 'high'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 5) {
+            option.price = 500
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "localBarPatron":
+          option.level = 'low'
+          option.point = -1
+          option.type = 'outing'
+          if (itemData.level < 3) {              
+            option.price = 25
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "merchandiseGoods":
+          option.level = 'commercial'
+          option.point = -1
+          option.type = 'service'
+          if (itemData.level < 7) {              
+            option.price = 10000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "merchandisePawnShop":
+          option.level = 'commercial'
+          option.point = -2
+          option.type = 'service'
+          if (itemData.level < 7) {              
+            option.price = 10000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "merchandiseUsedGoods":
+          option.level = 'commercial'
+          option.point = -2
+          option.type = 'service'
+          if (itemData.level < 7) {              
+            option.price = 10000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "panicRoom":
+          option.level = 'high'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 5) {
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "patronConcerts":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'outing'
+          if (itemData.level < 4) {              
+            option.price = 100
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "patronPrivateClub":
+          option.level = 'high'
+          option.point = -1
+          option.type = 'outing'
+          if (itemData.level < 5) {
+            option.price = 200
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "patronPublicEntertainment":
+          option.level = 'low'
+          option.point = -1
+          option.type = 'outing'
+          if (itemData.level < 3) {              
+            option.price = 75
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "patronThemeParks":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'outing'
+          if (itemData.level < 4) {              
+            option.price = 100
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "privateRoom":
+          option.level = 'squatter'
+          option.point = -1
+          option.type = 'asset'
+          if (itemData.level < 2) {
+            option.price = 20
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "publicTransportation":
+          option.level = 'low'
+          option.point = -1
+          option.type = 'service'
+          if (itemData.level < 3) {
+            option.price = 50
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "railwayPass":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'service'
+          if (itemData.level < 4) {
+            option.price = 75
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "shootingRange":
+          option.level = 'high'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 5) {
+            option.price = 500
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "soyProcessingUnit":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 20
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "sportsCourt":
+          option.level = 'high'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 5) {
+            option.price = 300
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "swimmingPool":
+          option.level = 'medium'
+          option.point = -1
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 100
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "walkinFreezer":
+          option.level = 'commercial'
+          option.point = -1
+          option.type = 'asset'
+          if (itemData.level < 7) {
+            option.price = 1000
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "workshopFacility":
+          option.level = 'medium'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 2500
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "yard":
+          option.level = 'low'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 3) {
+            option.price = 50
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "zenDenBatCave":
+          option.level = 'medium'
+          option.point = -2
+          option.type = 'asset'
+          if (itemData.level < 4) {
+            option.price = 100
+            SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          }
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "angryDrunkReputation":
+          option.point = 1
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "corporateOwned":
+          option.point = -3
+          itemData.comforts.max += 1
+          itemData.security.max += 1
+          option.type = 'positiveOption'
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "hotelCalifornia":
+          option.point = 1
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "maidIsOut":
+          option.point = 1
+          option.type = 'negativeOption'
+          itemData.comforts.max -= 1
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "notAHome":
+          option.point = 1
+          itemData.comforts.max -= 1
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "onlyGoodThingAbout":
+          option.type = 'positiveOption'
+          break
+        case "safehouse":
+          option.price = 500
+          option.type = 'positiveOption'
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          break
+        case "safetyThird":
+          option.point = 1
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "thrifty":
+          option.price = -1000
+          option.point = -2
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "wZone":
+          option.point = 1
+          option.type = 'negativeOption'
+          SR5_EntityHelpers.updateModifier(itemData.neighborhood, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, -1)
+          SR5_EntityHelpers.updateModifier(itemData.point, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point/2)
+          break
+        case "addComforts":
+          option.price = itemData.price.base * 0.1
+          option.point = -1
+          option.type = 'modification'
+          if (itemData.type == "streets") {
+            option.price = 50
+          }
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.comforts, 'addComforts', `${game.i18n.localize('SR5.LifeStyleOptions')}`, 1)
+          SR5_EntityHelpers.updateModifier(itemData.point, 'addComforts', `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point)
+          break
+        case "addSecurity":
+          option.price = itemData.price.base * 0.1
+          option.point = -1
+          option.type = 'modification'
+          if (itemData.type == "streets") {
+            option.price = 50
+          }
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.security, 'addSecurity', `${game.i18n.localize('SR5.LifeStyleOptions')}`, 1)
+          SR5_EntityHelpers.updateModifier(itemData.point, 'addSecurity', `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point)
+          break
+        case "addNeighborhood":
+          option.price = itemData.price.base * 0.1
+          option.point = -1
+          option.type = 'modification'
+          if (itemData.type == "streets") {
+            option.price = 50
+          }
+          SR5_EntityHelpers.updateModifier(itemData.price, `${game.i18n.localize(lists.lifestyleOptions[option.name])}`, `${game.i18n.localize('SR5.LifeStyleOptions')} (${game.i18n.localize(lists.lifestyleOptionsTypes[option.type])})`, option.price)
+          SR5_EntityHelpers.updateModifier(itemData.neighborhood, 'addNeighborhood', `${game.i18n.localize('SR5.LifeStyleOptions')}`, 1)
+          SR5_EntityHelpers.updateModifier(itemData.point, 'addNeighborhood', `${game.i18n.localize('SR5.LifeStyleOptions')}`, option.point)
+          break
+        default:
+
+          SR5_SystemHelpers.srLog(1, `Unknown '${option.name}' option in _handleLifeStyle() for '${itemData.name}'`)
+      }
+
+      if (option.name){
+        //Get the game info and put it in the array
+        let nameString = option.name.charAt(0).toUpperCase() + option.name.slice(1)
+        let gameEffectString = 'SR5.LifeStyleOption'+ `${nameString}` + '_GE'
+        option.gameEffects = game.i18n.localize(gameEffectString)
+      }
+
+    }
+
+    SR5_EntityHelpers.updateValue(itemData.comforts,0,itemData.comforts.max)
+    SR5_EntityHelpers.updateValue(itemData.security,0,itemData.comforts.max)
+    SR5_EntityHelpers.updateValue(itemData.neighborhood,0,itemData.comforts.max)
+    SR5_EntityHelpers.updateValue(itemData.point)
+
+    if (itemData.neighborhood.value == "0") {
+      itemData.neighborhood.zone = "Z"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_Z')
+    }    
+    if (itemData.neighborhood.value == "1") {
+      itemData.neighborhood.zone = "E"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_E')
+    }    
+    if (itemData.neighborhood.value == "2") {
+      itemData.neighborhood.zone = "D"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_D')
+    }    
+    if (itemData.neighborhood.value == "3") {
+      itemData.neighborhood.zone = "C"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_C')
+    }    
+    if (itemData.neighborhood.value == "4") {
+      itemData.neighborhood.zone = "B"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_B')
+    }    
+    if (itemData.neighborhood.value == "5") {
+      itemData.neighborhood.zone = "A"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_A')
+    }    
+    if (itemData.neighborhood.value == "6") {
+      itemData.neighborhood.zone = "AA"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_AA')
+    }    
+    if (itemData.neighborhood.value == "7") {
+      itemData.neighborhood.zone = "AAA"
+      itemData.neighborhood.gameEffects = game.i18n.localize('SR5.LifeStyleZone_AAA')
+    }    
+
+    itemData.comforts.gameEffects = game.i18n.localize('SR5.LifestyleComforts_GE')
+    itemData.security.gameEffects = game.i18n.localize('SR5.LifestyleSecurity_GE')
+
+    // The owner's metatype (SR5 p. 68), after the options and before the increases, Outings and Services (Hard Targets p. 141)
+    const metatype = owner?.system?.biography?.metatype || owner?.system?.biography?.characterMetatype
+    const surcharge = lifestyleMetatypeSurcharge(itemData.price.base, itemData.options, metatype)
+    if (surcharge) SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize(SR5.metatypes[metatype]), 'metatype', surcharge)
+
+  }
+
+  ////////////////////// VEHICULES  ///////////////////////
+  static _handleVehicle(itemData) {
+    for (let vehicleMod of itemData.vehiclesMod){
+      //A factory mod is already in the vehicle's price (Rigger 5.0 p. 156)
+      //Taken off in the workshop, a factory mod stays paid with it (vehicle-workshop.js)
+      if (isFactoryMod(vehicleMod) || vehicleMod.flags?.sr5?.wasFactory === true) continue
+      SR5_EntityHelpers.updateModifier(itemData.price, `${vehicleMod.name}`, 'vehicleMod', vehicleMod.system.price.value)
+    }
+
+    // SR5 p. 271 (Autopilote): a vehicle's Device Rating is its Pilot rating, for every vehicle and not only drones
+    itemData.deviceRating = itemData.attributes.pilot
+  }
+
+  static _handleVehicleSlots(itemData) {
+    let slots = itemData.attributes.body 
+    itemData.modificationSlots.powerTrain = slots 
+    itemData.modificationSlots.protection = slots 
+    itemData.modificationSlots.weapons = slots 
+    itemData.modificationSlots.body = slots 
+    itemData.modificationSlots.electromagnetic = slots 
+    itemData.modificationSlots.cosmetic = slots 
+  }
+
+  static _handleWeaponMounted(item) {
+    let itemData = item.system, wm = itemData.weaponMount
+    switch (wm.size) {
+      case "light":
+        itemData.slots.base = 1
+        itemData.threshold.base = 4
+        itemData.tools = "kit"
+        itemData.skill = "armorer"
+        itemData.availability.base = 6
+        itemData.legality = "F"
+        itemData.price.base = 750
+        break
+      case "standard":
+        itemData.slots.base = 2
+        itemData.threshold.base = 6
+        itemData.tools = "shop"
+        itemData.skill = "armorer"
+        itemData.availability.base = 8
+        itemData.legality = "F"
+        itemData.price.base = 1500
+        break
+      case "heavy":
+        itemData.slots.base = 4
+        itemData.threshold.base = 10
+        itemData.tools = "shop"
+        itemData.skill = "armorer"
+        itemData.availability.base = 12
+        itemData.legality = "F"
+        itemData.price.base = 4000
+        break
+      default:
+    }
+
+    switch (wm.visibility) {
+      case "external":
+        break
+      case "internal":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 2)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 6)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 2)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 1500)
+        if (itemData.tools == "kit") itemData.tools = "shop"
+        break
+      case "concealed":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 4)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 10)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 4)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountVisibility'), "vehicleMod", 4000)
+        if (itemData.tools == "kit") itemData.tools = "shop"
+        break
+      default:
+    }
+
+    switch (wm.flexibility) {
+      case "fixed":
+        break
+      case "flexible":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 1)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 4)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 2)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 2000)
+        if (itemData.tools == "kit") itemData.tools = "shop"
+        break
+      case "turret":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 2)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 12)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 6)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountFlexibility'), "vehicleMod", 5000)
+        itemData.tools = "facility"
+        break
+      default:
+    }
+    switch (wm.control) {
+      case "remote":
+        itemData.surname = " (" + game.i18n.localize(SR5.WeaponMountSize[wm.size]) + ", " + game.i18n.localize(SR5.WeaponMountVisibility[wm.visibility]) + ", " + game.i18n.localize(SR5.WeaponMountFlexibility[wm.flexibility]) + ", " + game.i18n.localize(SR5.WeaponMountControl[wm.control]) + ")"
+        break
+      case "manual":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 1)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 4)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 1)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 500)
+        if (itemData.tools == "kit") itemData.tools = "shop"
+        itemData.surname = " (" + game.i18n.localize(SR5.WeaponMountSize[wm.size]) + ", " + game.i18n.localize(SR5.WeaponMountVisibility[wm.visibility]) + ", " + game.i18n.localize(SR5.WeaponMountFlexibility[wm.flexibility]) + ", " + game.i18n.localize(SR5.WeaponMountControl[wm.control]) + ")"
+        break
+      case "armoredManual":
+        SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 2)
+        SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 6)
+        SR5_EntityHelpers.updateModifier(itemData.availability, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 4)
+        SR5_EntityHelpers.updateModifier(itemData.price, game.i18n.localize('SR5.VEHICLE_WeaponMountControl'), "vehicleMod", 1500)
+        if (itemData.tools == "kit") itemData.tools = "shop"
+        itemData.surname = " (" + game.i18n.localize(SR5.WeaponMountSize[wm.size]) + ", " + game.i18n.localize(SR5.WeaponMountVisibility[wm.visibility]) + ", " + game.i18n.localize(SR5.WeaponMountFlexibility[wm.flexibility]) + ", " + game.i18n.localize(SR5.WeaponMountControl[wm.control]) + ")"
+        break
+      default:
+    }
+
+    SR5_EntityHelpers.updateValue(itemData.slots, 0)
+    SR5_EntityHelpers.updateValue(itemData.threshold, 0)
+    SR5_EntityHelpers.updateValue(itemData.availability, 0)
+    SR5_EntityHelpers.updateValue(itemData.price, 0)
+  }
+
+  static _resetWeaponMounted(itemData) {
+    itemData.weaponMount.size = ""
+    itemData.weaponMount.visibility = ""
+    itemData.weaponMount.flexibility = ""
+    itemData.weaponMount.control = ""
+    itemData.mountedWeapon = ""
+    itemData.mountedWeaponName = ""
+  }
+
+  static _generateWeaponMountWeaponList(itemData, actor) {
+    let weaponList = []
+    for (let i of actor.items) {
+      //A melee weapon can be mounted on a vehicle too (Rigger 5.0 p. 182)
+      if (i.type === "itemWeapon" && (i.system.category === "rangedWeapon" || i.system.category === "meleeWeapon")) {
+        if (i.system.systemEffects.length) continue
+        let weapon = {
+          "name": i.name,
+          "id": i.id,
+        }
+        weaponList.push(weapon)  
+      }
+    }
+    itemData.weaponChoices = weaponList
+    return weaponList
+  }
+
+  static async _checkIfWeaponIsMount(item, actor){
+    let mount = actor.items.find(m => m.system.mountedWeapon === item.id)
+    if (mount) item.system.isLinkedToMount = true
+    else item.system.isLinkedToMount = false
+  }
+
+  static async _handleWeaponMount(item, actor){
+    let mount = actor.items.find(m => m.system.mountedWeapon === item.id)
+    if (mount) {
+      if (mount.system.isActive) item.system.isUsedAsMount = true 
+    }
+  } 
+
+  static _handleSlotsMultiplier(itemData) {
+    let multiplier
+    switch (itemData.slots.multiplier) {
+      case "rating":
+        multiplier = itemData.itemRating
+        break
+      case "capacity":
+        multiplier = itemData.capacity.value
+        break
+      default:
+    }
+    if (itemData.slots.multiplier) {
+      SR5_EntityHelpers.updateModifier(itemData.slots, game.i18n.localize(SR5.valueMultipliers[itemData.slots.multiplier]), "multiplier", multiplier, true, false)
+    }
+    SR5_EntityHelpers.updateValue(itemData.slots, 0)
+  }
+
+  static _handleThresholdMultiplier(itemData) {
+    let multiplier
+    switch (itemData.threshold.multiplier) {
+      case "rating":
+        multiplier = itemData.itemRating
+        break
+      case "capacity":
+        multiplier = itemData.capacity.value
+        break
+    }
+    if (itemData.threshold.multiplier) {
+      SR5_EntityHelpers.updateModifier(itemData.threshold, game.i18n.localize(SR5.valueMultipliers[itemData.threshold.multiplier]), "multiplier", multiplier, true, false)
+    }
+    SR5_EntityHelpers.updateValue(itemData.threshold, 0)
+  }
+
+  ////////////////////// SPIRITS  //////s////////////////
+  static _handleSpirit(itemData) {
+    if (!itemData.type) return
+    for (let att of Object.keys(itemData.attributes)) {
+      itemData.attributes[att] = itemData.itemRating
+    }
+    switch (itemData.type) {
+      case "air":
+      case "noxious":
+        itemData.attributes.body += -2
+        itemData.attributes.agility += 3
+        itemData.attributes.reaction += 4
+        itemData.attributes.strength += -3
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat", "running", "flight")
+        break
+      case "anarch":
+        itemData.attributes.body += 2
+        itemData.attributes.agility += -1
+        itemData.attributes.reaction += +1
+        itemData.attributes.strength += -1
+        itemData.skill.push("assensing", "automatics", "blades", "clubs", "con", "demolitions", "disguise", "forgery", "gymnastics", "impersonation", "locksmith", "palming", "perception", "pistols", "sneaking", "throwingWeapons", "unarmedCombat")
+        break
+      case "abomination":
+        itemData.attributes.body += -1
+        itemData.attributes.agility += 1
+        itemData.attributes.strength += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat", "running", "gymnastics")
+        break
+      case "beasts":
+        itemData.attributes.body += 2
+        itemData.attributes.agility += 1
+        itemData.attributes.strength += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "arcana", "unarmedCombat", "counterspelling")
+        break
+      case "blood":
+        itemData.attributes.body += 2
+        itemData.attributes.agility += 2
+        itemData.attributes.strength += 2
+        itemData.attributes.logic += -1
+        itemData.skill.push("astralCombat", "assensing", "perception", "arcana", "unarmedCombat", "counterspelling")
+        break
+      case "earth":
+      case "barren":
+        itemData.attributes.body += 4
+        itemData.attributes.agility += -2
+        itemData.attributes.reaction += -1
+        itemData.attributes.strength += 4
+        itemData.attributes.logic += -1
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat")
+        break
+      case "fire":
+      case "nuclear":
+        itemData.attributes.body += 1
+        itemData.attributes.agility += 2
+        itemData.attributes.reaction += 3
+        itemData.attributes.strength += -2
+        itemData.attributes.intuition += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat", "flight")
+        break
+      case "guardian":
+        itemData.attributes.body += 1
+        itemData.attributes.agility += 2
+        itemData.attributes.reaction += 3
+        itemData.attributes.strength += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat", "clubs", "blades")
+        break
+      case "guidance":
+        itemData.attributes.body += 3
+        itemData.attributes.agility += -1
+        itemData.attributes.reaction += 2
+        itemData.attributes.strength += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "arcana", "unarmedCombat", "counterspelling")
+        break
+      case "insectCaretaker":
+        itemData.attributes.agility += 1
+        itemData.attributes.reaction += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "spellcasting", "leadership")
+        break
+      case "insectNymph":
+        itemData.attributes.body += -1
+        itemData.attributes.reaction += 3
+        itemData.attributes.strength += -1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "spellcasting", "gymnastics")
+        break
+      case "insectQueen":
+        itemData.attributes.body += 5
+        itemData.attributes.agility += 3
+        itemData.attributes.reaction += 4
+        itemData.attributes.strength += 5
+        itemData.attributes.willpower += 1
+        itemData.attributes.logic += 1
+        itemData.attributes.intuition += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "counterspelling", "con", "gymnastics", "spellcasting", "leadership", "negotiation")
+        break
+      case "insectScout":
+        itemData.attributes.agility += 2
+        itemData.attributes.reaction += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "sneaking", "gymnastics")
+        break
+      case "insectSoldier":
+        itemData.attributes.body += 3
+        itemData.attributes.agility += 1
+        itemData.attributes.reaction += 1
+        itemData.attributes.strength += 3
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "exoticRangedWeapon", "counterspelling", "gymnastics")
+        break
+      case "insectWorker":
+        itemData.attributes.strength += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat")
+        break
+      case "man":
+        itemData.attributes.body += 1
+        itemData.attributes.reaction += 2
+        itemData.attributes.strength += -2
+        itemData.attributes.intuition += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "running", "unarmedCombat", "spellcasting", "swimming")
+        break
+      case "plague":
+        itemData.attributes.reaction += 2
+        itemData.attributes.intuition += -1
+        itemData.attributes.strength += -2
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "spellcasting")
+        break
+      case "plant":
+        itemData.attributes.body += 2
+        itemData.attributes.agility += -1
+        itemData.attributes.strength += 1
+        itemData.attributes.logic += -1
+        itemData.skill.push("astralCombat", "assensing", "perception", "artisan", "unarmedCombat")
+        break
+      case "shadowMuse":
+      case "shadowNightmare":
+      case "shadowShade":
+      case "shadowSuccubus":
+      case "shadowWraith":
+        itemData.attributes.agility += 3
+        itemData.attributes.reaction += 2
+        itemData.attributes.willpower += 1
+        itemData.attributes.intuition += 1
+        itemData.attributes.charisma += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "con", "gymnastics", "intimidation")
+        break
+      case "shedim":
+        itemData.attributes.reaction += 2
+        itemData.attributes.strength += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat")
+        break
+      case "shedimMaster":
+        itemData.attributes.reaction += 2
+        itemData.attributes.strength += 1
+        itemData.attributes.willpower += 1
+        itemData.attributes.logic += 1
+        itemData.attributes.intuition += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "unarmedCombat", "counterspelling", "gymnastics", "spellcasting")
+        break
+      case "sludge":
+        itemData.attributes.body += 1
+        itemData.attributes.agility += 1
+        itemData.attributes.reaction += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat")
+        break
+      case "task":
+        itemData.attributes.reaction += 2
+        itemData.attributes.strength += 2
+        itemData.skill.push("astralCombat", "assensing", "perception", "arcana", "unarmedCombat", "counterspelling")
+        break
+      case "water":
+        itemData.attributes.agility += 1
+        itemData.attributes.reaction += 2
+        itemData.attributes.charisma += 1
+        itemData.skill.push("astralCombat", "assensing", "perception", "exoticRangedWeapon", "unarmedCombat", "swimming")
+        break
+      default:
+        SR5_SystemHelpers.srLog(1, `Unknown '${itemData.type}' type in _handleSpirit()`)
+    }
+
+    for (let att of Object.keys(itemData.attributes)) {
+      if (itemData.attributes[att] < 1) itemData.attributes[att] = 1
+    }
+  }
+
+  static _handlePower(itemData, actor) {
+    let firstAttribute, secondAttribute
+    if (itemData.testFirstAttribute){
+      if (actor.type === "actorSpirit" && itemData.testFirstAttribute === "edge"){
+        itemData.testFirstAttribute = "magic" 				
+      }
+      if (SR5.characterSpecialAttributes[itemData.testFirstAttribute]){
+        firstAttribute = actor.system.specialAttributes[itemData.testFirstAttribute].augmented.value
+      } else {
+        firstAttribute = actor.system.attributes[itemData.testFirstAttribute].augmented.value
+      }
+    }
+
+    if (itemData.testSecondAttribute){
+      if (actor.type === "actorSpirit" && itemData.testSecondAttribute === "edge"){
+        itemData.testSecondAttribute = "magic" 				
+      }
+      if (SR5.characterSpecialAttributes[itemData.testSecondAttribute]){
+        secondAttribute = actor.system.specialAttributes[itemData.testSecondAttribute].augmented.value
+      } else {
+        secondAttribute = actor.system.attributes[itemData.testSecondAttribute].augmented.value
+      }
+    }
+    itemData.test.base = 0
+    if (firstAttribute) SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize(SR5.allAttributes[itemData.testFirstAttribute]), "linkedAttribute", firstAttribute, false, true)
+    if (secondAttribute) SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize(SR5.allAttributes[itemData.testSecondAttribute]), "linkedAttribute", secondAttribute, false, true)
+    //Background count modifier
+    if (actor.system.magic.bgCount.value < 0) itemData.test.modifiers = itemData.test.modifiers.concat(actor.system.magic.bgCount.modifiers)
+    SR5_EntityHelpers.updateDicePool(itemData.test)
+  }
+
+  static _handleSpritePower(itemData, actor) {
+    itemData.test.base = 0
+    let skill = 0
+    if (itemData.testSkill) {
+      skill = actor.system.skills[itemData.testSkill].rating.value
+      SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize(SR5.skills[itemData.testSkill]), "skillRating", skill, false, true)
+      SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize('SR5.Level'), "linkedAttribute", actor.system.level, false, true)
+    }
+    SR5_EntityHelpers.updateDicePool(itemData.test)
+  }
+
+  //The item of the actor that carries the given accessory in its list, a weapon included
+  //The weapon accessory a vision enhancement is mounted in (SR5 p. 434), or undefined
+  static weaponAccessoryHost(itemId, actor){
+    for (let i of actor?.items ?? []){
+      if (i.type !== "itemWeapon") continue
+      let enhancements = i.system.weaponAccessory?.visionEnhancements
+      if (enhancements && !Array.isArray(enhancements)) enhancements = Object.values(enhancements)
+      if (enhancements?.some(e => e?._id === itemId)) return i
+    }
+  }
+
+  static accessoryHost(itemId, actor){
+    for (let i of actor.items){
+      if (i.type === "itemWeapon" && SR5_UtilityItem.weaponAccessoryHost(itemId, {
+        items: [i]
+      })) return i
+      if (!["itemGear", "itemArmor", "itemAugmentation", "itemWeapon"].includes(i.type) || !i.system.accessory) continue
+      if (typeof i.system.accessory === "object") i.system.accessory = Object.values(i.system.accessory)
+      if (i.system.accessory.find(a => a?._id === itemId)) return i
+    }
+  }
+
+  //Read from the hosts, not from the stored flag: an accessory removed before the bin cleared the flag stayed plugged
+  //and could never be mounted again
+  static async _checkIfAccessoryIsPlugged (item, actor){
+    let host = SR5_UtilityItem.accessoryHost(item.id, actor)
+    if (host) item.system.wirelessTurnedOn = host.system.wirelessTurnedOn
+    item.system.isPlugged = !!host
+  }
+
+  //The stored accessory list with the fields a sheet's form holds (name, slot, free) written over it, by index: the
+  //form has no field for a mounted item accessory, nor for the price and effects of the others
+  static mergeAccessoryForm(stored, formAccessory){
+    let merged = foundry.utils.deepClone(stored ?? [])
+    if (!Array.isArray(merged)) merged = Object.values(merged)
+    for (const [i, entry] of Object.entries(formAccessory ?? {
+    })) {
+      if (!entry) continue
+      if (merged[i] && typeof merged[i] === "object") Object.assign(merged[i], entry)
+      else merged[i] = entry
+    }
+    return merged
+  }
+
+  //An accessory taken off its host with the bin is free again, unless another host still carries it
+  static async unplugRemovedAccessory(actor, accessoryId){
+    let item = actor?.items.get(accessoryId)
+    if (!item || SR5_UtilityItem.accessoryHost(accessoryId, actor)) return
+    await item.update({
+      "system.isPlugged": false
+    })
+  }
+
+  static _updatePluggedAccessory(itemData, actor){
+    for (let a of itemData.accessory){
+      if (a != ''){
+        let item = actor.items.find(i => i.id === a._id)
+        let index = itemData.accessory.findIndex(b => b._id === a._id)
+        if (!item) continue
+        item = item.toObject(false)
+        itemData.accessory[index] = item
+      }
+    }
+  }
+
+  static generateTestDicepool(itemData, actor){
+    itemData.test.base = 0
+    SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize("SR5.ItemRating"), "linkedAttribute", itemData.itemRating, false, true)
+    if (itemData.test.type === "ratingX2") SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize("SR5.ItemRating"), "linkedAttribute", itemData.itemRating, false, true)
+    //Not made for its holder's size (SR5 p. 423), lifted by Doigts délicats (The Complete Trog p. 179)
+    const sizeMismatch = actor ? sizeMismatchModifier(itemData, holderMetatype(actor), actor.items) : 0
+    if (sizeMismatch) SR5_EntityHelpers.updateModifier(itemData.test, game.i18n.localize('SR5.NotSizeAdapted'), "sizeMismatch", sizeMismatch, false, true)
+    SR5_EntityHelpers.updateDicePool(itemData.test)
+  }
+
+  static applyItemEffects(item){
+    for (let customEffect of Object.values(item.system.itemEffects)) {
+      let skipCustomEffect = false,
+        cumulative = customEffect.cumulative,
+        isMultiplier = false
+
+      if (!customEffect.target || !customEffect.type) {
+        SR5_SystemHelpers.srLog(3, `Empty custom effect target or type in applyItemEffects()`, customEffect)
+        skipCustomEffect = true
+      }
+
+      // For effect depending on wifi
+      if (customEffect.wifi && !item.system.wirelessTurnedOn) skipCustomEffect = true
+
+      SR5_SystemHelpers.srLog(3, ` item ==> '${JSON.stringify(item)}' in applyItemEffects()`)
+
+      let targetObject = SR5_EntityHelpers.resolveObjectPath(customEffect.target, item)
+      if (targetObject === null) skipCustomEffect = true
+
+      SR5_SystemHelpers.srLog(3, ` item.type ==> '${item.type}' , customEffect ==> '${JSON.stringify(customEffect)}' applyItemEffects()`)
+
+      // itemMartialArt boolean effects (called shots) are now applied via applyCustomEffects on the actor,
+      // not on the item itself. The custom effect targets actor.system.itemsProperties.martialArts.X.isActive.
+
+      SR5_SystemHelpers.srLog(3, ` targetObject ==> '${JSON.stringify(targetObject)}' in applyItemEffects()`)
+
+      if (!skipCustomEffect) {    
+        if (!customEffect.multiplier) customEffect.multiplier = 1
+
+        //Modifier type
+        switch (customEffect.type) {
+          case "rating":
+            customEffect.value = (item.system.itemRating || 0)
+            SR5_EntityHelpers.updateModifier(targetObject, `${customEffect.name}`, item.type, customEffect.value * customEffect.multiplier, isMultiplier, cumulative)
+            break
+          case "value":
+            customEffect.value = (customEffect.value || 0)
+            SR5_EntityHelpers.updateModifier(targetObject, `${customEffect.name}`, item.type, customEffect.value * customEffect.multiplier, isMultiplier, cumulative)
+            break
+          case "boolean": {
+            let booleanValue
+            if (customEffect.value === "true") booleanValue = true
+            else booleanValue = false
+            foundry.utils.setProperty(item, customEffect.target, booleanValue)
+            break
+          }
+          default:
+            SR5_SystemHelpers.srLog(1, `Unknown '${customEffect.type}' item effect type in applyItemEffects()`, item.name)
+        }
+      }
+    }
+
+    for (let systemEffect of Object.values(item.system.systemEffects)){
+      //Special for Medkit
+      if (systemEffect.value === "medkit") item.system.isMedkit = true
+    }
+
+  }
+
+}

@@ -1,0 +1,285 @@
+/**
+ * Item Block Registry — single source of truth for all SR5 item sheet blocks.
+ *
+ * Each block maps to a Handlebars partial that can be rendered inside any
+ * panel on any tab. Mirrors the actor block-registry.js pattern.
+ */
+
+const PARTIAL_ROOT = 'systems/sr5/templates/items'
+const ICON_ROOT = 'systems/sr5/assets/img/icons'
+
+// ---------------------------------------------------------------------------
+//  Size constants (reuse from actor block-registry)
+// ---------------------------------------------------------------------------
+
+export const ITEM_BLOCK_SIZE = Object.freeze({
+  SINGLE: 'single',
+  DOUBLE: 'double',
+})
+
+// ---------------------------------------------------------------------------
+//  Tab icons — SVG partials rendered in the header icon nav
+// ---------------------------------------------------------------------------
+
+export const ITEM_TAB_ICONS = {
+  info:     `${ICON_ROOT}/nav-information.svg`,
+  bio:      `${ICON_ROOT}/nav-bio.svg`,
+  stat:     `${ICON_ROOT}/nav-configuration.svg`,
+  effects:  `${ICON_ROOT}/nav-modifiers.svg`,
+  workshop: `${ICON_ROOT}/nav-configuration.svg`,
+}
+
+// ---------------------------------------------------------------------------
+//  Block definitions — { partial, label, size }
+// ---------------------------------------------------------------------------
+
+export const ITEM_BLOCK_REGISTRY = {
+
+  // ---- Shared blocks (used across many item types) ----
+  itemDescription:   {
+    partial: `${PARTIAL_ROOT}/_partial/editable/_common/descriptionGameEffect-edit.hbs`, label: 'SR5.Description',   size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  itemEffects:       {
+    partial: `${PARTIAL_ROOT}/_partial/effect/effect.hbs`,                               label: 'SR5.ItemModifiers', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+
+  // ---- SIDEBAR summary blocks (one per item type) ----
+  weaponSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/weapon/weapon-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  armorSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/armor/armor-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  augmentationSummary: {
+    partial: `${PARTIAL_ROOT}/blocks/augmentation/augmentation-summary.hbs`, label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  gearSummary:         {
+    partial: `${PARTIAL_ROOT}/blocks/gear/gear-summary.hbs`,                 label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  deviceSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/device/device-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  spellSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/spell/spell-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  complexFormSummary:  {
+    partial: `${PARTIAL_ROOT}/blocks/complexForm/complexForm-summary.hbs`,   label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  adeptPowerSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/adeptPower/adeptPower-summary.hbs`,     label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  qualitySummary:      {
+    partial: `${PARTIAL_ROOT}/blocks/quality/quality-summary.hbs`,           label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  programSummary:      {
+    partial: `${PARTIAL_ROOT}/blocks/program/program-summary.hbs`,           label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  focusSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/focus/focus-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  drugSummary:         {
+    partial: `${PARTIAL_ROOT}/blocks/drug/drug-summary.hbs`,                 label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  ritualSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/ritual/ritual-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  preparationSummary:  {
+    partial: `${PARTIAL_ROOT}/blocks/preparation/preparation-summary.hbs`,   label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  powerSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/power/power-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  contactSummary:      {
+    partial: `${PARTIAL_ROOT}/blocks/contact/contact-summary.hbs`,           label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  // The chips between the character and the contact (Run Faster p. 170-172, lot 37a)
+  contactFavors:       {
+    partial: `${PARTIAL_ROOT}/blocks/contact/contact-favors.hbs`,            label: 'SR5.FAVOR_Tab', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  lifestyleSummary:    {
+    partial: `${PARTIAL_ROOT}/blocks/lifestyle/lifestyle-summary.hbs`,       label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  sinSummary:          {
+    partial: `${PARTIAL_ROOT}/blocks/sin/sin-summary.hbs`,                   label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  storageSummary:      {
+    partial: `${PARTIAL_ROOT}/blocks/storage/storage-summary.hbs`,           label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  ammunitionSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/ammunition/ammunition-summary.hbs`,     label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE
+  },
+  ammunitionTypeSummary: {
+    partial: `${PARTIAL_ROOT}/blocks/ammunitionType/ammunitionType-summary.hbs`, label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE
+  },
+  vehicleSummary:      {
+    partial: `${PARTIAL_ROOT}/blocks/vehicle/vehicle-summary.hbs`,           label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  vehicleModSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/vehicleMod/vehicleMod-summary.hbs`,    label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  martialArtSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/martialArt/martialArt-summary.hbs`,    label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  traditionSummary:    {
+    partial: `${PARTIAL_ROOT}/blocks/tradition/tradition-summary.hbs`,       label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  spiritSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/spirit/spirit-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  toxinSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/toxin/toxin-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE
+  },
+  spiritTypeSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/spiritType/spiritType-summary.hbs`,     label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  mentorSpiritSummary: {
+    partial: `${PARTIAL_ROOT}/blocks/mentorSpirit/mentorSpirit-summary.hbs`, label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE
+  },
+  spriteSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/sprite/sprite-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  spritePowerSummary:  {
+    partial: `${PARTIAL_ROOT}/blocks/spritePower/spritePower-summary.hbs`,   label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  metamagicSummary:    {
+    partial: `${PARTIAL_ROOT}/blocks/metamagic/metamagic-summary.hbs`,       label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  echoSummary:         {
+    partial: `${PARTIAL_ROOT}/blocks/echo/echo-summary.hbs`,                 label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  fileSummary:         {
+    partial: `${PARTIAL_ROOT}/blocks/file/file-summary.hbs`,                 label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE
+  },
+  markSummary:         {
+    partial: `${PARTIAL_ROOT}/blocks/mark/mark-summary.hbs`,                 label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  effectSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/effect/effect-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  karmaSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/karma/karma-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  knowledgeSummary:    {
+    partial: `${PARTIAL_ROOT}/blocks/knowledge/knowledge-summary.hbs`,       label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  languageSummary:     {
+    partial: `${PARTIAL_ROOT}/blocks/language/language-summary.hbs`,         label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  nuyenSummary:        {
+    partial: `${PARTIAL_ROOT}/blocks/nuyen/nuyen-summary.hbs`,               label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  reputationSummary:   {
+    partial: `${PARTIAL_ROOT}/blocks/reputation/reputation-summary.hbs`,     label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+  viergeSummary:       {
+    partial: `${PARTIAL_ROOT}/blocks/vierge/vierge-summary.hbs`,             label: 'SR5.Summary', size: ITEM_BLOCK_SIZE.SINGLE 
+  },
+
+  // ---- MAIN stat/config blocks (one per item type that has a config tab) ----
+  weaponStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/weapon/weapon-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  armorStat:           {
+    partial: `${PARTIAL_ROOT}/blocks/armor/armor-stat.hbs`,                  label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  augmentationStat:    {
+    partial: `${PARTIAL_ROOT}/blocks/augmentation/augmentation-stat.hbs`,    label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  gearStat:            {
+    partial: `${PARTIAL_ROOT}/blocks/gear/gear-stat.hbs`,                    label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  deviceStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/device/device-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  spellStat:           {
+    partial: `${PARTIAL_ROOT}/blocks/spell/spell-stat.hbs`,                  label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  complexFormStat:     {
+    partial: `${PARTIAL_ROOT}/blocks/complexForm/complexForm-stat.hbs`,      label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  adeptPowerStat:      {
+    partial: `${PARTIAL_ROOT}/blocks/adeptPower/adeptPower-stat.hbs`,        label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  qualityStat:         {
+    partial: `${PARTIAL_ROOT}/blocks/quality/quality-stat.hbs`,              label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  programStat:         {
+    partial: `${PARTIAL_ROOT}/blocks/program/program-stat.hbs`,              label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  focusStat:           {
+    partial: `${PARTIAL_ROOT}/blocks/focus/focus-stat.hbs`,                  label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  drugStat:            {
+    partial: `${PARTIAL_ROOT}/blocks/drug/drug-stat.hbs`,                    label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  ritualStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/ritual/ritual-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  preparationStat:     {
+    partial: `${PARTIAL_ROOT}/blocks/preparation/preparation-stat.hbs`,      label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  powerStat:           {
+    partial: `${PARTIAL_ROOT}/blocks/power/power-stat.hbs`,                  label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  contactStat:         {
+    partial: `${PARTIAL_ROOT}/blocks/contact/contact-stat.hbs`,              label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  lifestyleStat:       {
+    partial: `${PARTIAL_ROOT}/blocks/lifestyle/lifestyle-stat.hbs`,          label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  sinStat:             {
+    partial: `${PARTIAL_ROOT}/blocks/sin/sin-stat.hbs`,                      label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  storageStat:         {
+    partial: `${PARTIAL_ROOT}/blocks/storage/storage-stat.hbs`,              label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  ammunitionStat:      {
+    partial: `${PARTIAL_ROOT}/blocks/ammunition/ammunition-stat.hbs`,        label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  ammunitionTypeStat:  {
+    partial: `${PARTIAL_ROOT}/blocks/ammunitionType/ammunitionType-stat.hbs`, label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  vehicleStat:         {
+    partial: `${PARTIAL_ROOT}/blocks/vehicle/vehicle-stat.hbs`,              label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  vehicleWorkshop:     {
+    partial: `systems/sr5/templates/actors/_partials/right-tabs/droneStuff/atelier.hbs`, label: 'SR5.VehicleModWorkshop', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  // The workshop of a weapon, an armor, an implant or a piece of gear (lot 12, C9)
+  itemWorkshop:        {
+    partial: `${PARTIAL_ROOT}/blocks/workshop/item-workshop.hbs`, label: 'SR5.ItemWorkshop', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  vehicleModStat:      {
+    partial: `${PARTIAL_ROOT}/blocks/vehicleMod/vehicleMod-stat.hbs`,       label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  martialArtStat:      {
+    partial: `${PARTIAL_ROOT}/blocks/martialArt/martialArt-stat.hbs`,        label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  traditionStat:       {
+    partial: `${PARTIAL_ROOT}/blocks/tradition/tradition-stat.hbs`,          label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  spiritStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/spirit/spirit-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  toxinStat:           {
+    partial: `${PARTIAL_ROOT}/blocks/toxin/toxin-stat.hbs`,                  label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  spiritTypeStat:      {
+    partial: `${PARTIAL_ROOT}/blocks/spiritType/spiritType-stat.hbs`,        label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  mentorSpiritStat:    {
+    partial: `${PARTIAL_ROOT}/blocks/mentorSpirit/mentorSpirit-stat.hbs`,    label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  spriteStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/sprite/sprite-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  spritePowerStat:     {
+    partial: `${PARTIAL_ROOT}/blocks/spritePower/spritePower-stat.hbs`,      label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+  fileStat:            {
+    partial: `${PARTIAL_ROOT}/blocks/file/file-stat.hbs`,                    label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE
+  },
+  viergeStat:          {
+    partial: `${PARTIAL_ROOT}/blocks/vierge/vierge-stat.hbs`,                label: 'SR5.ItemConfiguration', size: ITEM_BLOCK_SIZE.DOUBLE 
+  },
+}

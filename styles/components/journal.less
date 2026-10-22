@@ -1,0 +1,718 @@
+/* === Journal entries === */
+.sheet.journal-entry.application {
+
+  /* Dark sidebar to match the main sidebar aesthetic */
+  .journal-sidebar {
+    font-family: var(--sr-font-body);
+    background-image: var(--sr-sidebar-background) !important;
+    background-size: cover !important;
+    background-color: var(--sr-ui-bg-color-dark) !important;
+    color: var(--sr-text-color-light);
+    border-right: 1px solid var(--sr-ui-border-color);
+
+    /* --- Search bar --- */
+    search {
+      input {
+        color: var(--sr-text-color-light) !important;
+        border-bottom-color: var(--sr-ui-border-color-idle) !important;
+        background: none !important;
+
+        &::placeholder {
+          color: color-mix(in srgb, var(--sr-text-color-light) 40%, transparent);
+        }
+      }
+
+      /* Icon buttons: light on dark sidebar */
+      button.inline-control,
+      button.icon,
+      .inline-control {
+        color: var(--sr-text-color-light) !important;
+        font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+
+        &:hover {
+          color: var(--sr-ui-border-color-active) !important;
+        }
+      }
+    }
+
+    /* --- TOC page entries --- */
+    .toc li.page {
+      border-color: color-mix(in srgb, var(--sr-ui-border-color-idle) 30%, transparent);
+    }
+
+    /* Chapters (level 1) lead the table of contents */
+    .toc li.page.level1 .page-title {
+      color: var(--sr-text-color-flash);
+      font-weight: bold;
+    }
+
+    .toc li.page.active {
+      background: color-mix(in srgb, var(--sr-text-color-flash) 15%, transparent);
+      border-left: 3px solid var(--sr-text-color-flash);
+    }
+
+    .page-index {
+      color: color-mix(in srgb, var(--sr-text-color-light) 50%, transparent);
+    }
+
+    a,
+    .page-title {
+      color: var(--sr-text-color-light);
+      font-family: var(--sr-font-body);
+
+      &:hover {
+        color: var(--sr-ui-color-active);
+        text-shadow: none;
+      }
+    }
+
+    /* --- Category headers --- */
+    .toc li.category strong {
+      color: var(--sr-ui-border-color);
+      font-family: var(--sr-font-title);
+      text-transform: uppercase;
+      font-size: var(--sr-font-size-small);
+    }
+
+    /* --- Footer navigation buttons ---
+       Let the dark SR5 footer background from window.less apply (like Game Settings).
+       Just fix the icon buttons so FA icons render. */
+    footer.action-buttons {
+
+      /* Icon buttons (prev/next): restore FA ::before content killed by
+         sr-button-footer mixin, then let the mixin's hover slide effect work */
+      button.icon {
+        flex: 0 0 30px;
+
+        &::before {
+          content: var(--fa) !important;
+          font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+          font-weight: 900 !important;
+        }
+      }
+    }
+  }
+
+  /* --- Journal content area (dark background) --- */
+  .journal-entry-content {
+    font-family: var(--sr-font-journal);
+    color: var(--sr-text-color-dark);
+    background-image: var(--sr-img-bg-white50);
+    background-size: cover;
+    background-position: top left;
+    background-repeat: no-repeat;
+    background-color: var(--sr-text-color-light);
+    border-radius: 0 !important;
+
+    /* Force SR journal font on all text descendants */
+    & * {
+      font-family: inherit;
+    }
+
+    /* Restore Font Awesome on icon elements */
+    i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands,
+    i[class*="fa-"] {
+      font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+    }
+
+    /* Restore font on buttons and controls */
+    button, .inline-control {
+      font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+    }
+
+    /* Book title — dark header bar, no bottom border */
+    .journal-header {
+      background-image: var(--sr-img-window-header);
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      padding: 8px;
+      border: none;
+      margin: 0 0 8px 0 !important;
+
+      .title {
+        font-family: var(--sr-font-title) !important;
+        font-size: 28px !important;
+        color: var(--sr-text-color-light) !important;
+        background: none !important;
+        border: none !important;
+        text-transform: uppercase;
+        text-align: center;
+        height: auto !important;
+        line-height: 1.4 !important;
+        padding: 4px 0 !important;
+      }
+    }
+
+    /* Edit page button — pinned top-right of each page */
+    .journal-entry-page .edit-container {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+
+      button {
+        position: sticky;
+        top: 0;
+        pointer-events: all;
+        font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+        background: color-mix(in srgb, var(--sr-text-color-light) 80%, transparent) !important;
+        color: var(--sr-ui-border-color) !important;
+        border: 1px solid var(--sr-ui-border-color) !important;
+        border-radius: 3px !important;
+        padding: 4px 6px !important;
+        box-shadow: none !important;
+        min-height: unset !important;
+        height: auto !important;
+        width: auto !important;
+        flex: none !important;
+
+        &::before {
+          position: static !important;
+          width: auto !important;
+          height: auto !important;
+          background: none !important;
+        }
+
+        &:hover {
+          background: var(--sr-ui-border-color) !important;
+          color: var(--sr-text-color-light) !important;
+        }
+      }
+    }
+
+    /* Backlinks / journal footer */
+    .journal-footer {
+      font-family: var(--sr-font-body);
+      font-size: var(--sr-font-size-small);
+      color: color-mix(in srgb, var(--sr-text-color-dark) 50%, transparent);
+      border-top: 1px solid color-mix(in srgb, var(--sr-ui-border-color) 30%, transparent);
+      padding-top: 8px;
+      margin-top: 16px;
+
+      strong {
+        font-family: var(--sr-font-title);
+        text-transform: uppercase;
+        color: var(--sr-ui-border-color);
+        letter-spacing: 0.05em;
+      }
+
+      a.content-link {
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--sr-ui-border-color);
+        font-family: var(--sr-font-body) !important;
+        font-size: var(--sr-font-size-small);
+        text-decoration: none;
+        text-transform: none;
+
+        i {
+          font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+          color: var(--sr-ui-border-color) !important;
+          margin-right: 2px;
+          font-size: 0.85em;
+        }
+
+        &:hover {
+          color: var(--sr-text-color-dark);
+        }
+      }
+    }
+
+    .journal-entry-pages {
+
+      h1, h2, h3, h4, h5, h6 {
+        text-transform: uppercase;
+        font-family: var(--sr-font-journal-title) !important;
+      }
+
+      h1 {
+        color: var(--sr-ui-border-color);
+        border-bottom: 2px solid var(--sr-ui-border-color);
+        padding-bottom: 5px;
+      }
+
+      h2 {
+        color: var(--sr-ui-border-color);
+        border-bottom: 1px solid var(--sr-ui-border-color);
+        padding-bottom: 5px;
+      }
+
+      h3 {
+        color: var(--sr-ui-border-color);
+      }
+
+      /* Deeper headings stay readable: black text, and no rule under them
+         (the one under section headers of module windows does not belong in a book page) */
+      h4, h5, h6 {
+        color: var(--sr-text-color-dark) !important;
+        border-bottom: none !important;
+      }
+
+      /* --- Center images --- */
+      img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* --- Content links --- */
+      a.content-link {
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--sr-ui-border-color);
+        font-family: var(--sr-font-body) !important;
+        text-decoration: none;
+        text-transform: none;
+
+        i {
+          font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+          color: var(--sr-ui-border-color) !important;
+          margin-right: 3px;
+        }
+
+        &:hover {
+          color: var(--sr-text-color-dark);
+        }
+      }
+
+      /* --- Inline rolls & links --- */
+      a.inline-roll,
+      a {
+        color: var(--sr-ui-border-color);
+        font-family: var(--sr-font-body) !important;
+        text-transform: none;
+
+        &:hover {
+          color: var(--sr-text-color-dark);
+        }
+      }
+
+      /* --- Tables --- */
+      table {
+        --table-background-color: transparent !important;
+        border-collapse: collapse;
+        border-top: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        background: none !important;
+
+        /* Compact rows */
+        p { margin: 0; }
+
+        /* Core paints thead with its own dark band, so say both colours here:
+           the dark text this used to set disappeared on it */
+        th {
+          background: var(--sr-ui-bg-color-dark) !important;
+          color: var(--sr-text-color-light) !important;
+          font-family: var(--sr-font-title);
+          padding: 3px 8px;
+          line-height: 1.3;
+        }
+
+        td {
+          padding: 3px 8px;
+          line-height: 1.3;
+          background: none !important;
+        }
+
+        tr:nth-child(odd) {
+          background: color-mix(in srgb, var(--sr-text-color-dark) 10%, transparent) !important;
+        }
+
+        tr:nth-child(even) {
+          background: color-mix(in srgb, var(--sr-text-color-dark) 15%, transparent) !important;
+        }
+      }
+
+      /* --- Horizontal rules --- */
+      hr {
+        border: none;
+        border-top: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        margin: 16px 0;
+      }
+
+      blockquote {
+        font-style: normal;
+        font-family: var(--sr-font-body);
+
+        p {
+          position: relative;
+          padding-left: 0.75rem;
+        }
+
+        p::before {
+          content: ">";
+          position: absolute;
+          left: -0.75rem;
+          top: 0;
+          color: var(--sr-ui-border-color);
+          font-family: var(--sr-font-body);
+          font-weight: 700;
+        }
+      }
+    }
+  }
+}
+
+/* === Table of contents: the levels the system adds ===
+   The core journal window and the one Monk's Enhanced Journal opens share these classes, but the
+   module's sheet carries no `.application`, so these rules sit here rather than in the block above.
+   `!important` because the core rules for the first levels carry one class more. */
+.sheet.journal-entry .journal-sidebar .toc {
+
+  /* Six heading levels instead of the two of core, so they step in half of the core indent:
+     six times 16px would leave nothing to read in a 300px sidebar. The page levels above keep
+     the core step. */
+  --sr-toc-heading-indent: calc(var(--level-indent) / 2);
+
+  li.page.level4 .page-title {
+    text-indent: calc(3 * var(--level-indent)) !important;
+  }
+
+  li.page.level4 .headings {
+    margin-left: calc(4 * var(--level-indent)) !important;
+  }
+
+  li.page.level5 .page-title {
+    text-indent: calc(4 * var(--level-indent)) !important;
+  }
+
+  li.page.level5 .headings {
+    margin-left: calc(5 * var(--level-indent)) !important;
+  }
+
+  li.page.level6 .page-title {
+    text-indent: calc(5 * var(--level-indent)) !important;
+  }
+
+  li.page.level6 .headings {
+    margin-left: calc(6 * var(--level-indent)) !important;
+  }
+
+  .h2 .heading-link {
+    text-indent: var(--sr-toc-heading-indent) !important;
+  }
+
+  .h3 .heading-link {
+    text-indent: calc(2 * var(--sr-toc-heading-indent)) !important;
+  }
+
+  .h4 .heading-link {
+    text-indent: calc(3 * var(--sr-toc-heading-indent)) !important;
+  }
+
+  .h5 .heading-link {
+    text-indent: calc(4 * var(--sr-toc-heading-indent)) !important;
+  }
+
+  .h6 .heading-link {
+    text-indent: calc(5 * var(--sr-toc-heading-indent)) !important;
+  }
+
+  .h7 .heading-link {
+    text-indent: calc(6 * var(--sr-toc-heading-indent)) !important;
+  }
+}
+
+/* === Journal Page Editor (separate window) === */
+.sheet.journal-sheet.journal-entry-page.application {
+
+  /* Fix flex layout: editor fills space, footer stays small */
+  .window-content {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Header: the title band runs edge to edge under the window header, the page
+     settings (category, heading level, show title) sit below it on the light surface */
+  .journal-header {
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 0 6px;
+    background-image: var(--sr-img-window-header);
+    background-size: 100% 56px;
+    background-position: top left;
+    background-repeat: no-repeat;
+
+    .title {
+      height: 56px !important;
+      line-height: 56px !important;
+      /* The generic window input rule forces padding: 0 at a higher specificity,
+         so hold the title off the edges of the band with a margin instead */
+      margin-inline: 12px;
+      color: var(--sr-text-color-light) !important;
+      font-family: var(--sr-font-title) !important;
+      font-size: 1.75rem !important;
+      text-align: center;
+      background: none !important;
+      border: none !important;
+    }
+
+    .page-metadata {
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      /* Same left edge as the editor toolbar below */
+      padding: 6px 1rem 0;
+
+      /* Each setting in a box, like the editor toolbar buttons */
+      > div {
+        flex: none;
+        max-width: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 8px;
+        border: 1px solid var(--sr-ui-border-color-idle);
+        border-radius: 3px;
+        box-sizing: border-box;
+
+        &:hover {
+          border-color: var(--sr-ui-border-color-active);
+        }
+      }
+
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        color: color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent) !important;
+        font-family: var(--sr-font-body);
+        font-size: var(--sr-font-size-small);
+        white-space: nowrap;
+
+        /* Icon-only labels (category, heading level): keep the icon font */
+        &[class*="fa-"] {
+          font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+          font-weight: 900;
+        }
+      }
+
+      /* Same text line as the "show title" label (the generic window select
+         style inherits a larger font and would win on specificity) */
+      select {
+        height: 24px !important;
+        line-height: 24px !important;
+        margin: 0 !important;
+        color: color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent) !important;
+        font-family: var(--sr-font-body) !important;
+        font-size: var(--sr-font-size-small) !important;
+        font-weight: normal !important;
+      }
+    }
+  }
+
+  /* Footer: compact, keep dark SR5 footer bg for white button text */
+  .journal-footer,
+  footer.form-footer,
+  footer {
+    flex: none !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+
+    button {
+      .sr-button-footer();
+
+      label, i {
+        color: inherit !important;
+        cursor: pointer;
+      }
+    }
+  }
+
+  /* ProseMirror editor: fills remaining space, light theme */
+  prose-mirror {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+
+    /* Toolbar: subtle light-theme styling */
+    menu.editor-menu {
+      flex: none;
+      background: none !important;
+      padding: 4px 0 !important;
+      gap: 3px;
+      border: none !important;
+
+      /* Style the li wrappers (direct children), not buttons inside */
+      > li {
+        background: none !important;
+        color: color-mix(in srgb, var(--sr-text-color-dark) 60%, transparent) !important;
+        border: 1px solid var(--sr-ui-border-color-idle) !important;
+        border-radius: 3px !important;
+        height: 26px !important;
+        min-width: 26px;
+        padding: 0 !important;
+        font-family: var(--sr-font-body);
+        font-size: var(--sr-font-size-small);
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+
+        &:hover {
+          color: var(--sr-ui-border-color-active) !important;
+          border-color: var(--sr-ui-border-color-active) !important;
+          background: color-mix(in srgb, var(--sr-ui-border-color-active) 8%, transparent) !important;
+        }
+
+        &.active {
+          color: var(--sr-ui-border-color-active) !important;
+          border-color: var(--sr-ui-border-color-active) !important;
+        }
+
+        /* Buttons inside: transparent, no border */
+        button, .pm-dropdown {
+          background: none !important;
+          border: none !important;
+          color: inherit !important;
+          padding: 0 5px !important;
+          height: 100% !important;
+          font-family: var(--sr-font-body);
+          font-size: inherit;
+        }
+
+        i {
+          font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free" !important;
+          color: inherit !important;
+        }
+
+        span {
+          color: inherit !important;
+        }
+      }
+
+      /* Concurrent users / non-button items */
+      > .concurrent-users {
+        border: none !important;
+        color: var(--sr-text-color-dark) !important;
+        background: none !important;
+      }
+    }
+
+    .editor-container {
+      flex: 1;
+      min-height: 0;
+      background: var(--sr-text-color-light);
+      border: none !important;
+      border-radius: 0 !important;
+      overflow: auto;
+    }
+
+    .editor-content.ProseMirror {
+      color: var(--sr-text-color-dark) !important;
+      background: var(--sr-text-color-light) !important;
+      background-image: var(--sr-img-bg-white50) !important;
+      background-size: cover !important;
+      padding: 8px 16px !important;
+      font-family: var(--sr-font-journal);
+
+      /* --- Headers --- */
+      h1, h2, h3, h4, h5, h6 {
+        text-transform: uppercase;
+        font-family: var(--sr-font-journal-title) !important;
+        color: var(--sr-ui-border-color);
+      }
+
+      h1 {
+        border-bottom: 2px solid var(--sr-ui-border-color);
+        padding-bottom: 5px;
+      }
+
+      h2 {
+        border-bottom: 1px solid var(--sr-ui-border-color);
+        padding-bottom: 5px;
+      }
+
+      /* Deeper headings stay readable: black text, and no rule under them
+         (the one under section headers of module windows does not belong in a book page) */
+      h4, h5, h6 {
+        color: var(--sr-text-color-dark) !important;
+        border-bottom: none !important;
+      }
+
+      /* --- Images --- */
+      img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* --- Tables --- */
+      table {
+        --table-background-color: transparent !important;
+        border-collapse: collapse;
+        border-top: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        background: none !important;
+
+        /* Compact rows */
+        p { margin: 0; }
+
+        /* Same band in the editor, where the text colour was inherited */
+        th {
+          background: var(--sr-ui-bg-color-dark) !important;
+          color: var(--sr-text-color-light) !important;
+          font-family: var(--sr-font-title);
+          padding: 3px 8px;
+          line-height: 1.3;
+        }
+
+        td {
+          padding: 3px 8px;
+          line-height: 1.3;
+          background: none !important;
+        }
+
+        tr:nth-child(odd) {
+          background: color-mix(in srgb, var(--sr-text-color-dark) 10%, transparent) !important;
+        }
+
+        tr:nth-child(even) {
+          background: color-mix(in srgb, var(--sr-text-color-dark) 15%, transparent) !important;
+        }
+      }
+
+      /* --- Horizontal rules --- */
+      hr {
+        border: none;
+        border-top: 1px solid color-mix(in srgb, var(--sr-text-color-dark) 30%, transparent);
+        margin: 16px 0;
+      }
+
+      /* --- Links --- */
+      a {
+        color: var(--sr-ui-border-color);
+        font-family: var(--sr-font-body);
+      }
+
+      /* --- Blockquotes --- */
+      blockquote {
+        font-style: normal;
+        border-left: 3px solid var(--sr-ui-border-color);
+        padding-left: 0.75rem;
+      }
+
+      &:focus {
+        color: var(--sr-text-color-dark) !important;
+        background: var(--sr-text-color-light) !important;
+        border-color: var(--sr-ui-border-color-active);
+      }
+    }
+  }
+}
+
+/* The generic window select rule ties this one on specificity and wins on import
+   order, leaving an underline under the page settings: one more class settles it */
+.sheet.journal-sheet.journal-entry-page.application .window-content .journal-header .page-metadata select {
+  border: none !important;
+}

@@ -1,0 +1,32 @@
+<div class="SR-Moniteur" style="--n: {{system.conditionMonitors.condition.boxes.length}}">
+<!-- Combined Monitor -->
+{{#if (eq system.activeSpecialAttribute 'depth')}}
+<div class="SR-TextUppercase SR-NeutralLightColor SR-Bold flex0 monitorReset" data-target="condition">{{localize 'SR5.CoreMonitorShort'}}</div>
+<div class="SR-MoniteurCases flexrow" style="--n: {{system.conditionMonitors.condition.boxes.length}}" data-target="system.conditionMonitors.condition.actual.base"
+  data-helpTitle="{{localize 'SR5.CoreMonitor'}}" data-helpMessage="{{localize 'SR5.HELP_MonitorMsg'}}">
+{{else}}
+<div class="SR-TextUppercase SR-NeutralLightColor SR-Bold flex0 monitorReset" data-target="condition">{{localize 'SR5.ConditionMonitorShort'}}</div>
+<div class="SR-MoniteurCases flexrow" style="--n: {{system.conditionMonitors.condition.boxes.length}}" data-target="system.conditionMonitors.condition.actual.base"
+  data-helpTitle="{{localize 'SR5.ConditionMonitor'}}" data-helpMessage="{{localize 'SR5.HELP_MonitorMsg'}}">
+{{/if}}
+    {{#each system.conditionMonitors.condition.boxes as |box index|}}
+      	{{#if box.locked}}
+			<div class="boxes box-disabled" data-index="{{index}}">
+          		<div class="SR-Case SR-CaseNeutralDarkColor"></div>
+        	</div>
+      	{{else if box.aggravated}}
+    		<a class="boxes" data-index="{{index}}" title="{{localize 'SR5.AggravatedWoundBox'}}">
+      			<div class="SR-Case SR-CaseMainColor SR-CaseAggravated"></div>
+        	</a>
+      	{{else if box.filled}}
+    		<a class="boxes" data-index="{{index}}">
+      			<div class="SR-Case SR-CaseMainColor"></div>
+        	</a>
+      	{{else}}
+    		<a class="boxes" data-index="{{index}}">
+      			<div class="SR-Case SR-CaseSubColor"></div>
+        	</a>
+      	{{/if}}
+    {{/each}}
+</div>
+</div>

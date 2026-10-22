@@ -1,0 +1,20 @@
+<li class="grid">
+    {{#if (eq test.type "skill")}}
+    <div class="col-5">{{localize 'SR5.Attribute'}}{{localize 'SR5.Colons'}}</div>
+    {{else}}
+    <div class="col-5">{{localize 'SR5.AttributeSecondary'}}{{localize 'SR5.Colons'}}</div>
+    {{/if}}
+    <div class="col-6 SR-TextRight">
+        <select class="SR-ModSelect" data-target="dicePoolModAttribute" data-modifier="attribute">
+            <option value="none">{{localize 'SR5.None'}}</option>
+            {{#if (eq owner.actorType "actorDrone")}}
+                {{selectOptions lists.vehicleAttributes selected=attributKey localize=true sort=true}}
+            {{else}}
+                {{selectOptions lists.allAttributesWithoutEdge selected=attributKey localize=true sort=true}}
+            {{/if}}
+        </select>
+    </div>
+    <div class="col-1 SR-TextCenter">
+        <input disabled type="number" name="dicePoolModAttribute" value="" placeholder="0" data-dtype="Number" />
+    </div>
+</li>

@@ -1,0 +1,28 @@
+<!-- BASE DICE POOL -->
+<li class="grid SR-LigneEnTete SR-TextUppercase">
+	<div class="col-11">
+		{{localize 'SR5.BaseDicePool'}}
+		<a class="SR-DialogToggle" data-target="dicePoolComposition" data-action="show"><i class="fas fa-angle-down SR-SubColor"></i></a>
+		<a class="SR-DialogToggle" data-target="dicePoolComposition" data-action="hide" style="display: none;"><i class="fas fa-angle-up SR-SubColor"></i></a>
+	</div>
+	{{#if (or (eq test.typeSub "physicalDamage") (eq test.type "resistFire") )}}
+		<div class="col-1 SR-TextCenter"><input disabled type="number" name="baseDicePool" value="{{dicePool.base}}" placeholder="0" data-dtype="Number" /></div>
+	{{else}}
+	 	<div class="col-1 SR-TextCenter"><input disabled type="number" name="baseDicePool" value="{{dicePool.base}}" placeholder="0" data-dtype="Number" /></div>
+	{{/if}}
+</li>
+
+<div id="dicePoolComposition" style="display: none;">
+	{{#each dicePool.composition}}
+	<li class="grid" data-type="{{type}}">
+		<div class="col-11"><span>{{source}}</span><span class="SR-LightGreyColor"> [{{findTranslation 'modifierTypes' type}}]</span>{{localize 'SR5.Colons'}}</div>
+		<div class="col-1 SR-TextCenter">{{value}}</div>
+	</li>
+	{{/each}}
+	{{#each armor.composition}}
+	<li class="grid">
+		<div class="col-11"><span>{{source}}</span><span class="SR-LightGreyColor"> [{{findTranslation 'modifierTypes' type}}]</span>{{localize 'SR5.Colons'}}</div>
+		<div class="col-1 SR-TextCenter">{{value}}</div>
+	</li>
+	{{/each}}
+</div>

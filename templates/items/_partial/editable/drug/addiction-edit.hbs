@@ -1,0 +1,28 @@
+<div class="SR-PaddingTop10">
+    <ul>
+        <li class="SR-TextUppercase SR-EnTete">
+            {{localize 'SR5.Addiction'}}
+        </li>
+
+        <li class="grid">
+            <div class="col-4">{{localize 'SR5.ProgramTypeShort'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-8">
+                <select name="system.addiction.type" data-dtype="String">
+                    <option value="">{{localize 'SR5.None'}}</option>
+                    {{selectOptions lists.addictionTypes selected=system.addiction.type localize=true}}
+                </select>
+            </div>
+        </li>
+
+        <li class="grid">
+            <div class="col-5">{{localize 'SR5.Rating'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1"><input type="number" data-dtype="number" name="system.addiction.rating" value="{{system.addiction.rating}}" placeholder="" onfocus="this.select()"/></div>
+        </li>
+
+        <li class="grid">
+            <div class="col-5">{{localize 'SR5.Threshold'}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1"><input type="number" data-dtype="number" name="system.addiction.threshold" value="{{system.addiction.threshold}}" placeholder="" onfocus="this.select()"/></div>
+        </li>
+
+    </ul>
+</div>

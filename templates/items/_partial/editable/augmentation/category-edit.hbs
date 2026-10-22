@@ -1,0 +1,21 @@
+{{#if (eq system.type 'genetech')}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.Category'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.category" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.augmentationGeneCategories selected=system.category localize=true}}
+        </select>
+    </div>
+</li>
+{{else}}
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.Category'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        <select name="system.category" required>
+            <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+            {{selectOptions lists.augmentationCategories selected=system.category localize=true}}
+        </select>
+    </div>
+</li>
+{{/if}}

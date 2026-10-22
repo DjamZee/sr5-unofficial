@@ -1,0 +1,306 @@
+import {
+  SR5 
+} from "./config.js"
+import {
+  SR5_SystemHelpers 
+} from "./system/utilitySystem.js"
+import {
+  SR5_EntityHelpers 
+} from "./entities/helpers.js"
+import {
+  situationalReadable, situationalMovement
+} from "./rolls/roll-helpers/situational.js"
+import {
+  martialArtNeedsSwitch
+} from "./system/martial-arts-technique.js"
+import {
+  formatNumber, formatNuyen
+} from "./helpers/number-format.js"
+import {
+  drugTakesDoseInCrash
+} from "./entities/items/drug-damage.js"
+import {
+  astralProjectionLimit
+} from "./rolls/roll-helpers/arcana-metamagics.js"
+
+export const registerHandlebarsHelpers = function () {
+  //Only a technique that is an action chosen for the roll keeps its switch on the sheet
+  Handlebars.registerHelper('martialArtNeedsSwitch', function (system) {
+    return martialArtNeedsSwitch(system)
+  })
+
+  //Long Haul (SR5 p. 413): its switch takes a further dose during the crash (entities/items/drug-damage.js)
+  Handlebars.registerHelper('drugTakesDoseInCrash', function (system) {
+    return drugTakesDoseInCrash(system)
+  })
+
+
+  // Whether a roll dialog reads this effect target, so that a situational effect on it is offered
+  Handlebars.registerHelper("situationalReadable", function (target) {
+    return situationalReadable(target)
+  })
+
+  // Whether a situational effect on this target is a box of the movement block of the sheet (Dark Terrors p. 180)
+  Handlebars.registerHelper("situationalMovement", function (target) {
+    return situationalMovement(target)
+  })
+
+  // if equal
+  Handlebars.registerHelper("ife", function (v1, v2, options) {
+    if (v1 === v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if not equal
+  Handlebars.registerHelper("ifne", function (v1, v2, options) {
+    if (v1 !== v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if less or equal than
+  Handlebars.registerHelper("if_le", function (v1, v2, options) {
+    if (v1 <= v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if greater or equal than
+  Handlebars.registerHelper("if_ge", function (v1, v2, options) {
+    if (v1 >= v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if less than
+  Handlebars.registerHelper("if_l", function (v1, v2, options) {
+    if (v1 < v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if greater than
+  Handlebars.registerHelper("if_g", function (v1, v2, options) {
+    if (v1 > v2) return options.fn(this)
+    else return options.inverse(this)
+  })
+
+  // if more than one
+  Handlebars.registerHelper(
+    "ifmto",
+    function (testValue, textIfTrue, textIfFalse) {
+      if (testValue > 1) return game.i18n.localize(textIfTrue)
+      else return game.i18n.localize(textIfFalse)
+    }
+  )
+
+  // if key exist
+  Handlebars.registerHelper('isdefined', function (value) {
+    return value !== undefined
+  })
+
+  const reduceOp = function (args, reducer) {
+    args = Array.from(args)
+    args.pop() // => options
+    var first = args.shift()
+    return args.reduce(reducer, first)
+  }
+
+  // check if argument is missing/empty : to be used with `{{#if (missing arg1 arg2 arg3 arg4)}}{{else}}{{/if}})
+  Handlebars.registerHelper("missing", function () {
+    return !reduceOp(arguments, (a, b) => a && b)
+  })
+
+  // Display amount of nuyens, as the game's language writes them (« 1 000 ¥ » / « 1,000 ¥ »)
+  Handlebars.registerHelper("nuyen", function (amount) {
+    if (!amount) return "0 ¥"
+    return formatNuyen(amount)
+  })
+
+  // Display number, as the game's language writes it
+  Handlebars.registerHelper("formatNumber", function (amount) {
+    if (!amount) return "0"
+    return formatNumber(amount, {
+      fraction: 2
+    })
+  })
+
+  // get translation key from config.js of
+  Handlebars.registerHelper("findTranslation", function (table, key) {
+    if (!table) {
+      SR5_SystemHelpers.srLog(0, `No translation table provided`)
+      return game.i18n.localize("SR5.HBS_ErrorNoTableGiven")
+    }
+    if (!SR5[table]) {
+      SR5_SystemHelpers.srLog(0, `Translation table '${table}' does not exist`)
+      return game.i18n.localize("SR5.HBS_ErrorUnknownTable")
+    }
+    if (Array.isArray(key)) {
+      key = key[0]
+    }
+    if (!key) {
+      return ""
+    }
+    const i18nKey = SR5[table][key]
+    if (!i18nKey) {
+      // For ammunition types, resolve custom type names from world items
+      if (table === 'allAmmunitionTypes') return SR5_EntityHelpers.resolveAmmoTypeLabel(key)
+      return key
+    }
+    const translatedTerm = game.i18n.localize(i18nKey)
+    if (!translatedTerm) {
+      SR5_SystemHelpers.srLog(1, `No translation could be found for the '${key}' lookup key in the '${table}' translation table`)
+      return null
+    }
+    return translatedTerm
+  })
+
+  // How long the character may stay projected (SR5 p. 317; Improved Astral Form and Astralnaut, Forbidden Arcana p. 43)
+  Handlebars.registerHelper('astralProjectionLimit', function (system) {
+    const magic = system?.magic
+    const limit = astralProjectionLimit(system?.specialAttributes?.magic?.augmented?.value, magic?.initiationGrade,
+      magic?.metamagics?.improvedAstralForm, magic?.metamagics?.astralnaut)
+    let text = game.i18n.format(limit.unit === "days" ? "SR5.AstralProjectionDays" : "SR5.AstralProjectionHours", {
+      value: limit.value
+    })
+    if (limit.wake) text += ` (${game.i18n.localize(limit.wake === "day" ? "SR5.AstralProjectionWakeDay" : "SR5.AstralProjectionWakeMinute")})`
+    return text
+  })
+
+  Handlebars.registerHelper('valueOrDash', function () {
+    let args = Array.from(arguments)
+    args.pop() // => options
+    let value = args[0]
+    if (value) return args.join("")
+    else return "-"
+  })
+
+  Handlebars.registerHelper('findMultiplierValue', function (property, item) {
+    let value
+    switch (property) {
+      case "rating":
+        value = item.system.itemRating
+        break
+      case "acceleration":
+        value = item.system.vehiclePriceMultiplier.acceleration
+        break
+      case "handling":
+        value = item.system.vehiclePriceMultiplier.handling
+        break
+      case "speed":
+        value = item.system.vehiclePriceMultiplier.speed
+        break
+      case "body":
+        value = item.system.vehiclePriceMultiplier.body
+        break
+      case "seating":
+        value = item.system.vehiclePriceMultiplier.seating
+        break
+      case "vehicle":
+        value = item.system.vehiclePriceMultiplier.vehicle
+        break
+      default:
+        value = SR5_EntityHelpers.resolveObjectPath(`system.${property}.value`, item)
+    }
+    return value
+  })
+
+  Handlebars.registerHelper('gainModifiersSum', function (property) {
+    if (property.modifiers) {
+      let additiveModifiers = property.modifiers.filter(m => (m.type.split("_").pop() == 'gain' && m.isMultiplier == false))
+      let total = 0
+      for (let modifier of Object.values(additiveModifiers)) {
+        total += modifier.value
+      }
+      return total
+    } else return 'ERR'
+  })
+
+  Handlebars.registerHelper('lossModifiersSum', function (property) {
+    if (property.modifiers) {
+      let additiveModifiers = property.modifiers.filter(m => (m.type.split("_").pop() == 'loss' && m.isMultiplier == false))
+      let total = 0
+      for (let modifier of Object.values(additiveModifiers)) {
+        total += modifier.value
+      }
+      return total
+    } else return 'ERR'
+  })
+
+  Handlebars.registerHelper('minus', function(a, b) {
+    if (Number(a) !== a) throw new TypeError('expected the first argument to be a number')
+    if (Number(b) !== b) throw new TypeError('expected the second argument to be a number')
+    return Number(a) - Number(b)
+  })
+
+  Handlebars.registerHelper('autoLabel', function (str, limit) {
+    if (typeof str !== 'string') return 'ERR (autoLabel)'
+    if (typeof limit !== 'number' || str.length <= limit) {
+      return game.i18n.localize(str)
+    }
+    if (limit == 1) return game.i18n.localize(str).slice(0, limit)
+    return game.i18n.localize(str).slice(0, limit) + "."
+  })
+
+  Handlebars.registerHelper('dropdownOptions', function () {
+    let valueTypes = Array.from(arguments); valueTypes.pop() // => options, ignoring it
+    if (!valueTypes.length) { SR5_SystemHelpers.srLog(1, `No value types in 'dropdownOptions' HBS helper`); return }
+    let outputHTML = '<option class="SR-LightGreyColor" value="">' + game.i18n.localize('SR5.ChooseOne') + '</option>'
+    for (let valueType of Object.values(valueTypes)) {
+      if (SR5.customEffectsTypes[valueType] === undefined) { SR5_SystemHelpers.srLog(1, `Unknown ${valueType} value type in 'dropdownOptions' HBS helper`); return }
+      outputHTML += `<option value="${valueType}">${game.i18n.localize(SR5.customEffectsTypes[valueType])}</option>`
+    }
+    return new Handlebars.SafeString(outputHTML)
+  })
+
+  Handlebars.registerHelper('endsWith', function (string, subString) {
+    if (!string || !subString) { SR5_SystemHelpers.srLog(1, `Missing string or subString in 'endsWith' HBS helper`); return }
+    if (string.endsWith(subString))
+      return true
+    return false
+  })
+
+  Handlebars.registerHelper("includes", function (string, subString) {
+    if (!string || !subString) {
+      SR5_SystemHelpers.srLog(
+        1,
+        `Missing string or subString in 'includes' HBS helper`
+      )
+      return
+    }
+    if (string.includes(subString)) return true
+    return false
+  })
+
+  //Short name of an attribute (FOR, INT...), or its full name when it has none
+  Handlebars.registerHelper('attributeShort', function (key) {
+    let label = SR5.allAttributes[key]
+    if (!label) return ""
+    return game.i18n.has(`${label}Short`) ? game.i18n.localize(`${label}Short`) : game.i18n.localize(label)
+  })
+
+  //Concat multiple strings or data to one string
+  Handlebars.registerHelper('concat', function() {
+    var outStr = ''
+    for(var arg in arguments){
+      if(typeof arguments[arg]!='object'){
+        outStr += arguments[arg]
+      }
+    }
+    return outStr
+  })
+
+  // Wraps content in .sr-select-wrapper for styled select dropdowns
+  // Usage: {{#selectWrapper}}...{{/selectWrapper}}
+  // Usage with extra class: {{#selectWrapper class="sr-dropdown"}}...{{/selectWrapper}}
+  Handlebars.registerHelper('selectWrapper', function(options) {
+    const extraClass = options.hash.class ? ` ${options.hash.class}` : ''
+    return new Handlebars.SafeString(
+      `<div class="sr-select-wrapper${extraClass}">${options.fn(this)}</div>`
+    )
+  })
+
+  //Old handlebars helper
+  Handlebars.registerHelper('select', function (selected, options) {
+    const escapedValue = RegExp.escape(Handlebars.escapeExpression(selected))
+    const rgx = new RegExp(' value=["\'\\"]' + escapedValue + '["\']')
+    const html = options.fn(this)
+    return html.replace(rgx, "$& selected")    
+  })
+}

@@ -1,0 +1,16 @@
+<li class="grid">
+    <div class="col-5">{{localize 'SR5.Threshold'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-1"><input type="number" data-dtype="Number" name="system.threshold.base" value="{{system.threshold.base}}" placeholder="0" onfocus="this.select()"/></div>
+    {{#if system.threshold.multiplier}}
+		<div class="col-1 SR-Textleft">&nbsp;(x {{findMultiplierValue system.threshold.multiplier this}})</div>
+        {{else}}
+		<div class="col-1"></div>
+    {{/if}}
+    <div class="col-2 SR-TextRight">{{localize 'SR5.Multiplier'}}{{localize 'SR5.Colons'}}&nbsp;</div>
+    <div class="col-2 SR-TextRight">
+    	<select name="system.threshold.multiplier" data-dtype="{{system.threshold.multiplier}}" required>
+       		<option value="">{{localize 'SR5.None'}}</option>
+					{{selectOptions lists.valueMultipliers selected=system.threshold.multiplier localize=true}}
+    	</select>
+    </div>
+</li>

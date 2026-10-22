@@ -1,0 +1,73 @@
+<!-- DRONE STUFF -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="grid SR-LigneEnTete">
+			<div class="col-10 SR-TextUppercase">{{localize 'SR5.VehicleActions'}}</div>
+			<div class="col-1 SR-TextCenter">{{localize 'SR5.DicePoolShort'}}</div>
+			<div class="col-1">{{localize 'SR5.Limit'}}</div>
+		</li>
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.VehicleTest'}}</div>
+            <div class="col-1 roll-logo SR-TextCenter sr-roll" data-rolltype="vehicleTest" data-rollkey="vehicleTest"
+            data-helpTitle="{{localize 'SR5.VehicleTest'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleTestMsg'}}" data-helpDetails="system.vehicleTest.test">
+                {{system.vehicleTest.test.dicePool}}
+            </div>
+            <div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.Limit'}}"
+              data-helpDetails="system.vehicleTest.limit">
+                {{system.vehicleTest.limit.value}}
+            </div>
+        </li>
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.Ramming'}}</div>
+            <div class="col-1 roll-logo SR-TextCenter sr-roll" data-rolltype="ramming" data-rollkey="ramming"
+            data-helpTitle="{{localize 'SR5.Ramming'}}" data-helpMessage="{{localize 'SR5.HELP_RammingTestMsg'}}" data-helpDetails="system.rammingTest.test">
+                {{system.rammingTest.test.dicePool}}
+            </div>
+            <div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.Limit'}}"
+              data-helpDetails="system.rammingTest.limit">
+                {{system.rammingTest.limit.value}}
+            </div>
+        </li>
+        {{#if (eq system.controlMode "autopilot")}}
+        <!-- Something new or unexpected: Device Rating x 2 against the gamemaster's threshold (SR5 p. 271) -->
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.AutopilotUnforeseen'}}</div>
+            <div class="col-1 roll-logo SR-TextCenter sr-roll" data-rolltype="autopilotUnforeseen" data-rollkey="autopilotUnforeseen"
+            data-helpTitle="{{localize 'SR5.AutopilotUnforeseen'}}" data-helpMessage="{{localize 'SR5.HELP_AutopilotUnforeseenMsg'}}">
+                {{actor.autopilotUnforeseenPool}}
+            </div>
+            <div class="col-1 SR-TextCenter">-</div>
+        </li>
+        {{/if}}
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.SensorTargetingActive'}}</div>
+            <div class="col-1 roll-logo SR-TextCenter sr-roll" data-rolltype="sensorTarget" data-rollkey="sensorTarget"
+              data-helpTitle="{{localize 'SR5.SensorTargetingActive'}}" data-helpMessage="{{localize 'SR5.HELP_SensorTargetingActive'}}" data-helpDetails="system.skills.perception.test">
+                {{system.skills.perception.test.dicePool}}
+            </div>
+            <div class="col-1 SR-TextCenter" data-helpTitle="{{localize 'SR5.Limit'}}"
+            data-helpDetails="system.skills.perception.limit">
+                {{system.skills.perception.limit.value}}
+            </div>
+        </li>
+        <li class="grid">
+            <div class="col-10">{{localize 'SR5.VehicleRepair'}}</div>
+            <div class="col-1 roll-logo SR-TextCenter drone-repair" data-helpTitle="{{localize 'SR5.VehicleRepair'}}" data-helpMessage="{{localize 'SR5.HELP_VehicleRepairMsg'}}">
+                <em class="fas fa-wrench"></em>
+            </div>
+            <div class="col-1"></div>
+        </li>
+        <li class="subItemManagement grid">
+            <div class="col-7">
+                <div class="grid">
+                    <div class="col-4">{{localize 'SR5.SensorTargetingPassive'}}</div>
+                    <div class="col-2 SR-TextCenter" data-helpTitle="{{localize 'SR5.SensorTargetingPassive'}}" data-helpMessage="{{localize 'SR5.HELP_SensorTargetingPassiveMsg'}}">
+                        <input type="checkbox" name="system.passiveTargeting" data-dtype="Boolean" {{checked system.passiveTargeting}}>
+                    </div>
+                    <div class="col-6"></div>
+                </div>
+            </div>
+            <div class="col-5"></div>
+        </li>
+	</ul>
+</div>

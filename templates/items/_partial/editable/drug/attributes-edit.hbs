@@ -1,0 +1,43 @@
+<ul>
+    <li class="SR-TextUppercase SR-EnTete">
+        {{localize 'SR5.ToxinVector'}}
+    </li>
+    <li class="grid">
+        {{#each system.vector}}
+            {{#if (ne @key 'value')}}
+            <div class="col-4">{{findTranslation "propagationVectors" @key}}{{localize 'SR5.Colons'}}</div>
+            <div class="col-1 SR-TextCenter"><input type="checkbox" name="system.vector.{{@key}}" data-dtype="Boolean" {{checked this}} /></div>
+            <div class="col-1"></div>
+            {{/if}}
+        {{/each}}
+    </li>
+
+    <li class="grid">
+        <div class="col-4">{{localize 'SR5.ToxinSpeed'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-8"><input type="text" data-dtype="text" name="system.speed" value="{{system.speed}}" placeholder="" /></div>
+    </li>
+
+
+    <li class="grid">
+        <div class="col-4">{{localize 'SR5.Duration'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-8"><input type="text" data-dtype="text" name="system.duration" value="{{system.duration}}" placeholder="" /></div>
+    </li>
+
+    <li class="grid">
+        <div class="col-4">{{localize 'SR5.DrugQuality'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-8">
+            <select name="system.quality" data-dtype="String">
+                {{selectOptions lists.drugQualities selected=system.quality localize=true}}
+            </select>
+        </div>
+    </li>
+    {{#if (eq system.quality "custom")}}
+    <li class="grid">
+        <div class="col-4" title="{{localize 'SR5.DrugPreparedForHint'}}">{{localize 'SR5.DrugPreparedFor'}}{{localize 'SR5.Colons'}}</div>
+        <div class="col-8">
+            {{!-- A searchable list by folder, drawn by the sheet (actor-picker.js) --}}
+            <div class="sr5-drug-recipients"></div>
+        </div>
+    </li>
+    {{/if}}
+</ul>

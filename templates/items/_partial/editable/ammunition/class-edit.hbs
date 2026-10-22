@@ -1,0 +1,71 @@
+<li class="grid">
+    <div class="col-4">{{localize 'SR5.WeaponType'}}{{localize 'SR5.Colons'}}</div>
+    <div class="col-8">
+        {{#if (eq system.type "taserDart")}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponTaserTypes selected=system.class localize=true}}
+            </select> 
+
+        {{else if (or (eq system.type "bolt") (eq system.type "boltInjection"))}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponCrossbowTypes selected=system.class localize=true}}
+            </select> 
+        {{else if (or (eq system.type "arrow") (eq system.type "arrowInjection") (eq system.type "arrowBarbedHead") (eq system.type "arrowExplosiveHead") (eq system.type "arrowHammerhead") (eq system.type "arrowIncendiaryHead") (eq system.type "arrowScreamerHead") (eq system.type "arrowStickNShock") (eq system.type "arrowStaticShaft"))}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponBowTypes selected=system.class localize=true}}
+            </select>
+        {{else if (or 
+            (eq system.type "fragmentationRocket") 
+            (eq system.type "fragmentationMissile") 
+            (eq system.type "highlyExplosiveRocket")
+            (eq system.type "highlyExplosiveMissile")
+            (eq system.type "antivehicleRocket")
+            (eq system.type "antivehicleMissile")
+        )}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponLauncherTypes selected=system.class localize=true}}
+            </select>
+        {{else if (or
+            (eq system.type "gyrojet")
+            (eq system.type "gyrojetTaser")
+            )}}
+            <select name="system.class" data-dtype="String" required>
+                {{#select system.class}}
+                    <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                    <option value="exoticRangedWeapon">{{localize 'SR5.WeaponTypeSpecial'}}</option>
+                {{/select}}
+            </select>
+        {{else if (or 
+            (eq system.type "flashBangMini")
+            (eq system.type "fragmentationMini") 
+            (eq system.type "smokeMini") 
+            (eq system.type "smokeThermalMini")
+            (eq system.type "gasMini")
+            (eq system.type "highlyExplosiveMini")
+        )}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponGrenadeLauncherTypes selected=system.class localize=true}}
+            </select>
+        {{else if (or (eq system.type "assaultCannon") (eq system.type "gauss"))}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponCanonTypes selected=system.class localize=true}}
+            </select>
+        {{else if (eq system.type "flare")}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.weaponUsingFlareTypes selected=system.class localize=true}}
+            </select>
+        {{else}}
+            <select name="system.class" data-dtype="String" required>
+                <option class="SR-LightGreyColor" value="">{{localize 'SR5.ChooseOne'}}</option>
+                {{selectOptions lists.rangedWeaponFireTypes selected=system.class localize=true}}
+            </select> 
+        {{/if}}
+    </div>
+</li>

@@ -1,0 +1,2838 @@
+import {
+  vintageWirelessRefused
+} from '../items/weaponTraits.js'
+import {
+  livingPersonaModes
+} from './technomancer-streams.js'
+import {
+  sceneCandidatesOf
+} from '../../interface/scene-actors.js'
+import {
+  SR5_Toxins
+} from '../items/toxins.js'
+import {
+  isCapReminder, ruleRemindersShown
+} from '../../system/rule-reminders.js'
+import {
+  boneSwitchRefused, bundleWirelessRefused
+} from '../../system/implant-essence.js'
+import {
+  SR5_SystemHelpers,
+  SR5_UiModifications
+} from "../../system/utilitySystem.js"
+import {
+  phaseFromFlags, unitKey
+} from "../items/drug-phase.js"
+import {
+  startDrugCrash, resetDrugPhase, applyDrugDamage, askDrugDoses
+} from "../items/drug-crash.js"
+import {
+  DRUG_DAMAGE, DRUG_INTERACTION_DAMAGE, intakeDamageOf, dosesTaken, overdoseOf, secondTreatmentOf
+} from "../items/drug-damage.js"
+import {
+  drugDesignApproved
+} from "../items/drug-designer.js"
+import {
+  setCharacterField, setSpiritTrait, banishKey
+} from "../../system/spirit-ledger.js"
+import {
+  SR5_Jammer
+} from "../../system/jammer.js"
+import {
+  sheetSizeOptions, sheetSizeSetPosition
+} from "../../interface/sheet-size.js"
+import {
+  SR5_EntityHelpers 
+} from "../helpers.js"
+import {
+  SR5_UtilityItem 
+} from "../items/utilityItem.js"
+import {
+  SR5_CharacterUtility 
+} from "./utilityActor.js"
+import {
+  SR5_SocketHandler 
+} from "../../socket.js"
+import SR5_PanDialog from "../../interface/pan-dialog.js"
+import {
+  SR5Credstick 
+} from "../../interface/credstick.js"
+import {
+  SR5
+} from "../../config.js"
+import {
+  refuseByRule
+} from "../../system/rule-locks.js"
+import {
+  STORABLE_TYPES, isStorable, isStoredAway, garageRequirement, meetsGarageLifestyle 
+} from "../../interface/storage-rules.js"
+import {
+  isLocked
+} from "../../interface/storage-lock.js"
+import {
+  bindOrderClicks
+} from "../../interface/shop-orders.js"
+import {
+  SR5_ActorHelper 
+} from "./entityActor-helpers.js"
+import {
+  SR5_MiscellaneousHelpers
+} from "../../rolls/roll-helpers/miscellaneous.js"
+import {
+  SR5_RollMessage 
+} from "../../rolls/roll-message.js"
+import {
+  SR5_PrepareRollTest 
+} from "../../rolls/roll-prepare.js"
+import {
+  SR5Combat 
+} from "../../system/srcombat.js"
+import {
+  computeLayout 
+} from "../../interface/compute-layout.js"
+import {
+  SR5SheetConfigDialog 
+} from "../../interface/sheet-config-dialog.js"
+import {
+  enhanceSelects
+} from "../../helpers/enhance-selects.js"
+import {
+  isMilkBrick, soothe
+} from "../items/milkBrick.js"
+import {
+  addictionWeeks, focusAddictionRating, focusAddictionEntries
+} from "../../rolls/roll-helpers/addiction.js"
+import {
+  warnDrugWithoutStat, drugAddictionThreshold, drugInteractionModifier, effectiveDrugQuality, drugCrashIsInstant, drugHasCrash, isSameDrug, distinctDrugs
+} from "../items/drug-stat.js"
+import {
+  reagentSystem, hasTiers
+} from "../../system/reagents.js"
+import {
+  hasAegis, aegisState, aegisLedger, AEGIS_BOXES
+} from "../../system/aegis.js"
+import {
+  hungerStatus, toggleHunger, hastenHunger, canHunger
+} from "../../system/hunger.js"
+import {
+  infectionStatus, tryInfection
+} from "../../system/infection.js"
+import {
+  movementBoxes, toggleMovementBox
+} from "../../rolls/roll-helpers/situational.js"
+import {
+  cfdStatus, startTreatmentDialog, resolveOverwritersNow, stopTreatment
+} from "../../system/cfd-treatment.js"
+import {
+  deactivationStatus, deactivationDialog, deactivationLauncher, launchDeactivation
+} from "../../system/deactivation.js"
+import {
+  SR5Conceal
+} from "../../interface/conceal.js"
+import {
+  canBeConcealed, concealedState, concealedItems
+} from "../../rolls/roll-helpers/conceal-rules.js"
+import {
+  deviceModeSheetContext, switchDeviceMode
+} from "../../canvas/pan-crown/pan-device-switch.js"
+import {
+  actsAsRcc, fixedRccRatings, programSwitchActionType, sharingSlotsLeft, autosoftShareRefused
+} from "./rcc.js"
+import {
+  primaryLifestyleUpdates
+} from "../../system/lifestyle-primary.js"
+import {
+  tooltipsToHelp, fillHelpBubble
+} from "../../interface/help-tooltips.js"
+import {
+  formatNumber
+} from '../../helpers/number-format.js'
+
+/**
+ * Extend the basic ActorSheet class to do all the SR5 things!
+ * This sheet is an Abstract layer which is not used.
+ *
+ * @type {ActorSheetV2}
+ */
+
+export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.sheets.ActorSheetV2
+) {
+  static MODES = Object.freeze({
+    PLAY: 1, EDIT: 2 
+  })
+
+  _mode = ActorSheetSR5.MODES.EDIT
+
+  get isPlayMode() { return this._mode === ActorSheetSR5.MODES.PLAY }
+  get isEditMode() { return this._mode === ActorSheetSR5.MODES.EDIT }
+
+  constructor(...args) {
+    super(...args)
+    this._expandedItems = new Set()
+  }
+
+  static DEFAULT_OPTIONS = {
+    classes: ["app", "window-app", "sr5", "actor"],
+    form: {
+      submitOnChange: true 
+    },
+    // Note: DragDrop config is an AppV1 feature. In AppV2 we bind dragstart manually in _onRender.
+    actions: {
+      toggleMode: ActorSheetSR5._onToggleMode,
+      customizeDisplay: ActorSheetSR5._onCustomizeDisplay,
+      // The shop window, this actor already chosen as the buyer (lot B)
+      openShop: function () {
+        game.sr5.shop.open({
+          actor: this.actor
+        })
+      },
+      //SR5 p. 422: look for an object hidden on the targeted token, or pat it down
+      concealSearch: function (event, target) {
+        SR5Conceal.startSearch(this.actor, target.dataset.mode === "patDown" ? "patDown" : "spot")
+      },
+    },
+  }
+
+  get title() {
+    return this.document.name
+  }
+
+  /**
+   * The picture is sent back only when it was changed on the sheet: the one it showed, unchanged, would undo a change
+   * made elsewhere since it was drawn (default pictures of the spirits, seen by Clémence on 17/10)
+   */
+  _processFormData(event, form, formData) {
+    const data = super._processFormData(event, form, formData)
+    if (this._renderedImg !== undefined && data.img === this._renderedImg) delete data.img
+    return data
+  }
+
+  /** @override — reopen at the size last chosen for this sheet type (sheet-size.js) */
+  _initializeApplicationOptions(options) {
+    return sheetSizeOptions(this.constructor, super._initializeApplicationOptions(options))
+  }
+
+  /** @override — never below the default size, and remember the size chosen */
+  setPosition(position) {
+    return sheetSizeSetPosition(this, position, p => super.setPosition(p))
+  }
+
+  /** @override — Foundry's _onClickTab uses event.target which misses when clicking SVG icons inside <a> */
+  _onClickTab(event) {
+    const button = event.target.closest("[data-tab]")
+    if (!button || button.classList.contains("active") || (event.button !== 0)) return
+    const tab = button.dataset.tab
+    const group = button.dataset.group
+    this.changeTab(tab, group, {
+      event 
+    })
+  }
+
+  /** @override — refresh scroll indicators when tabs change */
+  changeTab(...args) {
+    super.changeTab(...args)
+    requestAnimationFrame(() => { if (this.element) this._updateScrollFades(this.element) })
+  }
+
+  /**
+	 * Toggle .can-scroll-up / .can-scroll-down on each .sr-panel-wrap
+	 * so CSS indicators show when scrollable content is available.
+	 */
+  _updateScrollFades(root) {
+    for (const panel of root.querySelectorAll('.sr-panel')) {
+      const wrap = panel.closest('.sr-panel-wrap')
+      if (!wrap) continue
+      const update = () => {
+        const {
+          scrollTop, scrollHeight, clientHeight 
+        } = panel
+        wrap.classList.toggle('can-scroll-up', scrollTop > 2)
+        wrap.classList.toggle('can-scroll-down', scrollTop + clientHeight < scrollHeight - 2)
+      }
+      update()
+      if (!panel.dataset.scrollFade) {
+        panel.dataset.scrollFade = '1'
+        panel.addEventListener('scroll', update, {
+          passive: true 
+        })
+      }
+    }
+  }
+
+
+
+  static async _onToggleMode(event) {
+    event.preventDefault()
+    if (!this.isEditable) return
+    const newMode = this.isPlayMode ? ActorSheetSR5.MODES.EDIT : ActorSheetSR5.MODES.PLAY
+    game.user?.setFlag("sr5", `playMode.${this.actor.id}`, newMode)
+    await this.render({
+      mode: newMode 
+    })
+  }
+
+  static _onCustomizeDisplay(event) {
+    event.preventDefault()
+    SR5SheetConfigDialog.open(this.actor)
+  }
+
+  /** Save focused element and scroll positions before re-render so we can restore them after. */
+  _preRender(context, options) {
+    super._preRender(context, options)
+    const active = this.element?.querySelector(':focus')
+    if (active) {
+      this._savedFocus = {
+        name: active.getAttribute('name'),
+        selectionStart: active.selectionStart ?? null,
+        selectionEnd: active.selectionEnd ?? null,
+      }
+    } else {
+      this._savedFocus = null
+    }
+    // Save scroll positions for all panels
+    const panels = this.element?.querySelectorAll('.sr-panel')
+    this._savedScrollPositions = panels ? Array.from(panels).map(p => p.scrollTop) : []
+  }
+
+  _configureRenderOptions(options) {
+    super._configureRenderOptions(options)
+    if (options.mode && this.isEditable) this._mode = options.mode
+    else if (options.renderContext === `create${this.document.documentName}`) {
+      this._mode = ActorSheetSR5.MODES.EDIT
+    } else if (!options.mode && this.document?.id) {
+      const saved = game.user?.getFlag("sr5", `playMode.${this.document.id}`)
+      if (saved) this._mode = saved
+    }
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options)
+    // The picture the sheet shows (img[data-edit]), compared at the next submission (_processFormData)
+    this._renderedImg = this.actor._source.img
+    const actorData = this.actor.toObject(false)
+    // Copy runtime-computed properties that aren't schema fields onto the plain object
+    // so templates can access them via {{system.lists}} and {{system.isGM}}
+    actorData.system.lists = this.actor.system.lists
+    actorData.system.isGM = this.actor.system.isGM
+    context.actor = actorData
+    // Use actorData.system (not the live DataModel) so that _prepareSkills,
+    // _prepareSkillGroups, _prepareMatrixActions etc. mutations are visible to templates.
+    context.system = actorData.system
+    context.items = actorData.items
+    context.owner = this.actor.isOwner
+    //Astral perception in the vision types block (relecture djamz.13, img 18): a spirit and a magician
+    //perceive astrally (SR5 p. 313), an adept once the power has given it the vision
+    const visions = this.actor.system.visions
+    context.canPerceiveAstral = this.actor.type === "actorSpirit" || !!visions?.astral?.hasVision ||
+      ["magician", "aspectedMagician", "mysticalAdept"].includes(this.actor.system.magic?.magicType)
+    context.editable = this.isEditable
+    context.isEmbedded = true  // Items rendered on actor sheets are always embedded
+    context.filters = this._filters || {
+    }
+    //A technomancer with Résonance dissonante may choose cold sim (Better Than Bad p. 145): a copy, the lists are shared
+    const lists = this.actor.system.lists
+    context.lists = lists ? {
+      ...lists, personaModes: livingPersonaModes(this.actor, lists) 
+    } : lists
+    context.isPlay = this.isPlayMode
+    // Read on the sheet, descriptions show their links (@UUID to a journal, the Library) enriched; the editor keeps
+    // the raw text
+    const enrich = text => foundry.applications.ux.TextEditor.implementation.enrichHTML(typeof text === "string" ? text : "", {
+      secrets: this.actor.isOwner, relativeTo: this.actor
+    })
+    const biography = this.actor.system.biography
+    context.enrichedBiography = {
+      description: await enrich(biography?.description), background: await enrich(biography?.background),
+    }
+    context.enrichedDescription = await enrich(this.actor.system.description)
+    //Reagent stocks shown: the raw one alone in the core rules (modules/system/reagents.js)
+    context.reagentSystem = reagentSystem()
+    context.reagentTiers = hasTiers(context.reagentSystem)
+    //Aegis (Kill Code p. 112): the shield boxes left, read from the GM's ledger
+    if (hasAegis(this.actor)) context.aegisLeft = game.i18n.format("SR5.INFO_AegisLeft", {
+      left: AEGIS_BOXES - aegisState(aegisLedger(this.actor), game.time.worldTime).damage
+    })
+    // Provide cssClass for template compatibility
+    context.cssClass = this.document.isOwner ? "editable" : "locked"
+
+    // Sort Owned Items
+    for (let i of context.items) {
+      const item = this.actor.items.get(i.id)
+      if (item) i.labels = item.labels
+    }
+    context.items.sort((a, b) => (a.sort || 0) - (b.sort || 0))
+
+    //Essence Loss of the Infected (SR5 p. 403): the GM alone sees the clock of the hunger, from his ledger
+    context.hunger = game.user.isGM && canHunger(this.actor) ? hungerStatus(this.actor) : null
+    //Infection (SR5 p. 401): the GM tries it on a victim drained to 0, or sees when the coma ends
+    context.infection = infectionStatus(this.actor)
+    //Situational effects on a movement rate (Dark Terrors p. 180): a box per item and situation, ticked by the owner
+    context.movementBoxes = movementBoxes(this.actor.movementSituational).map(b => ({
+      ...b, keysAttr: b.keys.join(" ")
+    }))
+    //Treating CFD (Dark Terrors p. 87): the GM alone gives a treatment and sees where it stands, from his ledger
+    context.cfd = cfdStatus(this.actor)
+    //Deactivation (Dark Terrors p. 89-90): the owner of a technomancer with the echo rolls it from its sheet, the GM
+    //confirms; the GM can also run it from the target's sheet for a GM's technomancer
+    context.deactivation = deactivationStatus(this.actor)
+    context.deactivationLauncher = deactivationLauncher(this.actor)
+
+    context.storageViewIsGrid = game.settings.get("sr5", "sr5StorageViewMode") !== "list"
+    //The clinch button of the martial arts block (Run & Gun p. 133) exists only with the grappling rules
+    context.rulesGrappling = game.settings.get("sr5", "sr5GrapplingRules")
+    //The "wired by DNI" box only matters when the world asks for a DNI to switch the wireless as a free action
+    context.showDNI = game.settings.get("sr5", "sr5WifiRequiresDNI") && ["actorPc", "actorGrunt"].includes(this.actor.type)
+    //An AI outside any device has nothing to reboot: it must load onto a device first (Data Trails p. 157)
+    context.canReboot = !SR5_CharacterUtility.isDevicelessAI(this.actor)
+    //Nor any matrix attribute: its actions are rolled through Emulate, whose rating (and so the limit) goes up to Depth (Data Trails p. 159)
+    context.emulateOnlyDepth = context.canReboot ? null : (this.actor.system.specialAttributes?.depth?.augmented?.value || 0)
+    //An active cyberdeck whose attribute array is not assigned rolls with matrix limits at 0 (SR5 p. 229)
+    context.deckUnconfigured = SR5_CharacterUtility.isDeckUnconfigured(this.actor.system)
+    //The mode of each device of the lists, its silent switch beside its wireless one (couronne du PAN, lot 6)
+    context.deviceModes = {
+    }
+    for (const item of this.actor.items) {
+      const mode = deviceModeSheetContext(item)
+      if (mode) context.deviceModes[item.id] = mode
+    }
+    //A rigger command console: Noise Reduction, Sharing and the shared autosofts (SR5 p. 269)
+    context.actsAsRcc = actsAsRcc(this.actor)
+    //A Machinist's persona: Willpower and Charisma, not set by hand (Kill Code p. 101)
+    context.rccFixed = !!fixedRccRatings(this.actor)
+
+    // Compute dynamic layout (SR6-style panel/tab/block system)
+    context.layout = this._computeSheetLayout(this.actor)
+
+    return context
+  }
+
+  /**
+	 * Compute the panel/tab layout and sync Foundry's tabGroups.
+	 * Each panel gets its own independent tab group.
+	 */
+  _computeSheetLayout(actor) {
+    const prefs = actor.system.sheetPreferences ?? {
+    }
+    const layout = computeLayout(this.constructor.name, prefs)
+
+    // Sync Foundry's tabGroups — one independent group per panel
+    for (const panel of layout.panels) {
+      const group = panel.group
+      if (!this.tabGroups[group] && panel.tabs.length > 0) {
+        this.tabGroups[group] = panel.tabs[0].id
+      }
+      const activeId = this.tabGroups[group]
+      if (activeId && !panel.tabs.some(t => t.id === activeId)) {
+        this.tabGroups[group] = panel.tabs[0]?.id ?? null
+      }
+      for (const tab of panel.tabs) {
+        tab.cssClass = tab.id === this.tabGroups[group] ? "active" : ""
+      }
+    }
+
+    // Clean up stale groups
+    const validGroups = new Set(layout.panels.map(p => p.group))
+    for (const key of Object.keys(this.tabGroups)) {
+      if (!validGroups.has(key)) delete this.tabGroups[key]
+    }
+
+    return layout
+  }
+
+  async _renderFrame(options) {
+    const frame = await super._renderFrame(options)
+    const header = frame.querySelector(".window-header")
+    const closeButton = header?.querySelector('[data-action="close"]')
+
+    // Sheet config button (visibility toggled in _onRender based on mode)
+    if (this.actor?.isOwner) {
+      const configBtn = document.createElement("button")
+      configBtn.type = "button"
+      configBtn.classList.add("header-control", "icon", "fa-solid", "fa-tools")
+      configBtn.dataset.action = "customizeDisplay"
+      configBtn.dataset.tooltip = game.i18n.localize("SR5.CustomizeSheetDisplay")
+      if (closeButton) closeButton.before(configBtn)
+      else header?.appendChild(configBtn)
+    }
+
+    // Play/Edit toggle button
+    if (this.isEditable) {
+      const toggleBtn = document.createElement("button")
+      toggleBtn.type = "button"
+      toggleBtn.classList.add("header-control", "icon", "fa-solid")
+      toggleBtn.dataset.action = "toggleMode"
+      if (closeButton) closeButton.before(toggleBtn)
+      else header?.appendChild(toggleBtn)
+    }
+
+    // Move close button to the end
+    if (closeButton) header?.appendChild(closeButton)
+
+    return frame
+  }
+
+  // The help bubble goes on mouseout, which never comes when the sheet closes under the pointer (Escape): it stayed
+  // over every window (16/10, Agathe#2507 P11)
+  _onClose(options) {
+    super._onClose(options)
+    this._hideHelpText()
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options)
+    const element = this.element
+
+    // Play/Edit mode classes
+    element.classList.toggle("sr-mode-edit", this.isEditMode)
+    element.classList.toggle("sr-mode-play", this.isPlayMode)
+
+    // Update toggle button icon
+    const toggleBtn = element.querySelector('[data-action="toggleMode"]')
+    if (toggleBtn) {
+      toggleBtn.classList.toggle("fa-lock", this.isPlayMode)
+      toggleBtn.classList.toggle("fa-lock-open", this.isEditMode)
+      toggleBtn.dataset.tooltip = game.i18n.localize(this.isPlayMode ? "SR5.SwitchToEdit" : "SR5.SwitchToPlay")
+    }
+
+    //Essence Loss (SR5 p. 403): the GM starts or stops the clock, or brings it one week closer by hand
+    element.querySelectorAll("[data-sr5-movement-box]").forEach(b => b.addEventListener("change", (event) => {
+      const keys = event.currentTarget.dataset.sr5MovementBox.split(" ")
+      this.actor.update({
+        "system.movementSituationalOn": toggleMovementBox(this.actor.system.movementSituationalOn, keys, event.currentTarget.checked)
+      })
+    }))
+    element.querySelectorAll("[data-sr5-infection-try]").forEach(b => b.addEventListener("click", (event) => {
+      event.preventDefault()
+      tryInfection(this.actor)
+    }))
+    //Blood magic (Street Grimoire p. 90): store points in an athame, or Cannibalize
+    element.querySelectorAll("[data-sr5-blood]").forEach(b => b.addEventListener("click", async (event) => {
+      event.preventDefault()
+      //Read before the import: the event no longer has its target once awaited
+      const use = event.currentTarget.dataset.sr5Blood
+      const blood = await import("../../system/blood-magic.js")
+      if (use === "store") blood.storeInAthame(this.actor)
+      else if (use === "cannibalize") blood.cannibalize(this.actor)
+    }))
+    element.querySelectorAll("[data-sr5-hunger]").forEach(b => b.addEventListener("click", (event) => {
+      event.preventDefault()
+      if (event.currentTarget.dataset.sr5Hunger === "hasten") hastenHunger(this.actor)
+      else toggleHunger(this.actor)
+    }))
+
+    //Treating CFD (Dark Terrors p. 87): give a treatment, run the Overwriters out of combat, or stop following
+    element.querySelectorAll("[data-sr5-cfd]").forEach(b => b.addEventListener("click", (event) => {
+      event.preventDefault()
+      const action = event.currentTarget.dataset.sr5Cfd
+      if (action === "resolve") resolveOverwritersNow(this.actor)
+      else if (action === "stop") stopTreatment(this.actor)
+      else startTreatmentDialog(this.actor)
+    }))
+    element.querySelectorAll("[data-sr5-defrag-start]").forEach(b => b.addEventListener("click", (event) => {
+      event.preventDefault()
+      deactivationDialog(this.actor)
+    }))
+    element.querySelectorAll("[data-sr5-defrag-launch]").forEach(b => b.addEventListener("click", (event) => {
+      event.preventDefault()
+      launchDeactivation(this.actor)
+    }))
+
+    // Show/hide config button based on mode
+    const configBtn = element.querySelector('[data-action="customizeDisplay"]')
+    if (configBtn) configBtn.style.display = this.isPlayMode ? "none" : ""
+
+    // Disable form inputs in duplicate block instances to prevent FormDataExtended conflicts.
+    // When the same block appears multiple times, only the first instance keeps its name attributes;
+    // subsequent instances become read-only mirrors.
+    const seenBlocks = new Set()
+    for (const blockEl of element.querySelectorAll("[data-block-id]")) {
+      const blockId = blockEl.dataset.blockId
+      if (seenBlocks.has(blockId)) {
+        for (const input of blockEl.querySelectorAll("input[name], select[name], textarea[name]")) {
+          input.removeAttribute("name")
+          input.setAttribute("tabindex", "-1")
+        }
+      } else {
+        seenBlocks.add(blockId)
+      }
+    }
+
+    // Activate initial tabs for all groups (AppV2 doesn't auto-activate on render)
+    for (const [group, tab] of Object.entries(this.tabGroups)) {
+      if (tab) this.changeTab(tab, group, {
+        force: true, updatePosition: false 
+      })
+    }
+
+    // Tab nav click handlers — explicit listeners because data-action="tab" doesn't
+    // work reliably with SVG icons inside <a> elements (event.target is the SVG, not the <a>)
+    element.querySelectorAll(".tabs [data-tab][data-action='tab']").forEach(link => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const tab = link.dataset.tab
+        const group = link.dataset.group
+        if (tab && group && !link.classList.contains("active")) {
+          this.changeTab(tab, group, {
+            event 
+          })
+        }
+      })
+    })
+
+    // Scroll indicators — toggle .can-scroll-up / .can-scroll-down on panels
+    this._updateScrollFades(element)
+
+    //SR5 p. 422: an object hidden on oneself is marked for whoever plays the actor (and the GM)
+    if (this.actor.isOwner) this._markConcealedItems(element)
+
+    // Everything below here is only needed if the sheet is editable
+    if (!this.isEditable) return
+
+    // Helper for binding events
+    const on = (sel, evt, fn) => element.querySelectorAll(sel).forEach(el => el.addEventListener(evt, fn))
+
+    // Owned Item management
+    on(".item-create", "click", this._onItemCreate.bind(this))
+    on(".item-clone", "click", this._onItemClone.bind(this))
+    on(".item-edit", "click", this._onItemEdit.bind(this))
+    on(".item-delete", "click", this._onItemDelete.bind(this))
+    // The main lifestyle (SR5 p. 97): one at a time
+    on(".lifestyle-primary", "click", ev => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      const updates = primaryLifestyleUpdates(this.actor.items, ev.currentTarget.dataset.itemId)
+      if (updates.length) this.actor.updateEmbeddedDocuments("Item", updates)
+    })
+    on(".item-management", "mousedown", this._onItemManagement.bind(this))
+    on(".subItem", "click", this._onManageSubItem.bind(this))
+    //The gamemaster puts a drug back to "not taken" by a right click on its switch (entities/items/drug-crash.js)
+    on(".drug-phase", "contextmenu", ev => {
+      ev.preventDefault()
+      resetDrugPhase(this.actor.items.get(ev.currentTarget.closest(".item")?.dataset.itemId))
+    })
+    //Edit item value from actor sheet
+    on(".edit-value", "change", this._onEditItemValue.bind(this))
+    on(".select-value", "change", this._onEditItemValue.bind(this))
+    on(".toggle-value", "click", this._onEditItemValue.bind(this))
+    on(".jammer-toggle", "click", this._onToggleJammer.bind(this))
+    //An explosive charge: its window (Run & Gun p. 188-207, system/explosive-charge.js)
+    on(".explosive-detonate", "click", ev => {
+      ev.preventDefault()
+      const item = this.actor.items.get(ev.target.closest(".item")?.dataset.itemId)
+      if (item) import("../../system/explosive-charge.js").then(m => m.SR5ExplosiveCharge.open(item))
+    })
+    on(".changeValueByClick", "mousedown", this._onChangeValueByClick.bind(this))
+    //Indexes and spirit traits go to the gamemaster's ledger, never to the sheet (system/spirit-ledger.js)
+    on(".sr5-spirit-ledger", "change", ev => {
+      ev.stopPropagation()
+      const el = ev.currentTarget
+      const value = el.type === "checkbox" ? el.checked : el.value
+      if (el.dataset.field) setCharacterField(this.actor.id, el.dataset.field, value)
+      else if (el.dataset.trait) setSpiritTrait(banishKey(this.actor), el.dataset.trait, value)
+    })
+    //
+    on(".toggle-actorValue", "click", this._onEditActorValue.bind(this))
+    //Choose controler
+    on(".chooseControler", "click", this._onChooseControler.bind(this))
+    //Recharge les armes
+    on(".reload-ammo", "mousedown", this._onReloadAmmo.bind(this))
+    //Reset weapon recoil
+    on(".resetRecoil", "click", this._onResetRecoil.bind(this))
+    //Reset drug addiction
+    on(".resetAddiction", "click", this._onResetAddiction.bind(this))
+    //Move money between the ledger and a credstick
+    on(".credstick-withdraw", "click", this._onCredstickMove.bind(this, "withdraw"))
+    on(".credstick-deposit", "click", this._onCredstickMove.bind(this, "deposit"))
+    //Shop orders: delivery and cancellation for the GM, a cancellation request for a player.
+    //Delegated on the window element, once per element: the block may be drawn after these listeners
+    //(lazy tabs), and a sheet closed then opened again gets a new element
+    bindOrderClicks(element, (event, target) => this._onShopOrder(event, target))
+    //Reboot le deck
+    on(".reset-deck", "click", this._onRebootDeck.bind(this))
+    //The messaging of a device, from its line (relecture djamz.13, img 14; SR5 p. 241, lot 14)
+    on(".open-commcode", "click", async ev => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      const item = this.actor.items.get(ev.currentTarget.dataset.itemId)
+      if (item) (await import("../../interface/commcode-window.js")).SR5CommcodeWindow.openDevice(item.uuid)
+    })
+    // Déplie les infos
+    on(".deplie", "click", this._onItemSummary.bind(this))
+    // Déplie les infos matricielles
+    on(".deplieMatrix", "click", this._onMatrixSummary.bind(this))
+    // Lancés de dés
+    on(".sr-roll", "click", this._onRoll.bind(this))
+    // The owner's actions with no test, Change Icon and the others (lot 19, SR5 p. 238)
+    on(".matrix-owner-action", "click", event => {
+      event.preventDefault()
+      // Read before the import: currentTarget is gone once the handler has waited
+      const key = event.currentTarget.dataset.rollkey
+      import("../../system/matrix-owner-actions.js").then(m => m.takeOwnerAction(this.actor, key))
+    })
+    // Grid Hop, with no test (lot 19, SR5 p. 244)
+    on(".matrix-grid-hop", "click", event => {
+      event.preventDefault()
+      import("../../system/matrix-grid-hop.js").then(m => m.takeGridHop(this.actor))
+    })
+    // Enter / Exit Host, with no test (S3, SR5 p. 240)
+    on(".matrix-host-presence", "click", event => {
+      event.preventDefault()
+      import("../../system/matrix-host-presence.js").then(m => m.takeHostPresence(this.actor))
+    })
+    on(".sr-rollGrenade", "click", this._onRollGrenade.bind(this))
+    // Summon Spirit
+    on(".sidekickCreate", "click", this._OnSidekickCreate.bind(this))
+    on(".sidekickDestroy", "click", this._OnSidekickDestroy.bind(this))
+    // Dismiss Actor
+    on(".dismissActor", "click", this._OnDismissActor.bind(this))
+    // Storage tab
+    on(".storage-view-toggle", "click", this._onStorageViewToggle.bind(this))
+    on(".storage-put-in", "click", this._onStoragePutIn.bind(this))
+    on(".storage-take-out", "click", this._onStorageTakeOut.bind(this))
+    // Switch vision
+    on(".vision-switch", "click", this._onVisionSwitch.bind(this))
+    // Switch initiatives
+    on(".init-switch", "click", this._onInitiativeSwitch.bind(this))
+    // Add item to PAN
+    on(".addItemToPan", "click", this._onAddItemToPan.bind(this))
+    on(".deleteItemFromPan", "click", this._onDeleteItemFromPan.bind(this))
+    // Stop jamming signals
+    on(".stop-jamming", "click", this._onStopJamming.bind(this))
+    // Change matrix user mode
+    on(".changeMatrixMode", "change", this._onChangeMatrixMode.bind(this))
+    // Change matrix silent mode
+    on(".changeSilentMode", "click", this._onChangeSilentMode.bind(this))
+    // A device of the lists runs silent or leaves it (pan-device-switch.js)
+    on(".device-silent-toggle", "click", event => {
+      event.preventDefault()
+      const item = this.actor.items.get(event.currentTarget.dataset.itemId)
+      if (item) switchDeviceMode(item, event.currentTarget.dataset.mode)
+    })
+    // Custom drag start — AppV2 does not wire DragDrop.dragSelector, so we bind manually
+    on(".draggableAttribute, [data-skill], [data-matrix], [data-resonance]", "dragstart", this._onDragStart.bind(this))
+    // Owned item dragging (to the sidebar, chat or another sheet) — core ActorSheetV2 only binds `.draggable`
+    if (this.actor.isOwner) {
+      element.querySelectorAll("li.item[data-item-id]").forEach(li => {
+        if (!this.actor.items.has(li.dataset.itemId)) return
+        li.setAttribute("draggable", "true")
+        li.addEventListener("dragstart", this._onDragItemStart.bind(this))
+      })
+    }
+
+    // Hide or display some information by clicking on headers allowing it
+    element.querySelectorAll(".hidden").forEach(el => el.style.display = "none")
+    on(".filtre-skill", "click", (event) => {
+      event.preventDefault()
+      this._shownUntrainedSkills = !this._shownUntrainedSkills
+      this.render()
+    })
+    on(".filtre-groupe", "click", (event) => {
+      event.preventDefault()
+      this._shownUntrainedGroups = !this._shownUntrainedGroups
+      this.render()
+    })
+    on(".filtre-matrixActions", "click", (event) => {
+      event.preventDefault()
+      this._shownNonRollableMatrixActions = !this._shownNonRollableMatrixActions
+      this.render()
+    })
+    on(".filterMatrixPrograms", "click", (event) => {
+      event.preventDefault()
+      this._shownInactiveMatrixPrograms = !this._shownInactiveMatrixPrograms
+      this.render()
+    })
+    on(".filterNuyenGains", "click", (event) => {
+      event.preventDefault()
+      this._shownNuyenGains = !this._shownNuyenGains
+      this.render()
+    })
+    on(".filterNuyenExpenses", "click", (event) => {
+      event.preventDefault()
+      this._shownNuyenExpenses = !this._shownNuyenExpenses
+      this.render()
+    })
+    on(".filterKarmaGains", "click", (event) => {
+      event.preventDefault()
+      this._shownKarmaGains = !this._shownKarmaGains
+      this.render()
+    })
+    on(".filterKarmaExpenses", "click", (event) => {
+      event.preventDefault()
+      this._shownKarmaExpenses = !this._shownKarmaExpenses
+      this.render()
+    })
+    on(".filterReputationGains", "click", (event) => {
+      event.preventDefault()
+      this._shownReputationGains = !this._shownReputationGains
+      this.render()
+    })
+    on(".filterReputationExpenses", "click", (event) => {
+      event.preventDefault()
+      this._shownReputationExpenses = !this._shownReputationExpenses
+      this.render()
+    })
+    // Light color indicator (for dark headers)
+    if (!this._shownUntrainedSkills) element.querySelectorAll(".filtre-skill").forEach(el => { el.classList.toggle("unfoldLight"); el.classList.toggle("foldLight") })
+    if (!this._shownUntrainedGroups) element.querySelectorAll(".filtre-groupe").forEach(el => { el.classList.toggle("unfoldLight"); el.classList.toggle("foldLight") })
+    if (!this._shownNonRollableMatrixActions) element.querySelectorAll(".filtre-matrixActions").forEach(el => { el.classList.toggle("unfoldLight"); el.classList.toggle("foldLight") })
+    if (!this._shownInactiveMatrixPrograms) element.querySelectorAll(".filterMatrixPrograms").forEach(el => { el.classList.toggle("unfoldLight"); el.classList.toggle("foldLight") })
+    // Dark color indicator (for light headers)
+    if (!this._shownNuyenExpenses) element.querySelectorAll(".filterNuyenExpenses").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+    if (!this._shownNuyenGains) element.querySelectorAll(".filterNuyenGains").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+    if (!this._shownKarmaExpenses) element.querySelectorAll(".filterKarmaExpenses").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+    if (!this._shownKarmaGains) element.querySelectorAll(".filterKarmaGains").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+    if (!this._shownReputationExpenses) element.querySelectorAll(".filterReputationExpenses").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+    if (!this._shownReputationGains) element.querySelectorAll(".filterReputationGains").forEach(el => { el.classList.toggle("unfoldDark"); el.classList.toggle("foldDark") })
+
+    // Custom dropdown enhancement
+    enhanceSelects(element)
+
+    // Help Display. The tooltips go into the bubble when it is on and free (help-tooltips.js)
+    tooltipsToHelp(element.querySelector(".window-content") ?? element, game.settings.get("sr5", "sr5Help.active"), text => game.i18n.localize(text))
+    element.querySelectorAll("[data-helpTitle]").forEach(el => {
+      el.addEventListener("mouseover", this._displayHelpText.bind(this))
+      el.addEventListener("mouseout", this._hideHelpText.bind(this))
+    })
+
+    // Quick monitor reset on monitor's name right-click
+    on(".monitorReset", "mousedown", async (e) => {
+      e.preventDefault()
+      let monitor = e.currentTarget.dataset.target
+      if (e.which === 1){
+        if (monitor === "stun" || monitor === "physical") this.actor.rollTest("healing", monitor)
+      }
+      if ((e.which === 3 || e.button === 2)) {
+        let actorData = foundry.utils.duplicate(this.actor)
+        foundry.utils.setProperty(actorData, `system.conditionMonitors.${monitor}.actual.base`, 0)
+        if (monitor === "physical" || monitor === "condition") foundry.utils.setProperty(actorData, `system.conditionMonitors.${monitor}.aggravated`, 0)
+        // SR5 p. 171: no overflow without a full physical monitor; left in the source, it would come back with the last box
+        if (monitor === "physical") foundry.utils.setProperty(actorData, 'system.conditionMonitors.overflow.actual.base', 0)
+        await this.actor.update(actorData)
+        // SR5 p. 171: the monitor is no longer full, the character knocked out by damage wakes up
+        await SR5_ActorHelper.clearDamageKnockout(this.actor)
+      }
+    })
+
+    // Gestion des cases de dégats
+    on(".boxes:not(.box-disabled)", "click", async (ev) => {
+      let actorData = foundry.utils.duplicate(this.actor)
+      let index = Number(ev.currentTarget.dataset.index)
+      let target = ev.currentTarget.closest(".SR-MoniteurCases").dataset.target
+
+      let value = foundry.utils.getProperty(actorData, target)
+      if (value == index + 1)
+      // If the last one was clicked, decrease by 1
+        foundry.utils.setProperty(actorData, target, index)
+      // Otherwise, value = index clicked
+      else foundry.utils.setProperty(actorData, target, index + 1)
+
+      // Aggravated wounds can never exceed the boxes actually filled
+      let monitorPath = target.replace(".actual.base", "")
+      let aggravatedPath = `${monitorPath}.aggravated`
+      if (foundry.utils.getProperty(actorData, aggravatedPath) > foundry.utils.getProperty(actorData, target)) foundry.utils.setProperty(actorData, aggravatedPath, foundry.utils.getProperty(actorData, target))
+
+      // SR5 p. 171 and p. 209: overflow only exists past a full physical monitor, so once boxes are cleared below
+      // it, no overflow is left. The preparation already shows 0 then, but the source keeps it and it would come
+      // back with the last box: the overflow is read on the copy (the source), the monitor size on the prepared data
+      if (target == 'system.conditionMonitors.physical.actual.base' && foundry.utils.getProperty(actorData, 'system.conditionMonitors.overflow.actual.base')) {
+        if (foundry.utils.getProperty(actorData, target) < this.actor.system.conditionMonitors.physical.value) {
+          foundry.utils.setProperty(actorData, 'system.conditionMonitors.overflow.actual.base', 0)
+        }
+      }
+
+      await this.actor.update(actorData)
+      // SR5 p. 171: once no monitor is full any more, the character knocked out by damage wakes up
+      await SR5_ActorHelper.clearDamageKnockout(this.actor)
+    })
+
+    // Right-click on a filled box of the physical (or grunt condition) monitor: mark it as an aggravated wound
+    // (Howling Shadows p. 213), or unmark it. Boxes are marked from the first one.
+    on(".boxes:not(.box-disabled)", "contextmenu", (ev) => {
+      ev.preventDefault()
+      let target = ev.currentTarget.closest(".SR-MoniteurCases").dataset.target
+      if (target !== "system.conditionMonitors.physical.actual.base" && target !== "system.conditionMonitors.condition.actual.base") return
+      let aggravatedPath = target.replace(".actual.base", ".aggravated")
+      let index = Number(ev.currentTarget.dataset.index)
+      let filled = foundry.utils.getProperty(this.actor, target.replace(".base", ".value"))
+      if (index + 1 > filled) return
+      let aggravated = foundry.utils.getProperty(this.actor, aggravatedPath) || 0
+      this.actor.update({
+        [aggravatedPath]: (aggravated === index + 1) ? index : index + 1
+      })
+    })
+
+    // Restore focus after re-render (e.g. when tabbing between fields triggers submitOnChange)
+    if (this._savedFocus?.name) {
+      const target = element.querySelector(`[name="${CSS.escape(this._savedFocus.name)}"]`)
+      if (target && target !== document.activeElement) {
+        target.focus()
+        try {
+          if (this._savedFocus.selectionStart != null && typeof target.setSelectionRange === 'function') {
+            target.setSelectionRange(this._savedFocus.selectionStart, this._savedFocus.selectionEnd)
+          }
+        } catch { /* not all input types support setSelectionRange */ }
+      }
+      this._savedFocus = null
+    }
+
+    // Restore scroll positions for all panels
+    if (this._savedScrollPositions?.length) {
+      const panels = element.querySelectorAll('.sr-panel')
+      this._savedScrollPositions.forEach((top, i) => {
+        if (panels[i]) panels[i].scrollTop = top
+      })
+      this._savedScrollPositions = null
+    }
+
+    // Re-expand previously expanded items after re-render
+    if (this._expandedItems?.size) {
+      for (const itemId of this._expandedItems) {
+        const li = element.querySelector(`.item[data-item-id="${itemId}"]`)
+        if (li && !li.classList.contains("expanded")) {
+          const deplieEl = li.querySelector(".deplie")
+          if (deplieEl) {
+            // Simulate a click event targeted at the deplie element itself (not a child)
+            const syntheticEvent = new MouseEvent("click", {
+              bubbles: false 
+            })
+            Object.defineProperty(syntheticEvent, 'target', {
+              value: deplieEl 
+            })
+            Object.defineProperty(syntheticEvent, 'currentTarget', {
+              value: deplieEl 
+            })
+            this._onItemSummary(syntheticEvent)
+          }
+        }
+      }
+    }
+  }
+
+  // No canvas guard: these drags land on the sheet itself or on the hotbar, never on a scene
+  async _onDragStart(event) {
+    let dragData = {
+    }
+    // v13: DragDrop uses event delegation, so event.currentTarget is the app root.
+    // Use event.target.closest() to find the actual dragged element.
+    const target = event.target.closest('.draggableAttribute, [data-skill], [data-matrix], [data-resonance]') ?? event.target
+    SR5_SystemHelpers.srLog(3, `_onDragStart: event.target=${event.target?.tagName}.${event.target?.className}, resolved target=${target?.tagName}.${target?.className}, id=${target?.id}`)
+    SR5_SystemHelpers.srLog(3, `_onDragStart: target.dataset=`, target?.dataset)
+
+    if (target.dataset.matrixattribute){
+      dragData.value = target.dataset.matrixattribute
+      dragData.valueFromCollection = target.id
+      SR5_SystemHelpers.srLog(3, `_onDragStart: matrixattribute drag — value=${dragData.value}, fromCollection=${dragData.valueFromCollection}`)
+      event.dataTransfer.setData("text/plain", JSON.stringify(dragData))
+      return
+    }
+
+    if (target.dataset.dropmatrixattribute){
+      dragData.value = target.dataset.droppedvalue
+      dragData.valueFromAttribute = target.dataset.dropmatrixattribute
+      SR5_SystemHelpers.srLog(3, `_onDragStart: dropmatrixattribute drag — value=${dragData.value}, fromAttribute=${dragData.valueFromAttribute}`)
+      event.dataTransfer.setData("text/plain", JSON.stringify(dragData))
+      return
+    }
+
+    if (target.dataset.skill){
+      dragData.type = "Skill"
+      dragData.subType = target.dataset.skill
+      dragData.actor = this.actor
+      event.dataTransfer.setData("text/plain", JSON.stringify(dragData))
+    }
+
+    if (target.dataset.matrix){
+      dragData.type = "MatrixAction"
+      dragData.subType = target.dataset.matrix
+      event.dataTransfer.setData("text/plain", JSON.stringify(dragData))
+    }
+
+    if (target.dataset.resonance){
+      dragData.type = "ResonanceAction"
+      dragData.subType = target.dataset.resonance
+      event.dataTransfer.setData("text/plain", JSON.stringify(dragData))
+    }
+
+    return super._onDragStart(event)
+  }
+
+  _onDragItemStart(event) {
+    const li = event.currentTarget
+    // Nested item rows and custom draggables handle their own drag data
+    if (event.target.closest("li.item[data-item-id]") !== li) return
+    if (event.target.closest(".draggableAttribute, [data-skill], [data-matrix], [data-resonance]")) return
+    const item = this.actor.items.get(li.dataset.itemId)
+    if (!item) return
+    event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()))
+  }
+
+  async _onDrop(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    SR5_SystemHelpers.srLog(3, `_onDrop: event.target=${event.target?.tagName}.${event.target?.className}`)
+    let dropData
+    try {
+      dropData = JSON.parse(event.dataTransfer.getData('text/plain'))
+    } catch {
+      SR5_SystemHelpers.srLog(3, `_onDrop: JSON parse failed, delegating to super._onDrop`)
+      // Not our custom drag data — delegate to Foundry's default handler
+      return super._onDrop(event)
+    }
+    SR5_SystemHelpers.srLog(3, `_onDrop: dropData=`, dropData)
+    const dropZone = event.target.closest('[data-dropmatrixattribute]')
+
+    if (dropData.valueFromCollection){
+      if (!dropZone) return
+      const existingValue = parseInt(dropZone.dataset.droppedvalue)
+      const updates = {
+      }
+      // Release the existing value back to the collection if the slot was occupied.
+      // Read from prepared data (this.actor.system) since collection values are derived.
+      if (existingValue > 0) {
+        const collection = this.actor.system.matrix.attributesCollection
+        for (let i = 1; i <= 4; i++) {
+          if (collection[`value${i}`] === existingValue && collection[`value${i}isSet`]) {
+            updates[`system.matrix.attributesCollection.value${i}isSet`] = false
+            break
+          }
+        }
+      }
+      // Assign the dragged value to the slot and mark it as set in the collection
+      updates[dropZone.dataset.dropmatrixattribute] = parseInt(dropData.value)
+      updates[`system.matrix.attributesCollection.${dropData.valueFromCollection}`] = true
+      await this.actor.update(updates)
+      return
+    }
+
+    if (dropData.valueFromAttribute){
+      if (!dropZone) return
+      if (!SR5Combat.hasActionsLeft(this.actor, [{
+        type: "free", value: 1, source: "switchAttributes"
+      }])) return
+      const existingValue = parseInt(dropZone.dataset.droppedvalue)
+      const draggedValue = parseInt(dropData.value)
+      // Swap the two attribute slot values
+      const updates = {
+        [dropZone.dataset.dropmatrixattribute]: draggedValue,
+        [dropData.valueFromAttribute]: existingValue,
+      }
+      if (this._spendsActionCounters()) updates['system.specialProperties.actions.free.current'] = this.actor.system.specialProperties.actions.free.current - 1
+      await this.actor.update(updates)
+      const actorId = this.actor.isToken ? this.actor.token.id : this.actor.id
+      SR5Combat.changeActionInCombat(actorId, [{
+        type: "free", value: 1, source:"switchAttributes"
+      }], false)
+      return
+    }
+
+    await super._onDrop(event)
+  }
+
+  /**
+   * An item dropped on the sheet. The V13 migration lost the sheets' own rules: ActorSheetV2._onDropItem creates
+   * the item itself and never calls _onDropItemCreate (measured, Foundry 13.351). They are wired back here: the
+   * sheet's _onDropItemCreate decides (types refused, a single tradition, items switched on), and the base one
+   * below creates the item. A move within the same sheet stays Foundry's sort.
+   */
+  async _onDropItem(event, item) {
+    if (!this.actor.isOwner) return null
+    if (this.actor.uuid === item.parent?.uuid) return super._onDropItem(event, item)
+    // The id is kept unless the actor already has an item with it (Foundry's own rule)
+    this._dropKeepId = !this.actor.items.has(item.id)
+    try {
+      // A sheet that refuses an item says so and returns its notification, or nothing: the drop created no item
+      const created = await this._onDropItemCreate(item.toObject())
+      return created?.documentName === "Item" ? created : null
+    } finally {
+      delete this._dropKeepId
+    }
+  }
+
+  /**
+   * A folder of items dropped on the sheet: V13's ActorSheetV2._onDropFolder does nothing, where V12 created its items.
+   * Each item of the folder (its own, not its subfolders', as in V12) goes through _onDropItem in turn, so the sheet's
+   * rules apply to it and see the items created before it (a second armor of the folder arrives switched off).
+   */
+  async _onDropFolder(event, folder) {
+    if (!this.actor.isOwner || folder?.type !== "Item") return null
+    let createdAny = false
+    for (let entry of folder.contents) {
+      // A compendium folder lists index entries, not documents
+      const item = entry.documentName === "Item" ? entry : await fromUuid(entry.uuid)
+      if (item && await this._onDropItem(event, item)) createdAny = true
+    }
+    return createdAny ? folder : null
+  }
+
+  /**
+   * Switch a dropped item on unless the actor already has one of its kind switched on; then it arrives switched off,
+   * even when it was on where it came from (copied from another sheet): one rule for a new drop and a copy (decision of
+   * DjamZ, djamz.12)
+   * @param {object} itemData     the dropped item's data
+   * @param {Function} sameKind   whether an owned item is of the same kind
+   */
+  _activeUnlessOneIs(itemData, sameKind) {
+    let oneIsActive = false
+    for (let i of this.actor.items) if (i.system.isActive && sameKind(i)) oneIsActive = true
+    itemData.system.isActive = !oneIsActive
+  }
+
+  /**
+   * Create a dropped item, once the sheet's rules have accepted it (the end of every sheet's _onDropItemCreate).
+   * @param {object} itemData  the item's data, as the sheet left it
+   */
+  async _onDropItemCreate(itemData) {
+    return (await Item.implementation.create(itemData, {
+      parent: this.actor, keepId: this._dropKeepId ?? false
+    })) ?? null
+  }
+
+  // Handles initiative switching from the derived attributes tab
+  async _onInitiativeSwitch(event) {
+    let wantedInitiative = event.currentTarget.dataset.binding
+    let isMaterializing = event.target.id === "materializeIcon"
+    //A refused switch (no action left) leaves the switch, and the materialization checkbox, as they are
+    if (!SR5_CharacterUtility.canSwitchToInitiative(this.actor, wantedInitiative)) {
+      event.preventDefault()
+      event.stopPropagation()
+      return
+    }
+    //Materialization button on a spirit sheet: the Materialization power follows the initiative, physical when
+    //materialized. Written and awaited BEFORE the switch: the actions the switch spends write the token again with
+    //its item list, which undid a power toggled afterwards on an unlinked token in combat (M4 D1)
+    let power, wasActive
+    if (isMaterializing){
+      power = this.actor.items.find(i => Object.values(i.system.systemEffects ?? {
+      }).find(e => e?.value === "materialization"))
+      wasActive = !!power?.system.isActive
+      const active = wantedInitiative === "physicalInit"
+      if (power && wasActive !== active) await power.update({
+        "system.isActive": active
+      })
+    }
+    if (await SR5_CharacterUtility.switchToInitiative(this.actor, wantedInitiative) === false) {
+      if (power && !!power.system.isActive !== wasActive) await power.update({
+        "system.isActive": wasActive
+      })
+    }
+  }
+
+  _onVisionSwitch(event){
+    let wantedVision = event.currentTarget.dataset.binding
+    SR5_CharacterUtility.switchVision(this.actor, wantedVision)
+  }
+
+  /**
+	 * Handle creating a new Owned Item for the actor using initial data defined in the HTML dataset
+	 * @param {Event} event   The originating click event
+	 * @private
+	 */
+  _onItemCreate(event) {
+    event.preventDefault()
+
+    const header = event.currentTarget
+    const type = header.dataset.type
+    const itemName = SR5_UtilityItem.findDisplayName(type)
+    if (!itemName) {
+      SR5_SystemHelpers.srLog(2, `Aborting item creation of '${type}' type`)
+      return false
+    }
+    if (type === "itemTradition"){
+      for (let i of this.actor.items){
+        if (i.type === "itemTradition") return ui.notifications.warn(game.i18n.localize('SR5.WARN_OnlyOneTradition'))
+      }
+    }
+
+    // v13: spread dataset to plain object (DOMStringMap doesn't deep-clone reliably)
+    const systemData = {
+      ...header.dataset
+    }
+    delete systemData.title
+    delete systemData.type
+
+    if (header.dataset.subtype) {
+      systemData.type = header.dataset.subtype
+      delete systemData.subtype
+    } else if (header.dataset.weaponcategory){
+      systemData.category = header.dataset.weaponcategory
+      delete systemData.weaponcategory
+    }
+
+    const itemData = {
+      name: `${itemName.capitalize()}`,
+      type: type,
+      system: systemData,
+      img: `systems/sr5/assets/img/items/${type}.svg`,
+    }
+
+    SR5_SystemHelpers.srLog(2, `Creating a new item of '${type}' type`, itemData)
+    return this.actor.createEmbeddedDocuments("Item", [itemData])
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	 * Handle creating a new Owned Item for the actor using data defined in an existing Owned Item
+	 * @param {Event} event   The originating click event
+	 * @private
+	 */
+  /**
+   * Ask for an amount, then move it between the ledger and a credstick.
+   *
+   * SR5 p. 445: a credstick has no wireless, it is plugged into a universal
+   * connector to take money out or put it in.
+   * @param {"withdraw"|"deposit"} way
+   * @param {Event} event
+   * @private
+   */
+  async _onShopOrder(event, target) {
+    event.preventDefault()
+    const id = target.closest("[data-order-id]")?.dataset.orderId
+    if (!id) return
+    const orders = await import("../../interface/shop-orders.js")
+    const action = target.dataset.shopOrder
+    if (action === "deliver") return orders.deliverOrder(this.actor, id)
+    if (action === "cancel") return orders.cancelFromSheet(this.actor, id)
+  }
+
+  async _onCredstickMove(way, event) {
+    event.preventDefault()
+    // Read the dataset before the first await: currentTarget is null afterwards
+    const itemId = event.currentTarget.dataset.itemId
+    const credstick = this.actor.items.get(itemId)
+    if (!credstick) return
+
+    const isWithdrawal = way === "withdraw"
+    const ceiling = isWithdrawal ?
+      Math.min(SR5Credstick.ledgerBalance(this.actor), SR5Credstick.room(credstick)) :
+      SR5Credstick.funds(credstick)
+    const title = game.i18n.localize(isWithdrawal ? "SR5.CredstickWithdraw" : "SR5.CredstickDeposit")
+
+    const amount = await foundry.applications.api.DialogV2.prompt({
+      window: {
+        title: `${title}${game.i18n.localize("SR5.Colons")} ${credstick.name}` 
+      },
+      content: `<p>${game.i18n.format("SR5.CredstickPromptMax", {
+        max: (ceiling === Infinity ? "∞" : formatNumber(ceiling)) 
+      })}</p>
+        <input type="number" name="amount" min="0" value="0" autofocus>`,
+      ok: {
+        label: title,
+        callback: (event, button) => Number(button.form.elements.amount.value) || 0,
+      },
+      rejectClose: false,
+    })
+    if (!amount) return
+
+    if (isWithdrawal) await SR5Credstick.withdraw(this.actor, credstick, amount)
+    else await SR5Credstick.deposit(this.actor, credstick, amount)
+  }
+
+  /* -------------------------------------------- */
+
+  _onItemClone(event) {
+    event.preventDefault()
+    const li = event.currentTarget.closest(".item")
+    const item = this.actor.items.get(li.dataset.itemId)
+    if (item.type === "itemTradition") return ui.notifications.warn(game.i18n.localize('SR5.WARN_OnlyOneTradition'))
+    let newItem = item.toObject()
+    if (newItem.system.accessory?.length) newItem.system.accessory = []
+    SR5_SystemHelpers.srLog(2, `Creating a new clone of item '${item.name}'`, item)
+    return this.actor.createEmbeddedDocuments("Item", [newItem])
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	 * Handle editing an existing Owned Item for the Actor
+	 * @param {Event} event   The originating click event
+	 * @private
+	 */
+  _onItemEdit(event) {
+    event.preventDefault()
+    const li = event.currentTarget.closest(".item")
+    const item = this.actor.items.get(li.dataset.itemId)
+    // check window state
+    const wasRendered = item.sheet.rendered
+    SR5_SystemHelpers.srLog(3, "item.sheet", item.sheet)
+    SR5_SystemHelpers.renderSheetLoudly(item, {
+      force: true
+    })
+    SR5_SystemHelpers.srLog(3, "item.sheet", item.sheet)
+    // if window already exists, bring it to top
+    if (wasRendered) item.sheet.bringToTop()
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+	 * Handle deleting an existing Owned Item for the Actor
+	 * @param {Event} event   The originating click event
+	 * @private
+	 */
+  async _onItemDelete(event) {
+    event.preventDefault()
+    const li = event.currentTarget.closest(".item")
+    const item = this.actor.items.get(li.dataset.itemId)
+    if (event.ctrlKey) {
+      if ( item ) {
+        await item.delete()
+        // A jammer's status goes with its item in sr5HookDeleteItem: deleting it here too would race the hook
+        if (item.system.type !== "signalJam") await SR5_EntityHelpers.deleteEffectOnActor(this.actor, item.system.type)
+        return
+      }
+    } else {
+      const confirmed = await foundry.applications.api.DialogV2.confirm({
+        window: {
+          title: `${game.i18n.localize('SR5.Delete')} '${item.name}'${game.i18n.localize('SR5.QuestionMark')}` 
+        },
+        content: "<h3>" + game.i18n.localize('SR5.DIALOG_Warning') + "</h3><p>" + game.i18n.format('SR5.DIALOG_WarningPermanentDelete', {
+          type: game.i18n.localize("ITEM.Type" + item.type.replace(/^\w/, c => c.toUpperCase())), actor: this.actor.name, itemName: item.name
+        }) + "</p>",
+      })
+      if (confirmed) {
+        item.delete()
+        if (item.type === "itemEffect" && item.system.type !== "signalJam"){
+          SR5_EntityHelpers.deleteEffectOnActor(this.actor, item.system.type)
+        }
+      }
+    }
+  }	/* -------------------------------------------- */
+
+  _onItemManagement(event){
+    event.preventDefault()
+    switch (event.button) {
+      case 0:
+        if (event.shiftKey) this._onItemDelete(event)
+        else if (event.ctrlKey) this._onItemClone(event)
+        else this._onItemEdit(event)
+        break
+    }
+  }	/* -------------------------------------------- */
+
+  // Manage "Sub Item", accessory, licenses, effects...
+  async _onManageSubItem(event){
+	
+    event.preventDefault()
+    const a = event.currentTarget
+    let target = event.currentTarget.dataset.binding
+    let action = event.currentTarget.dataset.subaction
+    let key = `system.${target}`
+
+    // Remove a subItem
+    if (action === "delete") {
+      // Submit any unsaved changes
+      if (this.isEditable) {
+        const formData = new foundry.applications.ux.FormDataExtended(this.element)
+        const submitData = this._processFormData(null, this.element, formData)
+        if (submitData && Object.keys(submitData).length) {
+          await this.document.update(submitData)
+        }
+      }
+      const li = a.closest(".subItemManagement")
+      let removed = foundry.utils.duplicate(this.actor.system[target])
+      // convert back manually to array... so stupid to have to do this.
+      if (typeof removed === "object") { removed = Object.values(removed) } 
+      removed.splice(Number(li.dataset.key), 1)
+      return this.actor.update({
+        [key]: removed 
+      })
+    }
+  }
+
+  /* -------------------------------------------- */
+  // Reset actor drug addictions to blank
+  async _onResetAddiction(event){
+    event.preventDefault()
+    this.actor.resetAddiction()
+  }
+
+  /* -------------------------------------------- */
+
+  //An eye crossed out after the name of each hidden object, the hits of the one who hid it in its tooltip
+  _markConcealedItems(root) {
+    for (const item of concealedItems(this.actor)) {
+      const name = root.querySelector(`.item[data-item-id="${item.id}"] .deplie`)
+      if (!name || name.querySelector(".sr5-concealed-mark")) continue
+      name.insertAdjacentHTML("beforeend", ` <i class="fas fa-eye-slash sr5-concealed-mark" data-tooltip="${foundry.utils.escapeHTML(game.i18n.format("SR5.ConcealHidden", {
+        hits: concealedState(item).hits
+      }))}"></i>`)
+    }
+  }
+
+  //SR5 p. 422: hide the object on oneself, or take it out, from its details
+  _appendConcealToggle(div, item) {
+    if (!this.actor.isOwner || !canBeConcealed(item) || !this.actor.system.skills?.palming) return
+    const state = concealedState(item)
+    const label = state ? game.i18n.format("SR5.ConcealTakeOut", {
+      item: item.name
+    }) : game.i18n.localize("SR5.ConcealItem")
+    const tooltip = state ? game.i18n.format("SR5.ConcealHidden", {
+      hits: state.hits
+    }) : game.i18n.localize("SR5.ConcealItemTooltip")
+    const box = document.createElement("div")
+    box.className = "item-properties"
+    box.innerHTML = `<span class="tag sr5-conceal-toggle" style="cursor:pointer;" data-tooltip="${foundry.utils.escapeHTML(tooltip)}"><i class="fas ${state ? "fa-eye" : "fa-eye-slash"}"></i> ${foundry.utils.escapeHTML(label)}</span>`
+    box.querySelector(".sr5-conceal-toggle").addEventListener("click", event => {
+      event.stopPropagation()
+      event.preventDefault()
+      if (state) SR5Conceal.takeOut(item)
+      else SR5Conceal.startHide(this.actor, item)
+    })
+    div.appendChild(box)
+  }
+
+  async _onItemSummary(event) {
+    // Don't expand/collapse when clicking interactive elements inside .deplie
+    if (event.target.closest(".toggle-value, .edit-value, .select-value, .changeValueByClick, .reload-ammo, .accessory-activate, .item-summary, .jammer-toggle, .explosive-detonate")) return
+    event.preventDefault()
+    // The browser clears currentTarget once the handler yields: keep the clicked element before any await
+    const clicked = event.currentTarget
+    let li = clicked.closest(".item")
+    if (!li) return
+    let item = this.actor.items.get(li.dataset.itemId)
+    if (!item) return
+    let expandData = await item.getExpandData({
+      secrets: this.actor.isOwner 
+    })
+
+    if (!expandData.properties.length && (expandData.gameEffect === "" || !expandData.gameEffect)) return
+    // Déplie les informations de jeu pour un Objet.
+    if (li.classList.contains("expanded")) {
+      let summary = li.querySelector(":scope > .item-summary")
+      if (summary) summary.remove()
+    } else {
+      let accessoryClass = (clicked.classList.contains("SR-MarginLeft10") ? "SR-MarginLeft10" : "")
+      let div = document.createElement("div")
+      div.className = `col-x item-summary ${accessoryClass}`
+      div.innerHTML = expandData.gameEffect
+      let props = document.createElement("div")
+      props.className = "item-properties"
+      expandData.properties.forEach((p) => {
+        if (Array.isArray(p)) {
+          let index = expandData.properties.indexOf(p)
+          props.insertAdjacentHTML("beforeend", `<span class="tag tag-summary" data-index=${index}>${p[0]}</span>`)
+        } else {
+          props.insertAdjacentHTML("beforeend", `<span class="tag">${p}</span>`)
+        }
+      })
+
+      div.appendChild(props)
+
+      // Accessory toggles (for item-based weapon accessories) — at end of details
+      if (expandData.accessories?.length) {
+        let accDiv = document.createElement("div")
+        accDiv.className = "item-properties item-accessories"
+        for (const acc of expandData.accessories) {
+          const activeClass = acc.isActive ? "SR-SubColor" : "SR-SubColor25"
+          const tagStyle = acc.isActive ? "" : "opacity: 0.6;"
+          accDiv.insertAdjacentHTML("beforeend",
+            `<span class="tag accessory-activate" data-accessory-id="${acc._id}" style="${tagStyle}cursor:pointer;" title="${acc.isActive ? game.i18n.localize("SR5.Unequip") : game.i18n.localize("SR5.Equip")}">` +
+            `${acc.name} <i class="fas fa-sm fa-thumbtack accessory-pin ${activeClass}"></i></span>`)
+        }
+        div.appendChild(accDiv)
+      }
+
+      this._appendConcealToggle(div, item)
+
+      li.appendChild(div)
+
+      // Prevent any click inside the summary from closing/toggling the details
+      div.addEventListener("click", (event) => {
+        event.stopPropagation()
+        event.stopImmediatePropagation()
+        event.preventDefault()
+      })
+      div.addEventListener("mousedown", (event) => {
+        event.stopPropagation()
+      })
+
+      // Accessory activate toggles
+      div.querySelectorAll(".accessory-activate").forEach(el => {
+        el.addEventListener("click", async (event) => {
+          event.stopPropagation()
+          event.stopImmediatePropagation()
+          event.preventDefault()
+          const accId = event.currentTarget.dataset.accessoryId
+          const accItem = this.actor.items.get(accId)
+          if (accItem) {
+            await accItem.update({
+              "system.isActive": !accItem.system.isActive
+            })
+          }
+        })
+        el.addEventListener("mousedown", (event) => {
+          event.stopPropagation()
+          event.stopImmediatePropagation()
+        })
+      })
+
+      div.querySelectorAll(".tag-summary").forEach(el => el.addEventListener("click", (event) => {
+        let i = event.currentTarget.dataset.index
+        let gameEffect = expandData.properties[i][1]
+
+        if (div.classList.contains("expandedTag") && div.classList.contains(i)){
+          let tagSummary = div.querySelector(":scope > .tag-description")
+          if (tagSummary) tagSummary.remove()
+          div.classList.remove(i)
+        } else if (div.classList.contains("expandedTag")) {
+          let tagSummary = div.querySelector(":scope > .tag-description")
+          if (tagSummary) tagSummary.remove()
+          div.className = "col-x item-summary expdandedTag"
+          div.classList.add(i)
+          let tagDiv = document.createElement("div")
+          tagDiv.className = `item-properties tag-description ${i}`
+          tagDiv.innerHTML = gameEffect
+          div.appendChild(tagDiv)
+        } else {
+          let tagDiv = document.createElement("div")
+          tagDiv.className = `item-properties tag-description ${i}`
+          tagDiv.innerHTML = gameEffect
+          div.appendChild(tagDiv)
+          div.classList.add(i)
+        }
+        div.classList.toggle("expandedTag")
+      }))
+
+    }
+    li.classList.toggle("expanded")
+    // Track expanded state for re-expansion after re-render
+    if (li.classList.contains("expanded")) {
+      this._expandedItems.add(item.id)
+    } else {
+      this._expandedItems.delete(item.id)
+    }
+  }
+
+  /* -------------------------------------------- */
+
+  _onMatrixSummary(event) {
+    event.preventDefault()
+    let li = event.currentTarget.closest(".item")
+    let key = li.dataset.itemId
+    let expandData = this.actor.system.matrix.actions[key]
+
+    if (expandData === "" || !expandData) return
+
+    // Déplie les informations de jeu pour un Objet.
+    if (li.classList.contains("expanded")) {
+      let summary = li.querySelector(":scope > .item-summary")
+      if (summary) summary.remove()
+    } else {
+      let accessoryClass = (event.currentTarget.classList.contains("SR-MarginLeft10") ? "SR-MarginLeft10" : "")
+
+      let div = document.createElement("div")
+      div.className = `col-x item-summary ${accessoryClass}`
+      div.innerHTML = game.i18n.localize(SR5.matrixGameEffects[key])
+      let props = document.createElement("div")
+      props.className = "item-properties"
+
+      div.appendChild(props)
+      li.appendChild(div)
+
+      div.querySelectorAll(".tag-summary").forEach(el => el.addEventListener("click", (event) => {
+        let i = event.currentTarget.dataset.index
+        let gameEffect = `${game.i18n.localize(SR5.matrixGameEffects[key])}`
+
+        if (div.classList.contains("expandedTag") && div.classList.contains(i)){
+          let tagSummary = div.querySelector(":scope > .tag-description")
+          if (tagSummary) tagSummary.remove()
+          div.classList.remove(i)
+        } else if (div.classList.contains("expandedTag")) {
+          let tagSummary = div.querySelector(":scope > .tag-description")
+          if (tagSummary) tagSummary.remove()
+          div.className = "col-x item-summary expdandedTag"
+          div.classList.add(i)
+          let tagDiv = document.createElement("div")
+          tagDiv.className = `item-properties tag-description ${i}`
+          tagDiv.innerHTML = gameEffect
+          div.appendChild(tagDiv)
+        } else {
+          let tagDiv = document.createElement("div")
+          tagDiv.className = `item-properties tag-description ${i}`
+          tagDiv.innerHTML = gameEffect
+          div.appendChild(tagDiv)
+          div.classList.add(i)
+        }
+        div.classList.toggle("expandedTag")
+      }))
+
+    }
+    li.classList.toggle("expanded")
+  }
+
+  /* -------------------------------------------- */
+  // Edit Item value from Actor Sheet
+  //Actions spent by _onEditItemValue: activating a focus, (un)loading a program, switching a device's wireless
+  _itemValueActionCost(item, target, oldValue){
+    //A drug has no wireless: its switch moves its phase (entities/items/drug-phase.js) and costs no action
+    if (item.type === "itemDrug") return []
+    if (item.type === "itemFocus" && target === "system.isActive") return [{
+      type: (oldValue === false) ? "simple" : "free", value: 1
+    }]
+    if (item.type === "itemProgram" && target === "system.isActive") return [{
+      type: programSwitchActionType(item, this.actor.type, oldValue === false), value: 1
+    }]
+    if (target === "system.wirelessTurnedOn") return [{
+      type: SR5_ActorHelper.wirelessSwitchActionType(!oldValue, game.settings.get("sr5", "sr5WifiRequiresDNI"), this.actor.system.hasDNI), value: 1
+    }]
+    return []
+  }
+
+  //The action counters belong to the initiative passes (SR5 p. 163-165): out of combat a switch spends nothing,
+  //and the counters no longer sink to -1, -2... before the fight
+  _spendsActionCounters(){
+    return !!SR5Combat.getCombatantFromActor(this.actor)
+  }
+
+  //The lock taken by a toggle that costs an action is given back however its handling ends, error included
+  async _onEditItemValue(event) {
+    try {
+      await this._editItemValue(event)
+    } finally {
+      if (this._spendingItemAction === event) this._spendingItemAction = null
+    }
+  }
+
+  async _editItemValue(event) {
+    let id = event.currentTarget.closest(".item")?.dataset.itemId
+    let target = event.currentTarget.dataset.binding
+    let actor = this.actor
+    let actorData = foundry.utils.duplicate(actor.system)
+    let itemList = foundry.utils.duplicate(this.actor.items)
+    let item = itemList.find((i) => i._id === id)
+    let realItem = this.actor.items.find(i => i.id === id)
+    let oldValue, actions
+    //Drug damage, applied once the actor is written below: applied before, the update wrote the condition monitor back
+    let drugDamages = []
+    let actorId = actor.id
+    if (actor.isToken) actorId = actor.token.id
+		
+    let value = event.target.value
+    if (event.currentTarget.dataset.dtype === "Number")
+      value = Number(event.target.value)
+    if (event.currentTarget.dataset.dtype === "Boolean") {
+      oldValue = foundry.utils.getProperty(item, target)
+      value = !oldValue
+    }
+    //A drug a player made with the designer is taken once the gamemaster approved it (decision of DjamZ, 07/10)
+    if (target === "system.isActive" && value && realItem?.type === "itemDrug" && !drugDesignApproved(realItem.system)) return ui.notifications.warn(game.i18n.format(realItem.system.designer.status === "refused" ? "SR5.WARN_DrugDesignRefused" : "SR5.WARN_DrugDesignNotApproved", {
+      drug: realItem.name
+    }))
+    //Vintage (Gun H(e)aven 3 p. 3): never wireless, so no switch and no action spent (the "ammo" rule lock family, B13 lot 2)
+    if (target === "system.wirelessTurnedOn" && vintageWirelessRefused(realItem, actor)) return
+    //Lots d'augmentations (Chrome Flesh p. 96): the wireless of a lot is never cut (the "body" rule lock family)
+    if (target === "system.wirelessTurnedOn" && bundleWirelessRefused(realItem, actor, value)) return
+    //Better Than Bad p. 141: under Blight no adept power, focus nor sustained spell is switched on (decisions of DjamZ;
+    //the "magic" rule lock family, B13 lot 6)
+    if (target === "system.isActive" && value && SR5_Toxins.blightSwitchRefused(actor, realItem)) return
+    //Ossature renforcée (SR5 p. 458): "un seul type pouvant être installé à la fois", and never beside an Augmentation
+    //de densité osseuse (p. 458, 462). One switched on beside another is refused to a player; the gamemaster is warned
+    //and goes past it (decision H5 of DjamZ); the "body" rule lock family lifted, so does a player (B13, lot 4)
+    if (target === "system.isActive" && value === true && boneSwitchRefused(actor, realItem)) return
+    //A Machinist's persona shares only the autosofts its echoes [Programme] copy (SR5 p. 261, Kill Code p. 101)
+    if (target === "system.isShared" && value === true && autosoftShareRefused(actor, realItem)) return ui.notifications.warn(game.i18n.format("SR5.WARN_MachinistAutosoftNoEcho", {
+      name: realItem.name
+    }))
+    //A console shares as many autosofts as its Sharing rating (SR5 p. 269)
+    if (target === "system.isShared" && value === true && sharingSlotsLeft(itemList, actor.system.matrix.attributes.sharing.value) < 1) return ui.notifications.warn(game.i18n.format("SR5.WARN_RccSharingFull", {
+      sharing: actor.system.matrix.attributes.sharing.value
+    }))
+    //The guard reads the actor's counters, which change only when the server answers: a second click before
+    //that would pass on the old count. Toggles that cost an action wait for the previous one to be written
+    let actionCost = this._itemValueActionCost(item, target, oldValue)
+    if (actionCost.length && this._spendingItemAction) return
+    if (!SR5Combat.hasActionsLeft(actor, actionCost)) return
+    if (actionCost.length) this._spendingItemAction = event
+    //The device the character is connected through, before the change: switched off in VR, it throws them out (SR5 p. 231)
+    let connectedDeviceId = itemList.find(i => i.type === "itemDevice" && i.system.isActive)?._id
+    foundry.utils.setProperty(item, target, value)
+
+    //Spécial, pour les decks, désactiver les autres decks lorsque l'un d'entre eux et équipé
+    //Only equipping or unequipping a device does this: the wireless of a spare device leaves the active one alone, or
+    //a character in VR would take dumpshock for it (SR5 p. 231), and keeps its configuration (SR5 p. 229, DjamZ's ruling of 03/10)
+    if (item.type === "itemDevice" && target === "system.isActive") {
+      //Equipping a device switches the others off
+      if (value) for (let otherItem of itemList) {
+        if (otherItem.type === "itemDevice" && (otherItem._id !== id)) otherItem.system.isActive = false
+      }
+
+      for (let key of Object.keys(actorData.matrix.attributes)){
+        actorData.matrix.attributes[key].base = 0
+      }
+      actorData.matrix.attributesCollection.value1 = 0
+      actorData.matrix.attributesCollection.value2 = 0
+      actorData.matrix.attributesCollection.value3 = 0
+      actorData.matrix.attributesCollection.value4 = 0
+      actorData.matrix.attributesCollection.value1isSet = false
+      actorData.matrix.attributesCollection.value2isSet = false
+      actorData.matrix.attributesCollection.value3isSet = false
+      actorData.matrix.attributesCollection.value4isSet = false
+
+      //Remove item from PAN
+      if (item.system.pan.content.length){
+        for (let obj of item.system.pan.content){
+          if (!game.user?.isGM) {
+            SR5_SocketHandler.emitForGM("deleteItemFromPan", {
+              targetItem: obj.uuid,
+              actorId: this.actor.id,
+            })
+          } else {
+            SR5_ActorHelper.deleteItemFromPan(obj.uuid, this.actor.id)
+          }
+        }
+        item.system.pan.content = []
+      }
+    }
+
+    //Special case for armor
+    if (target === "system.isActive" && item.type === "itemArmor" && !item.system.isCumulative) {
+      for (let otherItem of itemList) {
+        if (otherItem.type === "itemArmor" && !otherItem.system.isCumulative && (otherItem._id !== id)) otherItem.system.isActive = false
+      }
+    }
+
+    //Brick of milk (No Future p. 154): used up when switched on, on the targeted character or on its owner
+    if (target === "system.isActive" && item.system.isActive && isMilkBrick(item)) {
+      item.system.isActive = false
+      if (item.system.quantity > 0) {
+        let soothed = game.user.targets.first()?.actor ?? actor
+        let {
+          used, itemIds
+        } = await soothe(soothed)
+        //Not spent on a character the user does not own: the gamemaster does it
+        if (used) item.system.quantity -= 1
+        //The item list is written back below: the removed effects must leave it, or they come back
+        if (soothed === actor) itemList = itemList.filter(i => !itemIds.includes(i._id))
+      } else ui.notifications.warn(game.i18n.localize("SR5.WARN_MilkBrickNone"))
+    }
+
+    if (item.type === "itemDrug") {
+      let drugType = "", drug = [], itemData = item.system
+      if (Object.keys(itemData.systemEffects).length) {
+        drugType = Object.values(itemData.systemEffects).find(i => i.category === "drug")
+      }
+			
+			
+      if (target === "system.isActive"){
+        foundry.utils.setProperty(item, "system.wirelessTurnedOn", false)
+
+        // Handle drug taken
+        SR5_SystemHelpers.srLog(1, "Handle drug taken: " + drugType)
+
+        let alreadyTaken = actorData.addictions.find((d) => item.name === d.name)
+        let addiction = []
+
+        // Handle quantity 				
+        itemData.quantity -= 1
+
+        // Check if the drug is activated
+        if (item.system.isActive) {
+          //A Long Haul taken again during its crash (SR5 p. 413) starts a new dose: the mix of the former one is over
+          if (item.system.phase === "crash") itemData.interact = false
+          // Check if the drug has already been taken
+          if (alreadyTaken) {
+            // Add one take
+            alreadyTaken.shot.value += 1
+            // Reset the threshold
+            alreadyTaken.addiction.threshold = drugAddictionThreshold(item.system)
+          }
+          // A drug without addiction (Cryo) gets no entry, unless its doses are counted (Soothsayer, Chrome Flesh p. 186)
+          else if (item.system.addiction?.rating > 0 || DRUG_DAMAGE[drugType?.value]?.intake?.lessPerDose) {
+            // Generate and populate the drug addiction
+            addiction = SR5_CharacterUtility.generateDrugAddiction(item)
+            actorData.addictions = actorData.addictions.concat(addiction)
+            actorData.addictions = Object.values(actorData.addictions)
+          }
+          //Reminder of the addiction test (SR5 p. 415): rolled from the Addictions list, never on its own
+          if (item.system.addiction?.type && item.system.addiction?.rating > 0) ui.notifications.info(game.i18n.format("SR5.AddictionTestReminder", {
+            drug: item.name, threshold: drugAddictionThreshold(item.system), rating: item.system.addiction.rating,
+            weeks: addictionWeeks(item.system.addiction.rating)
+          }))
+
+          SR5_SystemHelpers.srLog(1, "actorData.addictions : " + JSON.stringify(actorData.addictions))
+          if (actorData.addictions.shot) SR5_EntityHelpers.updateValue(actorData.addictions.shot)
+          if (actorData.addictions.weekAddiction) SR5_EntityHelpers.updateValue(actorData.addictions.weekAddiction)		
+					
+          // Generate the drug stat from the drug systemEffect: durations read the augmented Body and the
+          // Essence, prepared values that the copy of system (its source) does not hold
+          drug = drugType ? await SR5_CharacterUtility.handleDrugShots(item, drugType, actor.system, actor) : null
+
+          // Without a stat (no drug systemEffect, or a key the system does not know), nothing is counted: the GM
+          // is told, instead of a drug that silently never ends
+          if (!drug) await warnDrugWithoutStat(actor, item)
+
+          if (drug) {
+
+            SR5_SystemHelpers.srLog(1, "Check drugType")
+
+            //The stat of this dose replaces the former one, but Foundry merges objects: a key of the former dose (a
+            //second dose of Long Haul, a crash made Physical by an interaction) stayed on this one. Each one is cleared
+            for (const key of Object.keys(realItem?.system?.handleShot ?? {
+            })) if (!(key in drug)) drug[key] = null
+            itemData.handleShot = drug
+
+            //The damage on intake (Laés, Leäl, Soothsayer, Slab), read off the drug key and the doses counted, this one
+            //included (drug-damage.js)
+            const intake = intakeDamageOf(drugType.value, dosesTaken(actorData.addictions, item.name))
+            if (intake) drugDamages.push({
+              ...intake, phase: "intake", itemId: item._id
+            })
+            //SR5 p. 417: taken under its own effect, or under a drug with a common or opposed effect, an overdose,
+            //resisted with Body + Willpower (drug-damage.js)
+            const overdose = overdoseOf(item, actor)
+            if (overdose) {
+              await ui.notifications.info(game.i18n.format("SR5.DrugOverdoseInfo", {
+                actor: actor.name, drugs: overdose.drugs.join(", "), value: overdose.value
+              }))
+              drugDamages.push(overdose)
+            }
+            //Chrome Flesh p. 186-187: a second treatment of P4MO while the first is in effect, an embolism (drug-damage.js)
+            const embolism = secondTreatmentOf(item, actor)
+            if (embolism) {
+              await ui.notifications.warn(game.i18n.format("SR5.DrugEmbolism", {
+                actor: actor.name, drug: item.name
+              }))
+              drugDamages.push(embolism)
+            }
+            //Chrome Flesh p. 185: Aisa, 4S more per extra dose taken at once, unresisted
+            const extraDose = DRUG_DAMAGE[drugType.value]?.extraDose
+            if (extraDose && itemData.quantity > 0) {
+              const extra = await askDrugDoses(item.name, itemData.quantity)
+              if (extra > 0) {
+                itemData.quantity -= extra
+                drugDamages.push({
+                  value: extra * extraDose, type: "stun", resist: "none"
+                })
+              }
+            }
+
+            let speedType = ""
+
+            //The stat above is the only one rolled: a second call rolled the random durations again
+            if (!itemData.interact) {
+              itemData.onUse.duration = `${itemData.handleShot.duration} ${game.i18n.localize(unitKey(SR5.extendedIntervals[itemData.handleShot.durationType], itemData.handleShot.duration))}`
+              itemData.onUse.contrecoup = ""
+
+              // Generate the speed type if not pure text
+              if (itemData.handleShot.speedType) speedType = game.i18n.localize(unitKey(itemData.handleShot.speedType, itemData.handleShot.speed))
+            }
+
+            //Chrome Flesh p. 196: an interaction comes from taking a drug while under the effect (or the crash) of
+            //ANOTHER one. The drug being taken is left out: retaken during its own crash, it is not another drug,
+            //and it would otherwise be counted twice in the mix, doubled twice and rolled one die too many
+            //A crash that is only damage is over (drug-stat.js): one left in it before is not in the mix (Liesel's D3)
+            //Another copy of the same drug is not another drug either (Chrome Flesh p. 183, isSameDrug)
+            let interactionDrug = actor.items.filter((d) => d.type === "itemDrug" && d.id !== item._id && !isSameDrug(d, item) && (d.system.isActive || (d.system.wirelessTurnedOn && !drugCrashIsInstant(d.system))))
+            if (interactionDrug.length > 0) {
+              let roll, interactionDiceResult, drugs = []
+              //"1D6 pour chaque drogue en plus de la première" (Chrome Flesh p. 197): two copies of Jazz under effect are one drug
+              roll = new Roll(`${distinctDrugs(interactionDrug).length}d6`)
+              interactionDiceResult = await roll.evaluate()
+
+              //The drugs are changed in the item list, which the actor update below writes back: a separate
+              //update of each drug would be overwritten by it
+              let mixedDrugs = [item]
+              for (let d of interactionDrug){
+                let listedDrug = itemList.find(i => i._id === d.id)
+                listedDrug.system.interact = true
+                mixedDrugs.push(listedDrug)
+                //Two copies of Jazz are named once ("Jazz, Jazz" read as two drugs, Isaure's review)
+                if (!drugs.includes(d.name)) drugs.push(d.name)
+              }
+
+
+              //Chrome Flesh p. 194: +1 for each street drug of the mix, -1 when all of them are custom.
+              //The table (Chrome Flesh p. 197) has no row below 1: a lower total reads row 1, not the default one (14+, 10P). This floor
+              //is a reading by Élise, the coordinator, not a text of the book
+              const interactionTotal = Math.max(1, interactionDiceResult.total + drugInteractionModifier(distinctDrugs(mixedDrugs).map(d => effectiveDrugQuality(d.system, actor))))
+
+              switch(interactionTotal){
+                case 1:
+                  //Chrome Flesh p. 197: the durations of all the drugs are doubled
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")} ${drugs.join(", ")}${game.i18n.format("SR5.Colons")} ${game.i18n.format("SR5.DrugDurationDoubled")}`)
+
+                  for (let d of mixedDrugs){
+                    let shot = d.system.handleShot
+                    if (!shot?.duration) continue
+                    shot.duration *= 2
+                    if (d.system.onUse.duration) d.system.onUse.duration = `${shot.duration} ${game.i18n.localize(SR5.extendedIntervals[shot.durationType])}`
+                  }
+                  break
+                //Chrome Flesh p. 197. One label per total: "case 2, 3, 4" is the comma operator and only matched 4,
+                //so a 2 or a 3 fell to the default, 10P
+                case 2:
+                case 3:
+                case 4:
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")} ${drugs.join(", ")}${game.i18n.format("SR5.Colons")} ${game.i18n.format("SR5.DrugNoInteractEffect")}`)
+                  break
+                case 5:
+                case 6:
+                  //Chrome Flesh p. 197: the durations of all the crashes are doubled
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")} ${drugs.join(", ")}${game.i18n.format("SR5.Colons")} ${game.i18n.format("SR5.DrugContrecoupDurationDoubled")}`)
+
+                  for (let d of mixedDrugs){
+                    let shot = d.system.handleShot
+                    if (!shot?.durationContrecoup) continue
+                    shot.durationContrecoup *= 2
+                    if (d.system.onUse.contrecoup) d.system.onUse.contrecoup = `${shot.durationContrecoup} ${game.i18n.localize(SR5.extendedIntervals[shot.durationContrecoupType])}`
+                  }
+                  break
+                case 7:
+                case 8:
+                case 9: {
+                  //Chrome Flesh p. 197: the crashes start immediately, for every drug of the mix still under
+                  //effect, the one being taken included. A drug already in its crash does not start it again
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")} ${drugs.join(", ")}${game.i18n.format("SR5.Colons")} ${game.i18n.format("SR5.DrugCrashImmediate")}`)
+                  //A drug without crash keeps its effect until its normal end: the book starts the crashes, it does
+                  //not stop a drug that has none (DjamZ's ruling, 06/10)
+                  for (let d of mixedDrugs){
+                    if (d.system.isActive && drugHasCrash(d.system)) await this._startDrugCrash(d, actor, drugDamages)
+                  }
+                  break
+                }
+                case 10:
+                  //Chrome Flesh p. 197: 10S at once, unresisted
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")}${game.i18n.format("SR5.Colons")} ${drugs.join(", ")}`)
+                  drugDamages.push({
+                    value: 10, type: "stun", resist: "none"
+                  })
+                  break
+                case 11:
+                case 12:
+                case 13:
+                  //Chrome Flesh p. 197: the crashes deal Physical damage rather than Stun, noted on each drug of the
+                  //mix whose crash is still to come, the one being taken included (drug-crash.js)
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")} ${drugs.join(", ")}${game.i18n.format("SR5.Colons")} ${game.i18n.format("SR5.DrugCrashPhysical")}`)
+                  itemData.handleShot.crashPhysical = true
+                  for (let d of mixedDrugs.slice(1)){
+                    if (d.system.isActive && d.system.handleShot) d.system.handleShot.crashPhysical = true
+                  }
+                  break
+                default:
+                  //Chrome Flesh p. 197, 14+: 10P at once, "résistés uniquement avec la Constitution" (drug-damage.js)
+                  await ui.notifications.info(`${game.i18n.format("SR5.DrugInteraction")}${game.i18n.format("SR5.Colons")} ${drugs.join(", ")}`)
+                  drugDamages.push({
+                    ...DRUG_INTERACTION_DAMAGE, interaction: true
+                  })
+                  break
+              }
+            }
+						
+            // Notify info drug taken
+            await ui.notifications.info(`${actor.name}${game.i18n.format("SR5.Colons")} ${game.i18n.localize(SR5.drugs[itemData.handleShot.name])}${game.i18n.format("SR5.Colons")}<ul><li>${game.i18n.format("SR5.ToxinSpeed")}${game.i18n.format("SR5.Colons")} ${itemData.handleShot.speed} ${speedType}</li><li>${game.i18n.format("SR5.Duration")}${game.i18n.format("SR5.Colons")} ${itemData.handleShot.duration} ${game.i18n.localize(unitKey(SR5.extendedIntervals[itemData.handleShot.durationType], itemData.handleShot.duration))}</li></ul>`)
+						
+            // Notify info on effect for Laes/Leal
+            //Stolen Souls p. 192: the Leäl erases the memory only if at least one box is taken
+            if (itemData.handleShot.effectDuration) await ui.notifications.info(`${actor.name}${game.i18n.format("SR5.Colons")} ${game.i18n.format(drugType.value === "leal" ? "SR5.ErasedMemoryForIfDamaged" : "SR5.ErasedMemoryFor")} ${itemData.handleShot.effectDuration} ${game.i18n.localize(itemData.handleShot.effectDurationType)}`)
+            if (itemData.handleShot.drowsy) await ui.notifications.info(`${actor.name}${game.i18n.format("SR5.Colons")} ${game.i18n.localize("SR5.DrugDrowsy")}`)
+
+          }
+
+        }
+
+        if (!item.system.isActive) {
+          itemData.onUse.duration = ""					
+          itemData.interact = false
+        }
+
+      } else if (target === "system.wirelessTurnedOn"){
+        //The crash takes the same path as the calendar (entities/items/drug-crash.js)
+        if (itemData.wirelessTurnedOn) await startDrugCrash(itemData, actor, item._id, {
+          deferDamage: drugDamages
+        })
+        else {
+          itemData.isActive = false
+          itemData.onUse.duration = ""
+          itemData.interact = false
+          itemData.onUse.contrecoup = ""
+        }
+      }
+      //The phase is what is kept: the two switches only lead to it (entities/items/drug-phase.js)
+      itemData.phase = phaseFromFlags(itemData.isActive, itemData.wirelessTurnedOn)
+    }
+
+    if (item.type === "itemProgram" && target === "system.isCreated"){
+      oldValue = foundry.utils.getProperty(item, "system.isActive")
+      value = !oldValue
+      foundry.utils.setProperty(item, "system.isActive", value)
+    }
+
+    if (item.type === "itemAdeptPower" && !item.system.isActive && item.system.hasDrain && !item.system.needRoll){
+      let rollData = SR5_PrepareRollTest.getBaseRollData(null, actor)
+      rollData.magic.drain.value = item.system.drainValue.value
+      this.actor.rollTest("drain", null, rollData)
+    }
+
+    if (item.system.accessory?.length){
+      for (let a of item.system.accessory){
+        let accessory = itemList.find(i => i._id === a._id)
+        if (accessory) {
+          accessory.system.isActive = item.system.isActive
+          accessory.system.wirelessTurnedOn = item.system.wirelessTurnedOn
+        }
+      }
+    }
+
+    //Manage actions
+    if (item.type === "itemFocus" && target === "system.isActive"){
+      if(oldValue === false) {
+        actions = [{
+          type: "simple", value: 1, source: "activateFocus"
+        }]
+        if (this._spendsActionCounters()) SR5_MiscellaneousHelpers.spendActions(actorData.specialProperties.actions, actions)
+
+        // Handle focus addiction: one entry for all foci (SR5 p. 416), rated by the total Force of the active foci,
+        // this one included
+        if (item.system.isActive){
+          const focusNames = itemList.filter(i => i.type === "itemFocus").map(i => i.name)
+          actorData.addictions = focusAddictionEntries(actorData.addictions, focusNames, game.i18n.localize("SR5.Foci"), focusAddictionRating(itemList))
+        }
+
+      } else {
+        actions = [{
+          type: "free", value: 1, source: "desactivateFocus"
+        }]
+        if (this._spendsActionCounters()) SR5_MiscellaneousHelpers.spendActions(actorData.specialProperties.actions, actions)
+
+      }
+    }
+    if (item.type === "itemProgram" && target === "system.isActive"){
+      if (oldValue === false && ["common", "hacking", "autosoft", "agent"].includes(item.system.type)) {
+        let warning = SR5_CharacterUtility.aiProgramCapWarning(actor)
+        if (warning) ui.notifications.warn(warning)
+      }
+      if(oldValue === false) actions = [{
+        type: programSwitchActionType(item, actor.type, true), value: 1, source: "loadProgram"
+      }]
+      else actions = [{
+        type: "free", value: 1, source: "unloadProgram"
+      }]
+      if (this._spendsActionCounters()) SR5_MiscellaneousHelpers.spendActions(actorData.specialProperties.actions, actions)
+    }
+    //A drug has no wireless: its switch moves its phase, as in _itemValueActionCost
+    if (target === "system.wirelessTurnedOn" && item.type !== "itemDrug"){
+      //Turning a device's wireless off is always a free action (SR5 p. 424). Turning it on is free through a
+      //DNI (p. 165), simple otherwise (p. 167), when the world setting asks for it; the actor's "wired by DNI" box decides
+      let actionType = SR5_ActorHelper.wirelessSwitchActionType(!oldValue, game.settings.get("sr5", "sr5WifiRequiresDNI"), actor.system.hasDNI)
+      actions = [{
+        type: actionType, value: 1, source: (oldValue === false) ? "turnOnWifi" : "turnOffWifi"
+      }]
+      if (this._spendsActionCounters()) SR5_MiscellaneousHelpers.spendActions(actorData.specialProperties.actions, actions)
+    }
+
+    //Special case for materialization
+    if (item.type === "itemPower" && actor.type === "actorSpirit"){
+      if (realItem.system.systemEffects.find(e => e.value === "materialization")){
+        actorData.isMaterializing = value
+      }
+    }
+		
+    //Update actor
+    await this.actor.update({
+      "system": actorData,
+      "items": itemList,
+    })
+    if (this.actor.isToken) this.actor.sheet.render()
+    for (const damage of drugDamages) await applyDrugDamage(this.actor, damage)
+
+    //Switching off the device in use, or equipping another, leaves the Matrix: dumpshock in VR (SR5 p. 231,
+    //DjamZ's ruling, 2026-10-06). The character switches to AR first to leave it cleanly
+    if (connectedDeviceId && !itemList.find(i => i._id === connectedDeviceId)?.system.isActive) SR5_ActorHelper.dumpshockIfInVR(this.actor)
+
+    //Delete effects linked to sustaining
+    if ((item.type === "itemComplexForm" || item.type === "itemSpell" || item.type === "itemAdeptPower" || item.type === "itemPower") && target === "system.isActive"){
+      if (!item.system.isActive) {
+
+        //Delete effects
+        if (item.system.targetOfEffect.length){
+          for (let e of item.system.targetOfEffect){
+            if (!game.user?.isGM) {
+              await SR5_SocketHandler.emitForGM("deleteSustainedEffect", {
+                targetItem: e
+              })
+            } else {
+              await SR5_ActorHelper.deleteSustainedEffect(e)
+            }
+          }
+          item.system.targetOfEffect = []
+          this.actor.updateEmbeddedDocuments("Item", [item])
+        }
+				
+        //Delete template, if any
+        if (item.system.range === "area"){
+          let messageId = null
+          for (let m of game.messages){
+            if(m.flags.sr5data?.owner.itemId === item.id && m.flags.sr5data?.chatCard.templateRemove) messageId = m.id
+          }
+          if (messageId) await SR5_RollMessage.removeTemplate(messageId, realItem.uuid)
+        }
+				
+      }
+    }
+
+    //Manage actions for combatants
+    if (game.combat && actions){
+      SR5Combat.changeActionInCombat(actorId, actions, false)
+    }
+
+  }
+
+  /* -------------------------------------------- */
+  //Start the crash of a drug in the item list: as when its crash switch is turned on from the sheet, the effect
+  //ends, the crash duration is shown and its Stun damage applies
+  async _startDrugCrash(drug, actor, deferDamage) {
+    await startDrugCrash(drug.system, actor, drug._id, {
+      deferDamage
+    })
+  }
+
+  /* -------------------------------------------- */
+  //Change value of an item from actor sheet by clicking with mouse. The value is read as the sheet shows it, but only
+  //the clicked path is written (and the other matrix attribute when it moves too): the prepared copy written back
+  //whole put every computed value in the source, and the next preparation added its modifiers again
+  _onChangeValueByClick(event) {
+    let id = event.currentTarget.closest(".item")?.dataset.itemId,
+      target = event.currentTarget.dataset.binding,
+      entity,
+      original
+
+    if (id) original = this.actor.items.get(id)
+    else original = this.actor
+    entity = original.toObject(false)
+    let value = foundry.utils.getProperty(entity, target)
+    let step = 1
+    if (event.shiftKey && ["system.magic.reagents", "system.magic.reagentsRefined", "system.magic.reagentsRadical"].includes(target)) step = 10
+    else if (event.ctrlKey && target === "system.quantity") step = 10
+    let updates = {
+    }
+
+    switch (event.button) {
+      case 0:
+        value -= step
+        if (value < 0) value = 0
+        break
+      case 2:
+        if ((target === "system.matrix.attributes.sharing.base") || (target === "system.matrix.attributes.noiseReduction.base")){
+          let deviceRating = entity.system.matrix.deviceRating
+          let noiseReduction = entity.system.matrix.attributes.noiseReduction.base
+          let sharing = entity.system.matrix.attributes.sharing.base
+          if (target === "system.matrix.attributes.sharing.base"){
+            if ((value + noiseReduction) < deviceRating) {
+              value++
+            } else {
+              if (noiseReduction > 0) {
+                updates["system.matrix.attributes.noiseReduction.base"] = noiseReduction - 1
+                value++
+              } else {
+                SR5_SystemHelpers.srLog(3, "Reached maximum value")
+              }
+            }
+          }
+          if (target === "system.matrix.attributes.noiseReduction.base"){
+            if ((value + sharing) < deviceRating) {
+              value++
+            } else {
+              if (sharing > 0) {
+                updates["system.matrix.attributes.sharing.base"] = sharing - 1
+                value++
+              } else {
+                SR5_SystemHelpers.srLog(3, "Reached maximum value")
+              }
+            }
+          }
+        } else {
+          value += step
+        }
+        break
+    }
+
+    updates[target] = value
+    if (id) this.actor.updateEmbeddedDocuments("Item", [{
+      _id: id, ...updates
+    }])
+    else this.actor.update(updates)
+  }
+
+  /* -------------------------------------------- */
+  //Change value of an actor by click
+  _onEditActorValue(event){
+    let target = event.currentTarget.dataset.binding
+    let value = event.target.value
+    if (event.currentTarget.dataset.dtype === "Boolean") {
+      let oldValue = foundry.utils.getProperty(this.actor, target)
+      value = !oldValue
+    }
+    //Only the toggled path: the whole prepared system written back put its computed values in the source
+    this.actor.update({
+      [target]: value
+    })
+  }
+
+
+  /* -------------------------------------------- */
+  // Reset actor recoil to 0
+  async _onResetRecoil(event){
+    event.preventDefault()
+    this.actor.resetRecoil()
+  }
+
+  /* -------------------------------------------- */
+  //Reload weapon ammo
+  async _onReloadAmmo(event) {
+    event.preventDefault()
+    const id = event.currentTarget.closest(".item").dataset.itemId
+    const item = this.actor.items.get(id)
+    let option
+
+    if (!item) return
+
+    switch (item.system.ammunition.casing){
+      case "clip":
+      case "drum":
+      case "belt":
+        if (event.button === 0){
+          option = "insert"
+          if (event.shiftKey) option = "replace"
+          if (event.ctrlKey) option = "insertRound"
+          if (event.shiftKey && event.ctrlKey) option = "insertRoundFull"
+        } else if (event.button ===2){
+          option = "remove"
+        }
+        break
+      case "breakAction":
+      case "internalMag":
+      case "muzzle":
+        option = "insertRound"
+        if (event.shiftKey && event.ctrlKey) option = "insertRoundFull"
+        break
+      case "cylinder":
+        option = "insertRound"
+        if (event.shiftKey && (item.system.accessory.find(a => a.name === "speedLoader"))) option = "insertRoundFull"
+        if (event.shiftKey && event.ctrlKey) option = "insertRoundFull"
+        break
+      case "special":
+        option = "insertRoundFull"
+        break
+      default: return ui.notifications.warn(game.i18n.localize('SR5.WARN_MissingCasing'))
+    }
+
+    item.reloadAmmo(option)
+  }
+
+  /* -------------------------------------------- */
+  //Reboot deck
+  async _onRebootDeck(event) {
+    event.preventDefault()
+    //An AI outside any device has nothing to reboot (Data Trails p. 157)
+    if (SR5_CharacterUtility.isDevicelessAI(this.actor)) {
+      ui.notifications.warn(game.i18n.format("SR5.WARN_RebootNoDevice", {
+        name: this.actor.name
+      }))
+      return false
+    }
+    //A link-locked character cannot reboot their device and must jack out (SR5 p. 231 and 244);
+    //the IC that force a reboot (p. 250) call rebootDeck directly and are not held back
+    //The "matrix" rule lock lifted (B13), the reboot goes, and the gamemaster hears of it
+    if (this.actor.system.matrix?.isLinkLocked && refuseByRule("matrix", "SR5.WARN_RebootLinkLocked", {
+      name: this.actor.name
+    }, {
+      actor: this.actor
+    })) return false
+    //Same for an action the character no longer has, when the world setting asks for it
+    if (!SR5Combat.hasActionsLeft(this.actor, [{
+      type: "complex", value: 1, source: "rebootDeck"
+    }])) return false
+    await this.actor.rebootDeck()
+
+    //Rebooting by choice is a complex action (SR5 p. 231); a reboot forced by an IC spends none, nor one out of combat
+    if (!this._spendsActionCounters()) return
+    let actionsLeft = SR5_MiscellaneousHelpers.spendActions(foundry.utils.deepClone(this.actor.system.specialProperties.actions), [{
+      type: "complex", value: 1, source: "rebootDeck"
+    }])
+    await this.actor.update({
+      "system.specialProperties.actions.simple.current": actionsLeft.simple.current,
+      "system.specialProperties.actions.complex.current": actionsLeft.complex.current
+    })
+    if (game.combat){
+      const actorId = this.actor.isToken ? this.actor.token.id : this.actor.id
+      SR5Combat.changeActionInCombat(actorId, [{
+        type: "complex", value: 1, source: "rebootDeck"
+      }], false)
+    }
+  }
+
+  /* -------------------------------------------- */
+  ///Roll dices
+  /* -------------------------------------------- */
+  async _onRoll(event) {
+    event.preventDefault()
+    let iid
+    if (event.currentTarget.closest(".item")) iid = event.currentTarget.closest(".item").dataset.itemId
+    const item = this.actor.items.get(iid)
+    const rollKey = event.currentTarget.dataset.rollkey
+    const rollType = event.currentTarget.dataset.rolltype
+    if(item) item.rollTest(rollType, rollKey)
+    else this.actor.rollTest(rollType, rollKey)
+  }
+
+  async _onRollGrenade(event) {
+    event.preventDefault()
+    const iid = event.currentTarget.closest(".item").dataset.itemId
+    const item = this.actor.items.get(iid)
+    await item.placeGabarit()
+  }
+
+  /* -------------------------------------------- */
+
+  async _displayHelpText(event) {
+    if (!game.settings.get("sr5", "sr5Help.active")) return false
+
+    let target = document.querySelector("#sr5help")
+    if (!target) return
+
+    let property
+    const helpTitle = document.querySelector("#sr5helpTitle")
+    const helpMessage = document.querySelector("#sr5helpMessage")
+    const helpDetails = document.querySelector("#sr5helpDetails")
+
+    if (helpTitle) helpTitle.innerHTML = ""
+    if (helpMessage) helpMessage.innerHTML = ""
+    if (helpDetails) helpDetails.innerHTML = ""
+
+    {
+      const el = event.currentTarget
+      fillHelpBubble(el, helpTitle, helpMessage)
+
+      let details = el.dataset.helpdetails
+      if (details) {
+        property = SR5_EntityHelpers.resolveObjectPath(`actor.${details}`, this)
+      }
+
+      let itemId = el.dataset.helpitemid
+      if (itemId) {
+        let item = this.actor.items.find(i => i.id === itemId)
+        let detailsItem = el.dataset.helpdetailsitem
+        property = SR5_EntityHelpers.resolveObjectPath(`${detailsItem}`, item)
+      }
+
+      if (property) {
+        let detailsHTML = `${game.i18n.localize('SR5.HELP_CalculationDetails')}<ul>`
+        if (property.modifiers && property.modifiers.length) {
+          if (property.base) detailsHTML += `<li>${game.i18n.localize('SR5.HELP_CalculationBase')}${game.i18n.localize('SR5.Colons')} ${property.base}</li>`
+          for (let modifier of Object.values(property.modifiers)) {
+            //"Rappel des règles" unchecked: no cap note that counts for 0 (rule-reminders.js)
+            if (isCapReminder(modifier) && !ruleRemindersShown()) continue
+            if (modifier.value != undefined) {
+              if (modifier.type === "penaltyspecial" && modifier.details.length){
+                let modifierDetails = ""
+                for (let i = 0; i < modifier.details.length; i++){
+                  let m = modifier.details[i]
+                  if (m.value === 0) continue
+                  modifierDetails += `${m.source} (${m.value})`
+                  if((i + 1) !== (modifier.details.length)) modifierDetails += `, `
+                }
+                detailsHTML = detailsHTML + `<li>${game.i18n.localize('SR5.PenaltyValueSpecial')} [${modifierDetails}]${game.i18n.localize('SR5.Colons')} ${modifier.value}</li>`
+              } else detailsHTML = detailsHTML + `<li>${modifier.source} [${game.i18n.localize(SR5.modifierTypes[modifier.type])}]${game.i18n.localize('SR5.Colons')} ${(modifier.isMultiplier ? 'x' : (modifier.value >= 0 ? '+' : ''))}${modifier.value}</li>`
+            } else detailsHTML = detailsHTML + `<li>${modifier.source} [${game.i18n.localize(SR5.modifierTypes[modifier.type])}]${game.i18n.localize('SR5.Colons')} ${(modifier.isMultiplier ? 'x' : (modifier.dicePool >= 0 ? '+' : ''))}${modifier.dicePool}</li>`
+          }
+        }
+        if (property.value != undefined) detailsHTML += `<li>${game.i18n.localize('SR5.HELP_CalculationTotal')}${game.i18n.localize('SR5.Colons')} ${property.value}</li></ul>`
+        else detailsHTML += `<li>${game.i18n.localize('SR5.HELP_CalculationTotal')}${game.i18n.localize('SR5.Colons')} ${property.dicePool}</li></ul>`
+        if (helpDetails) helpDetails.innerHTML = detailsHTML
+      }
+      SR5_UiModifications.placeHelpWindow(target)
+      target.classList.add("active")
+    }
+  }
+
+  async _hideHelpText() {
+    let target = document.querySelector("#sr5help")
+    if (target) target.classList.remove("active")
+  }
+
+  //Handle controler choice of a drone / Vehicle
+  async _onChooseControler(_event){
+    let controlerList = {
+    }
+    for (let a of game.actors){
+      if (a.type === "actorPc" || (a.type === "actorGrunt" && a.prototypeToken.actorLink)){
+        if (game.user.isGM) {
+          controlerList[a.id] = a.name
+        } else {
+          //A player hands the drone to their own character, not to another player's
+          if (a.isOwner) controlerList[a.id] = a.name
+        }
+      }
+    }
+    let dialogData = {
+      controlerList: controlerList
+    }
+    const ctrlDlg = await foundry.applications.handlebars.renderTemplate("systems/sr5/templates/interface/chooseControler.hbs", dialogData)
+    const ctrlResult = await foundry.applications.api.DialogV2.wait({
+      window: {
+        title: game.i18n.localize('SR5.ChooseControler') 
+      },
+      content: ctrlDlg,
+      buttons: [
+        {
+          action: "ok",
+          label: "Ok",
+          default: true,
+          callback: (event, button, dialog) => ({
+            action: "ok", element: dialog.element 
+          }),
+        },
+        {
+          action: "cancel",
+          label: game.i18n.localize("SR5.Cancel"),
+          callback: () => ({
+            action: "cancel" 
+          }),
+        },
+      ],
+      rejectClose: false,
+    })
+    if (!ctrlResult || ctrlResult.action !== "ok") return
+    let controler = ctrlResult.element.querySelector("[name=controler]")?.value
+    let controlerName = ""
+    if (controler) {
+      controlerName = controlerList[controler]
+      let vehicleControler = SR5_EntityHelpers.getRealActorFromID(controler)
+      vehicleControler = vehicleControler.toObject(false)
+      this.actor.update({
+        "system.vehicleOwner.id": controler,
+        "system.vehicleOwner.name": controlerName,
+        "system.vehicleOwner.system": vehicleControler.system,
+        "system.vehicleOwner.items": vehicleControler.items,
+      })
+    } else {
+      this.actor.update({
+        "system.vehicleOwner.id": "",
+        "system.vehicleOwner.name": "",
+        "system.vehicleOwner.system": "",
+        "system.vehicleOwner.items": [],
+        "system.controlMode": "autopilot"
+      })
+    }
+
+  }
+
+  /* -------------------------------------------- */
+  /*  Storage tab                                 */
+  /* -------------------------------------------- */
+
+  // The rules themselves live in interface/storage-rules.js, free of Foundry
+  // globals so they can be read and tested on their own.
+  static STORABLE_TYPES = STORABLE_TYPES
+
+  /**
+   * Build the view model for the Storage tab: each storage with what sits
+   * inside it, for the character and the Grunt sheets (a vendor is a Grunt).
+   * Stored items are left in their usual lists on purpose — being
+   * stored does not yet take an item out of play.
+   */
+  // One icon per kind of storage. Font Awesome, so it takes the sheet's own
+  // text colour and stays readable on a light surface.
+  static STORAGE_ICONS = {
+    stash: "fa-house",
+    safe: "fa-vault",
+    backpack: "fa-suitcase",
+    cache: "fa-box-archive",
+    garage: "fa-warehouse",
+  }
+
+  _prepareStorages(actor, storages) {
+    const stored = actor.items.filter(i => i.system?.storedIn)
+    return storages
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(storage => {
+        const contents = stored
+          .filter(i => i.system.storedIn === storage._id)
+          .sort((a, b) => a.name.localeCompare(b.name))
+        const max = storage.system.capacity.value
+        // What the lot is worth: item prices, not the actor's nuyen.
+        const value = contents.reduce((total, i) => {
+          const price = i.system.price?.value ?? i.system.price?.base ?? 0
+          // Ammunition carries its whole stack in its computed price (utilityItem.js _handleAmmoPrice)
+          return total + price * (i.type === "itemAmmunition" ? 1 : (i.system.quantity ?? 1))
+        }, 0)
+        return {
+          _id: storage._id,
+          name: storage.name,
+          img: storage.img,
+          type: storage.system.type,
+          icon: ActorSheetSR5.STORAGE_ICONS[storage.system.type] ?? "fa-box",
+          isDeployable: storage.system.isDeployable,
+          isDeployed: storage.system.isDeployed,
+          isLocked: isLocked(storage),
+          // Shut, its contents are not shown to a player who only looks at
+          // the sheet. A courtesy, not a protection: they are still in the
+          // actor's data that player's browser holds.
+          hideContents: isLocked(storage) && !this.actor.isOwner,
+          contents: contents,
+          used: contents.length,
+          max: max,
+          value: value,
+          hasLimit: max > 0,
+          isFull: max > 0 && contents.length >= max,
+        }
+      })
+  }
+
+  static isStorable(item, storage) {
+    return isStorable(item, storage)
+  }
+
+  /**
+   * What this garage asks for that the character has not got, or null when it
+   * will take the vehicle (Run Faster p. 216).
+   */
+  // Whether it refuses is the "garage" box of the "objects" rule lock (formerly sr5StorageCheckGarageLifestyle), at _onStoragePutIn
+  static garageShortfall(actor, storage) {
+    const requirement = garageRequirement(storage)
+    if (!requirement) return null
+
+    const lifestyles = actor.items.filter(i => i.type === "itemLifestyle")
+    const counted = storage.system.linkedLifestyle ?
+      lifestyles.filter(i => i.id === storage.system.linkedLifestyle) :
+      lifestyles
+    return meetsGarageLifestyle(requirement, counted.map(i => i.system.level)) ? null : requirement
+  }
+
+  // Switch between icons in cells and one detailed row per item.
+  async _onStorageViewToggle(event) {
+    event.preventDefault()
+    const current = game.settings.get("sr5", "sr5StorageViewMode")
+    await game.settings.set("sr5", "sr5StorageViewMode", current === "list" ? "grid" : "list")
+    this.render()
+  }	/* -------------------------------------------- */
+
+  // Put one or more carried items into a storage.
+  async _onStoragePutIn(event) {
+    event.preventDefault()
+    const storageId = event.currentTarget.dataset.storageId
+    const storage = this.actor.items.get(storageId)
+    if (!storage) return
+
+    const candidates = this.actor.items
+      .filter(i => !isStoredAway(i, this.actor) && ActorSheetSR5.isStorable(i, storage))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    if (!candidates.length) {
+      const empty = storage.system.type === "garage" ?
+        "SR5.WARN_StorageNoVehicleToStore" :
+        "SR5.WARN_StorageNothingToStore"
+      return ui.notifications.info(game.i18n.localize(empty))
+    }
+
+    const shortfall = ActorSheetSR5.garageShortfall(this.actor, storage)
+    if (shortfall && refuseByRule("objects", "SR5.WARN_StorageGarageLifestyle", {
+      storage: storage.name,
+      lifestyle: game.i18n.localize(SR5.lifestyleTypes[shortfall.lifestyle]),
+      cost: shortfall.cost,
+    }, {
+      actor: this.actor, lockCase: "garage"
+    })) return
+
+    const max = storage.system.capacity.value
+    const used = this.actor.items.filter(i => i.system?.storedIn === storageId).length
+    const room = max > 0 ? max - used : Infinity
+    // The "objects" rule lock lifted, a full storage takes more, and the GM is told once (not again for the overflow)
+    const full = room <= 0
+    if (full && refuseByRule("objects", "SR5.WARN_StorageFull", {
+      storage: storage.name
+    }, {
+      actor: this.actor
+    })) return
+
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/sr5/templates/interface/storage-put-in.hbs", {
+        storageName: storage.name,
+        items: candidates.map(i => i.toObject(false)),
+      })
+    const result = await foundry.applications.api.DialogV2.wait({
+      window: {
+        // A garage parks a vehicle, it does not put away an object
+        title: game.i18n.format(storage.system.type === "garage" ? "SR5.StoragePutInVehicleTitle" : "SR5.StoragePutInTitle", {
+          storage: storage.name
+        })
+      },
+      content: content,
+      buttons: [
+        {
+          action: "ok",
+          label: game.i18n.localize(storage.system.type === "garage" ? "SR5.StoragePutInVehicle" : "SR5.StoragePutIn"),
+          default: true,
+          callback: (event, button, dialog) => ({
+            action: "ok", element: dialog.element 
+          }),
+        },
+        {
+          action: "cancel",
+          label: game.i18n.localize("Cancel"),
+          callback: () => ({
+            action: "cancel" 
+          }),
+        },
+      ],
+      rejectClose: false,
+    })
+    if (!result || result.action !== "ok") return
+
+    const chosen = [...result.element.querySelectorAll("[name=storedItem]:checked")].map(i => i.value)
+    if (!chosen.length) return
+    if (!full && chosen.length > room && refuseByRule("objects", "SR5.WARN_StorageNotEnoughRoom", {
+      storage: storage.name, room: room
+    }, {
+      actor: this.actor
+    })) return
+
+    await this.actor.updateEmbeddedDocuments("Item", chosen.map(id => ({
+      _id: id, "system.storedIn": storageId 
+    })))
+  }	/* -------------------------------------------- */
+
+  // Take an item back out of its storage.
+  async _onStorageTakeOut(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const itemId = event.currentTarget.dataset.itemId
+    const item = this.actor.items.get(itemId)
+    if (!item) return
+    await item.update({
+      "system.storedIn": "" 
+    })
+  }	/* -------------------------------------------- */
+
+  //Loading an agent is a free action, calling or dismissing a sprite or a spirit a simple one
+  _sidekickActionCost(type){
+    if (type === "itemProgram") return [{
+      type: "free", value: 1
+    }]
+    if (type === "itemSprite" || type === "itemSpirit") return [{
+      type: "simple", value: 1
+    }]
+    return []
+  }
+
+  //From the deploy click on, the drone holds the wireless switch: grey the row at once,
+  //so a click before the sheet is drawn again cannot switch an item that no longer decides
+  static lockDeployedWireless(row){
+    const toggle = row?.querySelector('.toggle-value[data-binding="system.wirelessTurnedOn"]')
+    if (!toggle) return
+    const cell = toggle.parentElement
+    cell.inert = true
+    cell.dataset.tooltip = game.i18n.localize("SR5.WirelessHeldByDeployedDrone")
+    const icon = toggle.querySelector("em")
+    if (icon?.classList.contains("SR-SubColor")) icon.classList.replace("SR-SubColor", "SR-GreyColor")
+    else icon?.classList.add("SR-LightGreyColor")
+  }
+
+  //Handle the creation of a 'side kick'
+  async _OnSidekickCreate(event){
+    event.preventDefault()
+    const id = event.currentTarget.closest(".item").dataset.itemId
+    let item = this.actor.items.get(id)
+    let actorId = this.actor.id
+    if (this.actor.isToken) actorId = this.actor.token.id
+    if (!SR5Combat.hasActionsLeft(this.actor, this._sidekickActionCost(item.type))) return
+    if (item.type === "itemVehicle") ActorSheetSR5.lockDeployedWireless(event.currentTarget.closest(".item"))
+    item = item.toObject(false)
+    if (!game.user?.isGM) {
+      await SR5_SocketHandler.emitForGM("createSidekick", {
+        item: item,
+        userId: game.user.id,
+        actorId: actorId,
+      })
+    } else {
+      await SR5_ActorHelper.createSidekick(item, game.user.id, actorId)
+    }
+
+    //manage actions
+    if (item.type === "itemProgram") SR5Combat.changeActionInCombat(actorId, [{
+      type: "free", value: 1, source:"loadAgent"
+    }])
+    else if (item.type === "itemSprite") SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source:"callSprite"
+    }])
+    else if (item.type === "itemSpirit") SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source:"callSpirit"
+    }])
+  }
+
+  //
+  async _OnDismissActor(event){
+    event.preventDefault()
+    if (!game.user?.isGM) {
+      await SR5_SocketHandler.emitForGM("dismissSidekick", {
+        actor: this.actor.toObject(false)
+      })
+    } else {
+      await SR5_ActorHelper.dimissSidekick(this.actor.toObject(false))
+    }
+  }
+
+  async _OnSidekickDestroy(event){
+    event.preventDefault()
+    const id = event.currentTarget.closest(".item").dataset.itemId
+    let sidekick
+    let item = this.actor.items.get(id)
+    let actorId = this.actor.id
+    if (!SR5Combat.hasActionsLeft(this.actor, this._sidekickActionCost(item.type))) return
+
+    sidekick = SR5_ActorHelper.findSidekick(game.actors, SR5_ActorHelper.sidekickCreatorId(this.actor), id)?.toObject(false)
+
+    if(sidekick !== undefined) {
+      if (!game.user?.isGM) {
+        await SR5_SocketHandler.emitForGM("dismissSidekick", {
+          actor: sidekick
+        })
+      } else {
+        await SR5_ActorHelper.dimissSidekick(sidekick)
+      }
+    } else {
+      item.update({
+        "system.isCreated": false
+      })
+    }
+
+    //manage actions
+    if (this.actor.isToken) actorId = this.actor.token.id
+    if (item.type === "itemProgram") SR5Combat.changeActionInCombat(actorId, [{
+      type: "free", value: 1, source: "unloadAgent"
+    }])
+    else if (item.type === "itemSprite") SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source:"dismissSprite"
+    }])
+    else if (item.type === "itemSpirit") SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source:"dismissSpirit"
+    }])
+  }
+
+  async _onAddItemToPan(_event){
+    let actor = this.actor,
+      list = {
+      },
+      actorList = {
+      },
+      baseActor = this.actor.id
+
+    //The "matrix" rule lock lifted (B13), the PAN grows past its Device Rating x 3 (SR5 p. 233), the gamemaster told
+    if (Number(actor.system.matrix.pan.current) >= Number(actor.system.matrix.pan.max) && refuseByRule("matrix", "SR5.INFO_PanFullOf", {
+      actor: actor.name
+    }, {
+      actor, level: "info"
+    })) return
+
+    for (let key of Object.keys(actor.system.matrix.potentialPanObject)){
+      if (Object.keys(actor.system.matrix.potentialPanObject[key]).length) {
+        list[key] = SR5_EntityHelpers.sortObjectValue(actor.system.matrix.potentialPanObject[key])
+      }
+    }
+
+    //S1 (ticket 4 d'Adrore): the actors whose items join the PAN are those of the actor's scene, unlinked grunts included
+    //(each under its token's name, for the gamemaster only, as before); "show everyone" gives back the world's
+    const holder = c => c.actor.type === "actorPc" || (c.actor.type === "actorGrunt" && (c.onScene || c.actor.prototypeToken?.actorLink))
+    const allowed = c => game.user.isGM || (!c.actor.isToken && c.actor.hasPlayerOwner)
+    const listOf = showAll => Object.fromEntries(sceneCandidatesOf(actor, showAll).filter(c => holder(c) && allowed(c)).map(c => [c.ref, c.name]))
+    const actorListAll = listOf(true)
+    Object.assign(actorList, listOf(false))
+
+    if (this.actor.isToken) baseActor = this.actor.token.id
+    //The actor itself is always offered, wherever it stands
+    if (!actorList[baseActor]) actorList[baseActor] = this.actor.isToken ? this.actor.token.name : this.actor.name
+    if (!actorListAll[baseActor]) actorListAll[baseActor] = actorList[baseActor]
+
+    let dialogData = {
+      actor: baseActor,
+      list: list,
+      actorList: actorList,
+      actorListScene: actorList,
+      actorListAll,
+      showAll: false,
+    }
+
+    const dlg = await foundry.applications.handlebars.renderTemplate("systems/sr5/templates/interface/addItemToPan.hbs", dialogData)
+    const result = await SR5_PanDialog.create({
+      title: game.i18n.localize('SR5.ChooseItemToPan'),
+      content: dlg,
+      data: dialogData,
+    })
+
+    if (!result || result.action === "cancel") return
+    let targetItem = result.element.querySelector("[name=itemToAdd]")?.value
+    if (targetItem === "none") return
+    if (!game.user?.isGM) {
+      SR5_SocketHandler.emitForGM("addItemToPan", {
+        targetItem: targetItem,
+        actorId: baseActor,
+      })
+    } else {
+      SR5_ActorHelper.addItemtoPan(targetItem, baseActor)
+    }
+  }
+
+  async _onDeleteItemFromPan(event){
+    event.preventDefault()
+    // The browser clears currentTarget once the handler yields: read the button before any await
+    let index = event.currentTarget.dataset.index
+    let itemId = event.currentTarget.dataset.key
+    // Submit any unsaved changes
+    if (this.isEditable) {
+      const formData = new foundry.applications.ux.FormDataExtended(this.element)
+      const submitData = this._processFormData(null, this.element, formData)
+      if (submitData && Object.keys(submitData).length) {
+        await this.document.update(submitData)
+      }
+    }
+    let actor = this.actor.id
+    if (this.actor.isToken) actor = this.actor.token.id
+
+    if (!game.user?.isGM) {
+      SR5_SocketHandler.emitForGM("deleteItemFromPan", {
+        targetItem: itemId,
+        index: index,
+        actorId: actor,
+      })
+    } else {
+      SR5_ActorHelper.deleteItemFromPan(itemId, actor, index)
+    }
+  }
+
+  //Turn a physical jammer on or off (SR5 p. 443)
+  async _onToggleJammer(event){
+    event.preventDefault()
+    let item = this.actor.items.get(event.target.closest(".item")?.dataset.itemId)
+    if (item) await SR5_Jammer.toggle(item)
+  }
+
+  async _onStopJamming(event){
+    event.preventDefault()
+    let jammingItem = this.actor.items.find(i => i.system.type === "signalJam")
+    // The status goes with the item (sr5HookDeleteItem)
+    await this.actor.deleteEmbeddedDocuments("Item", [jammingItem.id])
+  }
+
+  _onChangeMatrixMode(_event){
+    let actorId = this.actor.id
+    if (this.actor.isToken) actorId = this.actor.token.id
+
+    //manage actions
+    SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source: "switchInitToMatrix"
+    }])
+  }
+
+  _onChangeSilentMode(_event){
+    let actorId = this.actor.id
+    if (this.actor.isToken) actorId = this.actor.token.id
+		
+    //manage actions: switching to or from silent mode is a simple action (SR5 p. 236)
+    SR5Combat.changeActionInCombat(actorId, [{
+      type: "simple", value: 1, source: "changeSilentMode"
+    }])
+  }
+
+}

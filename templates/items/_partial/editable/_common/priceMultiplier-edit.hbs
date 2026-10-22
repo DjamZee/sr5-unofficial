@@ -1,0 +1,59 @@
+<!-- Price Title -->
+<li class="SR-EnTete">
+   	<p class="SR-TextUppercase">{{localize 'SR5.Price'}} {{localize 'SR5.AndShort'}} {{localize 'SR5.Availability'}}</p>
+</li>
+
+<!-- Item Price -->
+<li class="grid">
+   	<div class="col-5">{{localize 'SR5.Price'}}{{localize 'SR5.Colons'}}</div>
+   	<div class="col-2 SR-Textleft"><input type="number" data-dtype="Number" name="system.price.base" value="{{system.price.base}}" onfocus="this.select()"/></div>
+   	{{#if system.price.multiplier}}
+		<div class="col-1 SR-Textleft">&nbsp;(x {{findMultiplierValue system.price.multiplier this}})</div>
+		{{else}}
+		<div class="col-1"></div>
+    {{/if}}
+    <div class="col-2 SR-TextRight">{{localize 'SR5.Multiplier'}}{{localize 'SR5.Colons'}}&nbsp;</div>
+    <div class="col-2 SR-TextRight">
+    	<select name="system.price.multiplier" data-dtype="{{system.price.multiplier}}" required>
+     		<option value="">{{localize 'SR5.None'}}</option>
+				{{#if (eq data.type 'itemFocus')}}
+				{{selectOptions lists.valueMultipliersNoCapacity selected=system.price.multiplier localize=true}}
+				{{else}}
+				{{selectOptions lists.valueMultipliers selected=system.price.multiplier localize=true}}
+				{{/if}}
+    	</select>
+   	</div>
+</li>
+
+<!-- Item Availability -->
+<li class="grid">
+	<div class="col-5">{{localize 'SR5.Availability'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-1 SR-Textleft"><input type="number" data-dtype="Number" name="system.availability.base" value="{{system.availability.base}}" onfocus="this.select()"/></div>
+	{{#if system.availability.multiplier}}
+		<div class="col-2 SR-Textleft">&nbsp;(x {{findMultiplierValue system.availability.multiplier this}})</div>
+	{{else}}
+		<div class="col-2"></div>
+	{{/if}}
+	<div class="col-2 SR-TextRight">{{localize 'SR5.Multiplier'}}{{localize 'SR5.Colons'}}&nbsp;</div>
+	<div class="col-2 SR-TextRight">
+		<select name="system.availability.multiplier" data-dtype="{{system.availability.multiplier}}" required>
+			<option value="">{{localize 'SR5.None'}}</option>
+			{{#if (eq data.type 'itemFocus')}}
+			{{selectOptions lists.valueMultipliersNoCapacity selected=system.availability.multiplier localize=true}}
+			{{else}}
+			{{selectOptions lists.valueMultipliers selected=system.availability.multiplier localize=true}}
+			{{/if}}
+		</select>
+	</div>
+</li>
+
+<!-- Item Legality -->
+<li class="grid">
+	<div class="col-4">{{localize 'SR5.Legality'}}{{localize 'SR5.Colons'}}</div>
+	<div class="col-8">
+		<select name="system.legality">
+			<option value="">{{localize 'SR5.Legal'}}</option>
+			{{selectOptions lists.legalTypes selected=system.legality localize=true}}
+		</select>
+	</div>
+</li>

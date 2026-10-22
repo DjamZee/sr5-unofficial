@@ -1,0 +1,366 @@
+/**
+ * Default Layouts — defines the initial tab/panel/block arrangement for each
+ * SR5 actor type. These match the current hardcoded template structure.
+ */
+
+import {
+  TAB_ICONS 
+} from './block-registry.js'
+
+// ---------------------------------------------------------------------------
+//  Helpers
+// ---------------------------------------------------------------------------
+
+let _nextId = 0
+function _id() { return `default-${_nextId++}` }
+
+function _panel(label, width, tabs) {
+  return {
+    id: _id(), label, width, tabs 
+  }
+}
+
+function _tab(label, icon, blocks) {
+  return {
+    id: _id(), label, icon: TAB_ICONS[icon], iconKey: icon, blocks 
+  }
+}
+
+function _block(id, column) {
+  return column !== undefined ? {
+    id, column 
+  } : {
+    id 
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Character (PC) — 2 panels: sidebar (1-col) + main (2-col)
+// ---------------------------------------------------------------------------
+
+function _characterDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Core', 'core', [
+          _block('attributes'), _block('resistances'),
+          _block('defenses'), _block('initiatives'),
+        ]),
+        _tab('Derived', 'derived', [
+          _block('limits'), _block('derivedAttributes'),
+          _block('essence'), _block('carrying'), _block('movement'),
+        ]),
+        _tab('Magic', 'magic', [
+          _block('magicUserType'), _block('adeptPowerPoint'),
+          _block('tradition'), _block('astral'), _block('reagents'), _block('spiritReputation'),
+        ]),
+        _tab('Matrix', 'matrix', [
+          _block('matrixDevice'), _block('matrixSilentMode'),
+          _block('matrixInit'), _block('matrixGrid'),
+          _block('matrixAttributes'), _block('matrixPrograms'),
+          _block('matrixMonitor'), _block('matrixResistances'),
+          _block('matrixPan'), _block('matrixMarksControled'),
+          _block('matrixOverwatch'), _block('matrixMarks'),
+        ]),
+        _tab('Qualities', 'qualities', [
+          _block('qualities'), _block('visions'), _block('addictions'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Skills', 'skills', [
+          _block('activeSkills'), _block('skillGroups'),
+          _block('knowledgeSkills'), _block('languageSkills'),
+        ]),
+        _tab('Combat', 'combat', [
+          _block('rangedWeapons'), _block('meleeWeapons'),
+          _block('grenades'), _block('armors'),
+          _block('ammunitions'), _block('martialArts'),
+        ]),
+        _tab('Gear', 'gear', [
+          _block('variousGear'), _block('vehicles'), _block('money'),
+        ]),
+        _tab('Storage', 'storage', [
+          _block('storages'),
+        ]),
+        _tab('Augmentations', 'augmentation', [
+          _block('augmentations'), _block('externalEffects'),
+        ]),
+        _tab('Magician', 'magician', [
+          _block('spells'), _block('adeptPowers'),
+          _block('summonedSpirits'), _block('foci'),
+          _block('preparations'), _block('rituals'),
+          _block('powers'), _block('metamagics'),
+        ]),
+        _tab('Technomancer', 'technomancer', [
+          _block('resonanceActions'), _block('complexForms'),
+          _block('spriteItems'), _block('echoes'), _block('powers'),
+        ]),
+        _tab('Matrix', 'matrix', [
+          _block('matrixDevicesList'), _block('matrixProgramsList'),
+          _block('matrixFilesList'), _block('matrixActionsList'),
+        ]),
+        _tab('Social', 'social', [
+          _block('contacts'), _block('lifestyles'),
+          _block('sins'), _block('reputation'),
+        ]),
+        _tab('Bio', 'bio', [
+          _block('biography'), _block('critterBiography'),
+          _block('description'), _block('background'), _block('karma'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Grunt — same as character but simplified bio tab
+// ---------------------------------------------------------------------------
+
+function _gruntDefaultLayout() {
+  _nextId = 0
+  const layout = _characterDefaultLayout()
+  // Replace Bio tab with grunt-specific version (no biography, no karma)
+  const mainPanel = layout.panels.find(p => p.label === 'MAIN')
+  if (mainPanel) {
+    const bioIdx = mainPanel.tabs.findIndex(t => t.label === 'Bio')
+    if (bioIdx !== -1) {
+      mainPanel.tabs[bioIdx] = _tab('Bio', 'bio', [
+        _block('biographyContact'), _block('descriptionGrunt'),
+        _block('background'),
+      ])
+    }
+    // Grunt gear tab has no money
+    const gearIdx = mainPanel.tabs.findIndex(t => t.label === 'Gear')
+    if (gearIdx !== -1) {
+      mainPanel.tabs[gearIdx] = _tab('Gear', 'gear', [
+        _block('variousGear'), _block('vehicles'),
+      ])
+    }
+  }
+  return layout
+}
+
+// ---------------------------------------------------------------------------
+//  Spirit — simplified: 3 left tabs, 1 right section
+// ---------------------------------------------------------------------------
+
+function _spiritDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Core', 'core', [
+          _block('attributes'), _block('resistances'),
+          _block('defenses'), _block('initiatives'), _block('visions'),
+        ]),
+        _tab('Derived', 'derived', [
+          _block('limits'), _block('derivedAttributes'),
+          _block('essence'), _block('carrying'), _block('movement'),
+        ]),
+        //Traits: the spirit's own (Elemental, Wild, Domain...) and its qualities (relecture djamz.13, img 17)
+        _tab('Magic', 'magic', [
+          _block('astral'), _block('tradition'), _block('qualities'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Combat', 'combat', [
+          _block('spiritWeapons'), _block('activeSkills'),
+          _block('powers'), _block('spells'),
+          _block('externalEffects'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Drone — 2 left tabs, 4 right tabs
+// ---------------------------------------------------------------------------
+
+function _droneDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Core', 'core', [
+          _block('attributes'), _block('resistances'),
+          _block('defenses'), _block('controlMode'), _block('initiatives'),
+          _block('visions'),
+        ]),
+        _tab('Matrix', 'matrix', [
+          _block('matrixDevice'), _block('matrixSilentMode'),
+          _block('matrixGrid'), _block('matrixPrograms'),
+          _block('matrixResistances'), _block('matrixMarksControled'),
+          _block('matrixMarks'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Combat', 'combat', [
+          _block('droneRoll'), _block('activeSkills'),
+          _block('rangedWeapons'), _block('meleeWeapons'), _block('armors'),
+          _block('ammunitions'), _block('externalEffects'),
+        ]),
+        _tab('Matrix', 'matrix', [
+          _block('matrixProgramsList'), _block('matrixFilesList'),
+          _block('matrixActionsList'),
+        ]),
+        _tab('Modifications', 'drone', [
+          _block('modifications'), _block('variousGear'),
+        ]),
+        //The Chop Shop (Rigger 5.0 p. 153-156)
+        _tab('Workshop', 'workshop', [
+          _block('workshop'),
+        ]),
+        _tab('Bio', 'bio', [
+          _block('description'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Sprite — 1 left tab, 1 right section
+// ---------------------------------------------------------------------------
+
+function _spriteDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Matrix', 'matrix', [
+          _block('matrixAttributes'), _block('matrixSilentMode'),
+          _block('matrixGrid'), _block('initiatives'),
+          _block('matrixResistances'), _block('matrixMarksControled'),
+          _block('matrixOverwatch'), _block('matrixMarks'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Abilities', 'skills', [
+          _block('activeSkills'), _block('matrixActionsList'),
+          _block('spritePowers'), _block('externalEffects'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Device — 1 left block, 2 right tabs
+// ---------------------------------------------------------------------------
+
+function _deviceDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Device', 'device', [
+          _block('matrixDevice'), _block('matrixHostSlaves'), _block('matrixMaglockType'),
+          _block('matrixAttributes'), _block('initiatives'),
+          _block('matrixSilentMode'), _block('matrixGrid'),
+          _block('matrixMarksControled'), _block('matrixMarks'),
+          _block('visions'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Matrix', 'matrix', [
+          _block('iceAttack'), _block('matrixFilesList'),
+          _block('matrixActionsList'), _block('externalEffects'),
+        ]),
+        _tab('Bio', 'bio', [
+          _block('description'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Agent — 1 left tab, 1 right section
+// ---------------------------------------------------------------------------
+
+function _agentDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('SIDEBAR', 1, [
+        _tab('Matrix', 'matrix', [
+          _block('matrixAttributes'), _block('matrixSilentMode'),
+          _block('matrixGrid'), _block('initiatives'),
+          _block('matrixResistances'), _block('matrixMarksControled'),
+          _block('matrixOverwatch'), _block('matrixMarks'),
+        ]),
+      ]),
+      _panel('MAIN', 2, [
+        _tab('Abilities', 'skills', [
+          _block('activeSkills'), _block('matrixProgramsList'),
+          _block('matrixActionsList'), _block('externalEffects'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Public API
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+//  Storage put down on the map — what is inside it, and a word about it
+// ---------------------------------------------------------------------------
+
+function _storageDefaultLayout() {
+  _nextId = 0
+  return {
+    panels: [
+      _panel('MAIN', 2, [
+        _tab('Contents', 'storage', [
+          _block('storageContents'),
+        ]),
+        _tab('Bio', 'bio', [
+          _block('description'),
+        ]),
+      ]),
+    ],
+  }
+}
+
+export function getDefaultLayout(actorType) {
+  switch (actorType) {
+    case 'SR5ActorSheet':     return _characterDefaultLayout()
+    case 'SR5GruntSheet':     return _gruntDefaultLayout()
+    case 'SR5SpiritSheet':    return _spiritDefaultLayout()
+    case 'SR5DroneSheet':     return _droneDefaultLayout()
+    case 'SR5SpriteSheet':    return _spriteDefaultLayout()
+    case 'SR5AppareilSheet':  return _deviceDefaultLayout()
+    case 'SR5AgentSheet':     return _agentDefaultLayout()
+    case 'SR5StorageSheet':   return _storageDefaultLayout()
+    default:                  return _characterDefaultLayout()
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Display names of the default panels and tabs (lot 34)
+// ---------------------------------------------------------------------------
+
+// The English names above stay the identifiers (searched by name in this file,
+// saved as is in the actors' custom layouts); only what is shown is translated.
+const DEFAULT_LABELS = [
+  'SIDEBAR', 'MAIN', 'Abilities', 'Augmentations', 'Bio', 'Combat', 'Contents', 'Core', 'Derived',
+  'Device', 'Gear', 'Magic', 'Magician', 'Matrix', 'Modifications', 'Qualities', 'Skills', 'Social',
+  'Storage', 'Technomancer', 'Workshop',
+]
+
+/**
+ * The name to show for a panel or tab of a layout. A default panel or tab (id `default-N`, built
+ * above, possibly saved in an actor's custom layout) shows its translated name; any other name —
+ * one the GM typed, or a panel added in the dialog — is shown as written.
+ * @param {{id?: string, label?: string}} entry
+ * @returns {string}
+ */
+export function layoutLabel(entry) {
+  const label = entry?.label ?? ''
+  if (!/^default-\d+$/.test(entry?.id ?? '') || !DEFAULT_LABELS.includes(label)) return label
+  return game.i18n.localize(`SR5.SheetConfig.Default.${label}`)
+}

@@ -1,0 +1,720 @@
+// main: "shadowrun.less"
+@import "./layout.less";
+
+.app.window-app.SR-Item {
+    /* Compact input height — overrides Foundry's 2rem default for legacy sheet rows */
+    --input-height: auto;
+
+    /* v13: remove Foundry's default input background shade */
+    input, select, textarea {
+        --input-background-color: transparent;
+        --input-border-color: transparent;
+        --input-focus-outline-color: transparent;
+    }
+
+    /* Reset global UI controls (from base.less/controls.less) —
+       sheets predate the global theme and have their own styling */
+    button, a.button, input[type="button"], input[type="submit"] {
+        background-color: transparent;
+        border: none;
+        color: inherit;
+    }
+    select {
+        background: transparent;
+        border: none;
+        color: inherit;
+        outline: none;
+        &:focus, &:focus-visible { outline: none; }
+        option, optgroup {
+            background-color: var(--sr-ui-bg-color-dark);
+            color: var(--sr-ui-color-active);
+        }
+        option:checked, option:hover {
+            background-color: var(--sr-ui-border-color-active);
+            color: var(--sr-text-color-light);
+        }
+    }
+    .sr-select-wrapper > select {
+        appearance: none;
+        padding-right: 16px;
+    }
+    input[type="text"], input[type="number"], input[type="password"],
+    input[type="date"], input[type="time"], input[type="search"],
+    input:not([type]) {
+        background: transparent;
+        border: none;
+        color: inherit;
+        outline: none;
+        appearance: none;
+        &:focus, &:focus-visible { outline: none; background: transparent; }
+    }
+    // Catch-all: override any Foundry focus background on inputs we don't control
+    input:focus, input:focus-visible {
+        background: transparent;
+    }
+    input[type="checkbox"] {
+        width: revert;
+        height: revert;
+        border: revert;
+        border-radius: revert;
+        background: revert;
+        &::before, &::after { content: revert; }
+        &:focus { border-color: revert; background: revert; }
+    }
+
+    background: none;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+
+    * {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        ::-webkit-scrollbar {
+          display: none;
+        }
+      }
+
+    .window-header {
+        background : none;
+        border-bottom: 0;
+        color      : var(--sr-text-color-light);
+        font-family: var(--sr-font-body);
+
+        .window-title {
+            visibility: hidden;
+            width: 0;
+            overflow: hidden;
+        }
+
+        .header-control {
+            color: var(--sr-text-color-light);
+            background: var(--sr-text-color-dark);
+            border: 1px solid var(--sr-text-color-dark);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            padding: 0 8px;
+            box-shadow: none;
+            transition: all 0.15s ease;
+
+            &::before {
+                width: 14px;
+                text-align: center;
+                display: inline-block;
+            }
+
+            &:hover {
+                background: var(--sr-text-color-flash);
+                color: var(--sr-text-color-light);
+            }
+
+            &.active {
+                background: var(--sr-ui-border-color);
+                color: var(--sr-text-color-light);
+
+                &:hover {
+                    background: var(--sr-text-color-flash);
+                }
+            }
+        }
+    }
+
+    &.minimized .window-header {
+        .window-title {
+            visibility: visible;
+            width: auto;
+        }
+        .header-control:not([data-action="close"]) {
+            display: none;
+        }
+    }
+
+    .controls-dropdown {
+        background: var(--sr-text-color-dark);
+        border: 1px solid color-mix(in srgb, var(--sr-text-color-flash) 35%, transparent);
+        border-radius: 0;
+        box-shadow: none;
+
+        .header-control > button {
+            --button-background-color: none;
+            --button-text-color: var(--sr-text-color-light);
+            color: var(--sr-text-color-light);
+            font-family: var(--sr-font-body);
+            border: none;
+
+            &:hover {
+                --button-text-color: var(--sr-text-color-light);
+                background: var(--sr-text-color-flash);
+                color: var(--sr-text-color-light);
+            }
+        }
+    }
+
+    .window-content {
+        padding            : 0;
+        background-image   : var(--sr-img-bg-white50);
+        background-repeat  : no-repeat;
+        background-position: top left;
+        background-size    : cover;
+        background-origin  : border-box;
+        font-family        : var(--sr-font-body);
+        font-size          : var(--sr-font-size-small);
+        background-color   : var(--sr-text-color-light);
+        border             : 1px solid var(--sr-text-color-dark);
+        border-radius      : 0;
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* v13: override @layer elements defaults for ul/li */
+        ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        li {
+            margin: 0;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        h2 {
+            font-family  : var(--sr-font-body-bold);
+            font-size    : var(--sr-font-size-normal);
+            border-bottom: 0;
+            color        : var(--sr-ui-border-color);
+            margin       : 0;
+        }
+
+        .SR-Header {
+            padding: 10px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            background-image: var(--sr-img-actor-sheet-top);
+            background-size: auto 100%;
+            background-repeat: repeat-x;
+            background-position: top left;
+
+            .SRImgItem {
+                width        : 33px;
+                height       : 33px;
+                margin-right : 5px;
+                border       : 1px solid var(--sr-text-color-flash);
+                border-radius: 3px;
+                max-width    : none;
+                object-fit   : cover;
+                flex-shrink  : 0;
+            }
+
+            // Token picture of an item that unfolds into an actor: round, the
+            // way it will look once dropped on the map
+            .SRImgToken {
+                border-radius: 50%;
+                margin-left  : -2px;
+            }
+
+            .SRItemTitre {
+                flex         : 1;
+                min-width    : 0;
+                font-family  : var(--sr-font-title);
+                font-size    : 20px;
+                border-bottom: 0px;
+
+                input {
+                    background-color: transparent;
+                    border          : 0px;
+                    border-bottom   : 1px solid transparent;
+                    border-radius   : 0;
+                    color           : var(--sr-text-color-light);
+                    font-family     : var(--sr-font-title);
+                    font-size       : 20px;
+                    padding         : 0 5px;
+                    margin          : 0;
+                    width           : 100%;
+
+                    &:focus {
+                        box-shadow: none;
+                        background: transparent;
+                        border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                    }
+
+                    &::selection {
+                        background-color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                    }
+
+                    &:hover {
+                        border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                    }
+                }
+            }
+
+            // The device's mode, active / silent / offline (couronne du PAN, lot 6)
+            .sr-device-mode {
+                display    : flex;
+                align-items: center;
+                gap        : 4px;
+                margin     : 0 6px;
+                flex-shrink: 0;
+
+                .sr-device-mode-button {
+                    padding      : 2px 4px;
+                    border       : 1px solid transparent;
+                    border-radius: 3px;
+                    color        : var(--sr-text-color-light);
+                    opacity      : 0.5;
+                    cursor       : pointer;
+
+                    &:hover { opacity: 0.85; }
+
+                    &.current {
+                        opacity     : 1;
+                        color       : var(--sr-text-color-flash);
+                        border-color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                    }
+
+                    &[aria-disabled="true"] { cursor: default; }
+                }
+
+                .sr-device-mode-note {
+                    font-size  : var(--sr-font-size-small, 11px);
+                    color      : var(--sr-text-color-flash);
+                    white-space: nowrap;
+                }
+            }
+
+            nav.tabs {
+                display: flex;
+                align-items: center;
+                margin-left: auto;
+                flex-shrink: 0;
+                border: none;
+                gap: 0;
+            }
+        }
+
+        .SR-MainWindows {
+            margin-top: 10px;
+            height    : 295px;
+            overflow  : auto;
+
+            .tab[data-tab]:not(.active) {
+                display: none;
+            }
+        }
+
+        // Shared element styles for both old (.SR-MainWindows) and new (.sr-tab-content) layouts
+        .SR-MainWindows, .sr-tab-content {
+            p {
+                margin: 0;
+            }
+
+            li {
+                line-height: 17px;
+                padding    : 0px 3px;
+
+                span:not(:last-child) {
+                    padding-right: 5px;
+                }
+
+                a {
+                    color: color-mix(in srgb, var(--sr-ui-border-color) 25%, transparent);
+
+                    &:hover {
+                        color: var(--sr-ui-border-color);
+                    }
+                }
+            }
+
+            // An @UUID link written in the text, in a list or not: the 25 % above is for the sheet's own list
+            // links. The theme's opaque red on its opaque light chip reads at 9.1:1 (SR5) and 6.6:1 (SR6), in both
+            // colour schemes (relecture djamz.17: was Foundry's grey written out, 6.7:1 and 4.9:1)
+            a.content-link, a.inline-roll {
+                color: var(--sr-ui-border-color);
+                background: var(--sr-text-color-light);
+
+                // A link to a document that is gone: struck through and greyed, 5.7:1 on the chip
+                &.broken {
+                    color: color-mix(in srgb, var(--sr-text-color-dark) 60%, var(--sr-text-color-light));
+                    text-decoration: line-through;
+                }
+            }
+
+            input {
+                background    : none;
+                color         : color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent);
+                height        : auto;
+                border        : 0;
+                border-bottom : 1px solid color-mix(in srgb, var(--sr-text-color-flash) 25%, transparent);
+                border-radius : 0;
+                padding-top   : 0;
+                padding-bottom: 0;
+
+                &:focus {
+                    box-shadow: none;
+                    background: transparent;
+                    border-bottom: 1px solid var(--sr-text-color-flash);
+                }
+
+                &:hover {
+                    border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                }
+
+                &::placeholder {
+                    color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                }
+
+            }
+
+            input[type="checkbox"] {
+                position       : relative;
+                margin         : 0;
+                vertical-align : middle;
+                border         : 1px solid var(--sr-text-color-flash);
+                height         : 12px;
+                width          : 12px;
+                border-radius  : 3px;
+                appearance     : none;
+                outline        : 0;
+                cursor         : pointer;
+                transition     : background 175ms cubic-bezier(0.1, 0.1, 0.25, 1);
+
+                &::before {
+                    content     : '';
+                    position    : absolute;
+                    display     : block;
+                    top         : 0;
+                    left        : 0;
+                    right       : 0;
+                    bottom      : 0;
+                    margin      : auto auto auto calc(50% - 2px);
+                    width       : 5px;
+                    height      : 10px;
+                    border-style: solid;
+                    border-width: 0 2px 2px 0;
+                    border-color: var(--sr-text-color-dark);
+                    transform   : rotate(45deg);
+                    opacity     : 0;
+                    font-family : inherit;
+                    font-size   : inherit;
+                    line-height : normal;
+                }
+
+                /* v13: suppress Foundry's FontAwesome checkbox ::after overlay */
+                &::after {
+                    content     : none;
+                    display     : none;
+                }
+
+                &:checked {
+                    content     : '✔';
+                    color       : var(--sr-text-color-light);
+                    border-color: var(--sr-text-color-flash);
+                    background  : color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+
+                    &::before {
+                        opacity: 1;
+                        border-color: var(--sr-text-color-light);
+                    }
+
+                    /* v13: ensure ::after stays suppressed when checked */
+                    &::after {
+                        content : none;
+                        display : none;
+                    }
+
+                    ~label::before {
+                        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                    }
+                }
+            }
+
+            select {
+                border-bottom: 1px solid color-mix(in srgb, var(--sr-text-color-flash) 25%, transparent);
+                border-radius: 0px;
+
+                &:focus {
+                    box-shadow: none;
+                    background: transparent;
+                    border-bottom: 1px solid var(--sr-text-color-flash);
+                }
+
+                &:invalid {
+                    color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+
+                    option, optgroup{
+                        color: color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent);
+                    }
+                }
+
+                /*option:nth-child(1) {
+                    color: color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+                }
+
+                option:nth-child(1n+2) {
+                    color: color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent);
+                }*/
+            }
+
+            .SR-ItemColGauche {
+                height       : 295px;
+                overflow     : auto;
+                padding-right: 5px;
+
+                li:not(.SR-EnTete) {
+                    border-bottom: 1px solid transparent;
+                }
+            }
+
+            .SR-ItemColDroite {
+                padding-left: 5px;
+                height      : 295px;
+                overflow    : auto;
+                border-left : 1px solid var(--sr-text-color-flash);
+            }
+
+            .SR-ItemConfig {
+                height  : 295px;
+                overflow: auto;
+
+                input {
+                    color: color-mix(in srgb, var(--sr-text-color-dark) 70%, transparent);
+                }
+
+                select {
+                    margin-left: -1px;
+                }
+
+            }
+
+            .SR-LigneEnTete {
+                padding  : 0 3px 0 3px;
+                font-size: var(--sr-font-size-normal);
+                color    : var(--sr-text-color-light);
+                background-image:
+                    linear-gradient(45deg, color-mix(in srgb, var(--sr-ui-border-color) 50%, transparent), 80%, var(--sr-ui-border-color)),
+                    var(--sr-sidebar-background);
+                background-size: cover;
+                border-bottom  : 1px solid var(--sr-text-color-flash);
+                border-top     : 1px solid var(--sr-text-color-flash);
+                font-family    : var(--sr-font-body-bold);
+
+                &:not(:first-child) {
+                    margin-top: 15px;
+                }
+
+                a {
+                    color: var(--sr-text-color-light);
+
+                    &:hover {
+                        color: var(--sr-text-color-flash);
+                    }
+                }
+
+                &.vert {
+                    background-image:
+                        linear-gradient(45deg, color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent), 80%, var(--sr-text-color-flash)),
+                        var(--sr-sidebar-background);
+                }
+            }
+
+            .SR-EnTete {
+                padding      : 0 3px 0 3px;
+                font-size    : var(--sr-font-size-normal);
+                color        : var(--sr-ui-border-color);
+                border-bottom: 1px solid var(--sr-ui-border-color);
+                font-family  : var(--sr-font-body-bold);
+
+                a {
+                    color: color-mix(in srgb, var(--sr-ui-border-color) 50%, transparent);
+
+                    &:hover {
+                        color: var(--sr-ui-border-color);
+                    }
+                }
+            }
+
+            .SRBlockSheet:not(:first-child) {
+                padding-top: 10px;
+            }
+
+            .SR-Editor {
+                position  : relative;
+                height    : auto;
+                min-height: 100%;
+
+                .editor {
+                    height  : auto;
+                    position: relative;
+                    height  : 100%;
+                }
+
+                .editor-edit {
+                    display      : unset;
+                    background   : none;
+                    font-size    : inherit;
+                    border       : 0;
+                    border-radius: 0;
+                    box-shadow: none;
+                    padding      : 0;
+                    position     : absolute;
+                    top          : 2px;
+                    right        : 5px;
+                    z-index      : 1;
+                    color        : color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+
+                    &:hover {
+                        color: var(--sr-text-color-flash);
+                    }
+                }
+
+                .tox.tox-tinymce {
+                    height: 100% !important;
+                }
+
+                .tox-sidebar-wrap {
+                    min-height: 200px;
+                }
+            }
+        }
+
+        .SR-ItemFooter {
+            color     : var(--sr-text-color-light);
+            padding   : 10px;
+            display   : flex;
+            background-image: var(--sr-img-actor-sheet-bottom);
+            background-size: auto 100%;
+            background-repeat: repeat-x;
+            background-position: bottom left;
+            border-radius: 0;
+
+            .boxes {
+                flex: 0;
+            }
+
+            .SR-ItemFooter-lastPart {
+                display: flex;
+                flex-wrap: nowrap;
+                margin-left: auto;
+            }
+        }
+
+        .SR-MoniteurBar {
+            display       : flex;
+            flex-direction: row;
+        }
+
+        .SR-MoniteurCases {
+            display       : flex;
+            flex-direction: row;
+            padding-left  : 5px;
+            flex          : 1 1 calc(var(--n, 1) * 10px + 5px);
+            max-width     : calc(var(--n, 1) * 16px + 5px);
+            min-width     : 0;
+
+            // Same responsive boxes as the actor sheets (actor-sheet.less)
+            .boxes {
+                flex     : 1 1 0;
+                min-width: 10px;
+                max-width: 16px;
+            }
+
+            .SR-Case {
+                height: 15px;
+                width : auto;
+                min-width: 6px;
+                margin: 0px 2px 0px 2px;
+                display        : flex;
+                justify-content: center;
+                border-radius  : 1px;
+            }
+        }
+
+        .SR-CaseNeutralDarkColor {
+            background: repeating-linear-gradient(45deg, #555 0 2px, #2a2a2a 2px 4px);
+            border: 1px solid #777;
+        }
+
+        .SR-CaseMainColor {
+            background: #c8261b;
+            border    : 1px solid #c8261b;
+        }
+
+        .SR-CaseSubColor {
+            background: var(--sr-text-color-flash);
+            border    : 1px solid color-mix(in srgb, var(--sr-text-color-flash) 50%, transparent);
+        }
+    }
+
+    .editor-content {
+        min-height: 50px;
+    }
+
+    /* ── New dynamic layout (panel/tab/block system) ──── */
+    .window-content {
+        .sr-layout-mixin();
+
+    }
+
+    // ---- Play / Edit mode ----
+    &.sr-mode-play {
+        .window-header .header-control[data-action="toggleMode"] {
+            background: var(--sr-ui-border-color);
+            color: var(--sr-text-color-light);
+        }
+
+        .subItem[data-subaction="add"],
+        .subItem[data-subaction="delete"],
+        .subItem[data-subaction="clone"],
+        .accessoryChoice {
+            display: none;
+        }
+
+        input:not([type="checkbox"]),
+        select,
+        textarea {
+            pointer-events: none;
+            opacity: 0.85;
+        }
+    }
+
+}
+
+/* Foundry's <multi-select> is first used by the spirit type sheet. Two of the
+   theme's own rules make it unusable there: the generic tag row is aligned to
+   the right, and the dropdown trigger collapses to a sliver when its label is
+   empty, which is the normal state of a picker that adds rather than shows.
+   Stack the chosen tags above a trigger tall enough to aim at. */
+.SR-Item multi-select {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+
+    & > .tags {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 0;
+    }
+
+    & > .sr-dropdown {
+        width: 100%;
+    }
+
+    .sr-dropdown-trigger {
+        min-height: 22px;
+        padding: 2px 6px;
+    }
+}
+
+/* A spirit type whose identifier is already taken is ignored; the sheet says
+   so, and has to be read. The theme's flash teal only reaches 3.7:1 on the
+   light window surface, so alerts use the theme's red instead. */
+.SR-Item .SR-AlertColor {
+    color: var(--sr-text-color-alert);
+}

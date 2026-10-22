@@ -1,0 +1,109 @@
+.SR-Editor{
+    position  : relative;
+    height    : auto;
+    min-height: 100%;
+
+    .editor {
+        height  : auto;
+        position: relative;
+        height  : 100%;
+
+        .editor-edit {
+            background: transparent;
+            display      : unset;
+            font-size    : inherit;
+            border       : 0;
+            border-radius: 0;
+            box-shadow: none;
+            padding      : 0;
+            position     : absolute;
+            top          : 2px;
+            right        : 5px;
+            z-index      : 1;
+            color: var(--sr-ui-border-color);
+
+            &:hover{
+                color: var(--sr-ui-border-color-active);
+            }
+        }
+
+        .editor-content {
+            overflow-y: inherit;
+
+            ul {
+                list-style-type: disc;
+                margin: 0;
+                padding: 0 0 0 1.5em;
+            }
+        }
+
+        .tox {
+            height: 100% !important;
+
+            .tox-editor-container {
+                .tox-editor-header {
+                    background-color: transparent;
+                    padding: 0;
+                    box-shadow: none;
+
+                    .tox-toolbar-overlord {
+                        background-color: transparent;
+
+                        .tox-toolbar__primary {
+                            background: none;
+                            background-color: transparent;
+                            box-shadow: none;
+                            border-bottom: 1px solid var(--sr-ui-border-color-active);
+
+                            .tox-tbtn {
+                                border-radius: 1px;
+                                height: 25px;
+                                background: transparent;
+
+                                svg {
+                                    fill: color-mix(in srgb, var(--sr-ui-border-color-active) 50%, transparent);
+                                    &:hover{
+                                        fill: var(--sr-ui-border-color-active);
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        .tox-sidebar-wrap {
+            min-height: 200px;
+        }
+
+        &.grunteditor{
+            .tox-sidebar-wrap {
+                min-height: 425px;
+            }
+        }
+
+    }
+
+
+}
+
+#tinymce {
+    &.mce-content-body{
+        font-size: 0.8em;
+
+        ul {
+            list-style-type: disc;
+            margin: 0;
+            padding: 0 0 0 1.5em;
+        }
+    }
+}
+
+.app.window-app.actor .window-content .SR-Editor .editor .editor-content{
+    p {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
+    }
+}
