@@ -18,7 +18,7 @@ import {
   sr5HookHotbarDrop 
 } from './hooks/hotbar-drop.js'
 import {
-  sr5HookRenderChatMessageHTML, sr5HookRenderChatLog 
+  sr5HookRenderChatMessageHTML, sr5HookRenderChatLog, sr5HookChatMessage
 } from './hooks/render-chat-message.js'
 import {
   sr5HookRenderPlayers,
@@ -124,6 +124,9 @@ import {
   sr5HookRenderJournalDirectory
 } from './hooks/journal.js'
 import {
+  localizeSystemMegapackLabels
+} from './system/megapack.js'
+import {
   renderSceneIndicators, sr5HookUpdateSceneIndicators
 } from './interface/scene-indicators.js'
 import {
@@ -204,6 +207,8 @@ import {
 
 // Register all hooks
 Hooks.once('init', sr5HookInit)
+// The Lite's compendiums in the table's language: the translations are loaded, game.packs not yet built
+Hooks.once('i18nInit', () => localizeSystemMegapackLabels())
 Hooks.once('ready', sr5HookReady)
 // The GMs remember the Overwatch Scores, to be told of a lowering a player writes
 Hooks.once('ready', seedOverwatch)
@@ -220,6 +225,7 @@ Hooks.on('renderChatInput', sr5PlaceChatJumpToBottom)
 Hooks.on('hotbarDrop', sr5HookHotbarDrop)
 Hooks.on('renderPlayers', sr5HookRenderPlayers)
 Hooks.on('renderChatMessageHTML', sr5HookRenderChatMessageHTML)
+Hooks.on('chatMessage', sr5HookChatMessage)
 Hooks.on('renderFolderConfig', sr5HookRenderFolderConfig)
 Hooks.on('renderApplicationV2', sr5HookMarkForeignWindow)
 Hooks.on('renderApplication', sr5HookMarkForeignWindow)
