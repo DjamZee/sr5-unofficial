@@ -17,6 +17,9 @@ import {
   registerSheetSizeSetting
 } from '../modules/interface/sheet-size.js'
 import {
+  registerSubActorFolderSetting
+} from '../modules/entities/actors/subactor-folder.js'
+import {
   registerIndirectEffectSetting
 } from '../modules/system/indirect-effects.js'
 import {
@@ -136,6 +139,7 @@ function registerAll() {
     SR5_SystemHelpers.registerSystemSettings()
     SR5_CompendiumUtility.registerSettings()
     registerSheetSizeSetting()
+    registerSubActorFolderSetting()
     registerIndirectEffectSetting()
     initSpiritLedger()
     registerCalendarSettings()

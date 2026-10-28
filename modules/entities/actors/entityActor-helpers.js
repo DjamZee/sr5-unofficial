@@ -47,6 +47,9 @@ import {
   SR5_SystemHelpers
 } from "../../system/utilitySystem.js"
 import {
+  withSubActorFolder
+} from "./subactor-folder.js"
+import {
   extendTimedEffect
 } from "../../system/effect-expiry.js"
 import {
@@ -515,7 +518,7 @@ export class SR5_ActorHelper {
       "prototypeToken.movementAction": "displace",
       items: spoils.map(i => i.toObject(false)),
     }
-    const [dropped] = await Actor.createDocuments([foundry.utils.expandObject(bag)])
+    const [dropped] = await Actor.createDocuments([await withSubActorFolder(foundry.utils.expandObject(bag), actor)])
     await actor.deleteEmbeddedDocuments("Item", spoils.map(i => i.id))
     await SR5_ActorHelper.dropStorageAtOwnerFeet(dropped, actor)
     ui.notifications.info(game.i18n.format("SR5.StorageSpoilsDropped", {
@@ -1254,7 +1257,8 @@ export class SR5_ActorHelper {
       })
     }
 
-    //Create actor
+    //Create actor, in the folder of the sheet that brings it out (setting sr5SubActorFolder)
+    sideKickData = await withSubActorFolder(sideKickData, ownerActor)
     const created = await Actor.createDocuments([sideKickData])
 
     //The summoner who may lend his Edge to the spirit (SR5 p. 306), kept by the active GM, who creates it from the item

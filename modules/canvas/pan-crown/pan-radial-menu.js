@@ -51,6 +51,9 @@ import {
 import {
   iceHostOf
 } from "../../system/ice-host.js"
+import {
+  aimedNodeUuid, togglePanAim
+} from "./pan-aim.js"
 
 // KC p. 51 (lot 19): a spider commands any device of its system without a mark; its menu counts four marks on them
 function withAdministratorMarks(node, actor){
@@ -139,6 +142,26 @@ export function sortedByLabel(entries, labelOf, lang = "fr"){
 }
 
 /**
+ * The document whose own Matrix condition monitor the menu of an icon shows, for its owner and the gamemaster: the
+ * device, or the actor that holds it when the device has none of its own (a persona, a sprite). These are the users
+ * who already fill its boxes on its sheet: the menu adjusts it for them (DjamZ, 28/10).
+ * @param {Object} node
+ * @param {Object} [options]
+ * @param {Function} [options.resolve]   uuid -> document
+ * @param {Boolean} [options.isGM]
+ * @return {Object|null}
+ */
+export function ownMonitorDocumentOf(node, {
+  resolve = uuid => globalThis.fromUuidSync?.(uuid) ?? null, isGM = !!game.user?.isGM
+} = {
+}){
+  const document = node?.uuid && !node.contributed ? resolve(node.uuid) : null
+  if (!document || !(isGM || document.isOwner)) return null
+  if (monitorOf(document)) return document
+  return monitorOf(document.actor) && (isGM || document.actor.isOwner) ? document.actor : null
+}
+
+/**
  * The Matrix condition monitor the menu of an icon shows: the device's own for its owner and the gamemaster, what a
  * Matrix Perception brought back for the others (SR5 p. 237), or nothing.
  * @param {Object} node
@@ -147,19 +170,38 @@ export function sortedByLabel(entries, labelOf, lang = "fr"){
  * @param {Boolean} [options.isGM]
  * @return {{damage: Number, boxes: Number}|null}
  */
-export function menuMonitorOf(node, {
-  resolve = uuid => globalThis.fromUuidSync?.(uuid) ?? null, isGM = !!game.user?.isGM
-} = {
+export function menuMonitorOf(node, options = {
 }){
-  const document = node?.uuid ? resolve(node.uuid) : null
-  if (document && (isGM || document.isOwner)) {
-    const own = monitorOf(document) ?? monitorOf(document.actor)
-    if (own) return own
-  }
+  const own = monitorOf(ownMonitorDocumentOf(node, options))
+  if (own) return own
   return node?.intel?.monitor?.boxes > 0 ? node.intel.monitor : null
 }
 
-function monitorElement(monitor){
+/**
+ * The damage a monitor holds once a box is added or taken away: never under 0 nor past its size (SR5 p. 228).
+ * @param {Object} document   the document of ownMonitorDocumentOf
+ * @param {Number} delta      +1 or -1
+ * @return {Number|null}  the new base, or null when it does not change
+ */
+export function adjustedMonitorBase(document, delta){
+  const monitor = document?.system?.conditionMonitors?.matrix
+  const boxes = Number(monitor?.value) || 0
+  if (!boxes) return null
+  const base = Number(monitor.actual?.base) || 0
+  const next = Math.max(0, Math.min(boxes, base + delta))
+  return next === base ? null : next
+}
+
+// The owner or the gamemaster adds or takes away a box, as on the sheet (baseSheet.js, itemSheet.js)
+async function adjustMonitor(owned, delta){
+  const next = adjustedMonitorBase(owned, delta)
+  if (next === null) return
+  await owned.update({
+    "system.conditionMonitors.matrix.actual.base": next
+  })
+}
+
+function monitorElement(monitor, owned = null){
   if (!monitor) return null
   const element = document.createElement("span")
   element.className = "sr5-pan-radial-monitor"
@@ -175,6 +217,27 @@ function monitorElement(monitor){
   const count = document.createElement("small")
   count.textContent = `${monitor.boxes - damage}/${monitor.boxes}`
   element.appendChild(count)
+  if (owned) {
+    // A box more or less, the menu left open; the monitor is drawn again from the document written
+    const adjust = (delta, label, key) => {
+      const control = document.createElement("button")
+      control.type = "button"
+      control.className = "sr5-pan-radial-adjust"
+      control.dataset.key = delta > 0 ? "monitor-damage" : "monitor-heal"
+      control.textContent = label
+      control.dataset.tooltip = game.i18n.localize(key)
+      control.addEventListener("click", async event => {
+        event.preventDefault()
+        event.stopPropagation()
+        await adjustMonitor(owned, delta)
+        const fresh = monitorElement(monitorOf(owned), owned)
+        if (fresh && element.isConnected) element.replaceWith(fresh)
+      })
+      return control
+    }
+    element.prepend(adjust(-1, "−", "SR5.PanMenuMonitorHeal"))
+    element.appendChild(adjust(1, "+", "SR5.PanMenuMonitorDamage"))
+  }
   return element
 }
 
@@ -359,6 +422,14 @@ export function openRadialMenu({
       },
     }))
   }
+  // Aim at the icon (DjamZ, 28/10): the user's target for the Matrix actions of her sheet, with or without a token
+  if (!node.contributed) {
+    const aimed = aimedNodeUuid() === node.uuid
+    owners.unshift(button(game.i18n.localize(aimed ? "SR5.PanMenuUnaim" : "SR5.PanMenuAim"), {
+      key: "aim", tooltip: game.i18n.localize(aimed ? "SR5.PanMenuUnaim_D" : "SR5.PanMenuAim_D"),
+      onClick: () => aimAt(node, graph, token),
+    }))
+  }
   // The gamemaster's reveal (lot 3), for the whole table; player by player when the world says so (idea 10): he ticks
   // the characters. A device revealed to the whole table keeps its "Hide" first
   const byPlayer = revealByPlayer() && !node.revealed
@@ -404,8 +475,10 @@ export function openRadialMenu({
   const center = document.createElement("strong")
   center.className = "sr5-pan-radial-center"
   center.textContent = node.name
-  // The device's Matrix condition monitor, without opening its sheet (séance de DjamZ du 09/10)
-  const monitor = monitorElement(menuMonitorOf(node))
+  // The device's Matrix condition monitor, without opening its sheet (séance de DjamZ du 09/10); its owner and the
+  // gamemaster add or take away boxes (DjamZ, 28/10)
+  const owned = ownMonitorDocumentOf(node)
+  const monitor = monitorElement(owned ? monitorOf(owned) : menuMonitorOf(node), owned)
   if (monitor) center.appendChild(monitor)
   menu.appendChild(center)
   if (!buttons.length && !owners.length && !gm.length && !modules.length) {
@@ -424,6 +497,27 @@ export function openRadialMenu({
   openMenuTokenId = token.id ?? null
   document.addEventListener("pointerdown", onPointerOutside, true)
   document.addEventListener("keydown", onEscape, true)
+}
+
+// Aim at an icon as an action of the menu reads its target (radialTargetOf): its token, or with none the actor its
+// uuid names
+async function aimAt(node, graph, token){
+  const target = radialTargetOf(node, graph, {
+    token: tokenOfNode(node, {
+      actor: token.actor, token
+    }),
+    resolve: uuid => globalThis.fromUuidSync?.(uuid) ?? null,
+    actorById: id => game.actors?.get(id) ?? null,
+  })
+  const onScene = target.targetTokenId ? canvas?.tokens?.get(target.targetTokenId) : null
+  if (onScene) return togglePanAim(node, {
+    token: onScene, itemUuid: target.targetUuid
+  })
+  const aimed = target.targetUuid ? uuidTarget(await globalThis.fromUuid?.(target.targetUuid)) : null
+  if (!aimed) return void ui.notifications.warn(game.i18n.localize("SR5.WARN_PanTargetMissing"))
+  return togglePanAim(node, {
+    actor: aimed.actor, itemUuid: aimed.itemUuid
+  })
 }
 
 /**

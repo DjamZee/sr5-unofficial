@@ -17,22 +17,29 @@
 
   figcaption {
     font-family: "sr5_pause", var(--sr-font-title-alt);
-    text-shadow: none;
     color: var(--sr-pause-color);
     letter-spacing: 2px;
     font-size: 4em;
     margin-top: 1.5rem;
+    // The neon glow stays still and only the opacity pulses: an animated text-shadow repainted the whole
+    // full-screen #pause layer at every frame (+330 MB in the GPU process, measured in Chrome), opacity is
+    // run by the compositor without repainting
+    text-shadow: 0 0 7px var(--sr-pause-color-effect-1), 0 0 15px var(--sr-pause-color-effect-1), 0 0 22px var(--sr-pause-color-effect-1), 0 0 30px var(--sr-pause-color-effect-2),
+      0 0 52px var(--sr-pause-color-effect-2), 0 0 60px var(--sr-pause-color-effect-2), 0 0 75px var(--sr-pause-color-effect-2), 0 0 112px var(--sr-pause-color-effect-2);
+    will-change: opacity;
     animation: neon1 2.5s ease-in-out infinite alternate;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
   }
 
   @keyframes neon1 {
     from {
-      text-shadow: 0 0 10px var(--sr-pause-color-effect-1), 0 0 20px var(--sr-pause-color-effect-1), 0 0 30px var(--sr-pause-color-effect-1), 0 0 40px var(--sr-pause-color-effect-2),
-        0 0 70px var(--sr-pause-color-effect-2), 0 0 80px var(--sr-pause-color-effect-2), 0 0 100px var(--sr-pause-color-effect-2), 0 0 150px var(--sr-pause-color-effect-2);
+      opacity: 1;
     }
     to {
-      text-shadow: 0 0 5px var(--sr-pause-color-effect-1), 0 0 10px var(--sr-pause-color-effect-1), 0 0 15px var(--sr-pause-color-effect-1), 0 0 20px var(--sr-pause-color-effect-2),
-        0 0 35px var(--sr-pause-color-effect-2), 0 0 40px var(--sr-pause-color-effect-2), 0 0 50px var(--sr-pause-color-effect-2), 0 0 75px var(--sr-pause-color-effect-2);
+      opacity: 0.8;
     }
   }
 

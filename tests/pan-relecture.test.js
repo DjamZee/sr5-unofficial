@@ -251,9 +251,16 @@ describe('M1: a move lays the crowns out again, it does not build them again', (
     expect(radial).toMatch(/openMenuTokenId = token\.id \?\? null/)
     expect(radial).toMatch(/if \(openMenu && openMenuTokenId === tokenId\) closeMenu\(\)/)
     const layer = read(LAYER)
-    expect(layer).toMatch(/Hooks\.on\("canvasTearDown", \(\) => closeRadialMenu\(\)\)/)
+    expect(layer).toMatch(/Hooks\.on\("canvasTearDown", \(\) => \{\s*closeRadialMenu\(\)\s*releasePanCrownImages\(\)/)
     expect(layer).toMatch(/Hooks\.on\("deleteActor", \(\) => closeRadialMenu\(\)\)/)
     expect(layer).toMatch(/Hooks\.on\("deleteToken", document => \{\s*closeRadialMenuOf\(document\.id\)/)
+  })
+
+  it('keeps the pictures of the crowns no larger than their mask, and lets them go with the scene', () => {
+    const layer = read(LAYER)
+    expect(layer).toMatch(/if \(side <= MASK_MAX\) return full/)
+    expect(layer).toMatch(/full\.close\(\)\s*return reduced/)
+    expect(layer).toMatch(/bitmap => bitmap\?\.close\?\.\(\)[\s\S]{0,80}bitmaps\.clear\(\)\s*alphaMaps\.clear\(\)/)
   })
 
   it('forgets a deleted token, which Ctrl+Z may bring back with its id, and gives the hook a Token', () => {

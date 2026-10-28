@@ -219,9 +219,14 @@ export class SR5_CompendiumUtility extends Actor {
       })).map(d => [d.id ?? d._id, d]))
       for (const id of chosen) if (loaded.has(id)) documents.push(loaded.get(id))
     }
-    SR5_CompendiumUtility._compendiumCache.set(categoryKey, {
+    const entry = {
       time: Date.now(), documents
-    })
+    }
+    SR5_CompendiumUtility._compendiumCache.set(categoryKey, entry)
+    // Gone once stale: the documents were held until the same category was asked again, for the whole session
+    setTimeout(() => {
+      if (SR5_CompendiumUtility._compendiumCache.get(categoryKey) === entry) SR5_CompendiumUtility._compendiumCache.delete(categoryKey)
+    }, 10000)
     return documents
   }
 

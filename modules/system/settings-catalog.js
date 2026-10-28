@@ -158,6 +158,10 @@ export const SETTINGS_CATALOG = {
   sr5StarterKit: ["gear"],
   // Shop
   sr5ShopMarketOpen: ["shop"],
+  // Network and Contacts (taken out of landing-metroplexes-sr5, 28/10): the switch, and the shops the network shows
+  ncEnabled: ["interface"],
+  ncShopsOpen: ["shop"],
+  ncRunAdvance: ["gm"],
   sr5ShopCreationLevel: ["shop"],
   sr5ShopCreationMaxAvailability: ["shop"],
   sr5ShopCreationMaxRating: ["shop"],
@@ -184,6 +188,8 @@ export const SETTINGS_CATALOG = {
   sr5CalendarRevealDeadlines: ["time"],
   // Gamemaster's tools
   sr5ContactDefaultImages: ["gm"],
+  // The folder of a spirit, a drone, a bag… brought out of a sheet (DjamZ, 28/10)
+  sr5SubActorFolder: ["gm"],
   "compendium.creaturePowers": ["gm"],
   "compendium.spritePowers": ["gm"],
   "compendium.baseWeapons": ["gm"],

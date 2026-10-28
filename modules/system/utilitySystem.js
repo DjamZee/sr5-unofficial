@@ -2,6 +2,9 @@ import {
   SR5ShopConfig
 } from "../interface/shop-config.js"
 import {
+  registerNetworkContactsSettings
+} from "../interface/network-contacts/nc-registry.js"
+import {
   DRESS_SETTING, applyModuleDress
 } from "../hooks/window-scope.js"
 import {
@@ -330,6 +333,9 @@ export class SR5_SystemHelpers {
       type: SR5FactionsApp,
       restricted: true,
     })
+
+    // Network and Contacts (taken out of landing-metroplexes-sr5, 28/10): the switch and the registers
+    registerNetworkContactsSettings()
 
     // Cutting Aces social rules (lot 21): the dialog's maneuvers and con steps, the con tracker (p. 153-164)
     registerSocialSettings()

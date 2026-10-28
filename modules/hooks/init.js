@@ -5,6 +5,9 @@ import {
   registerSheetSizeSetting
 } from "../interface/sheet-size.js"
 import {
+  registerSubActorFolderSetting, subActorFolderId
+} from "../entities/actors/subactor-folder.js"
+import {
   initSpiritLedger
 } from "../system/spirit-ledger.js"
 import {
@@ -174,6 +177,9 @@ import {
 import {
   infoBrokerApi
 } from "../interface/info-broker-api.js"
+import {
+  networkContactsApi
+} from "../interface/network-contacts/nc-registry.js"
 import {
   SR5PanCrown
 } from "../canvas/pan-crown/pan-crown.js"
@@ -387,6 +393,8 @@ export async function sr5HookInit() {
   registerPanArKey()
   SR5_CompendiumUtility.registerSettings()
   registerSheetSizeSetting()
+  //The sidebar folder of the actors brought out of a sheet (spirits, drones, sprites, agents, bags)
+  registerSubActorFolderSetting()
   registerIndirectEffectSetting()
   //Spirit ledger: values left on the sheets by the first version are moved once the world is ready
   initSpiritLedger()
@@ -463,6 +471,9 @@ export async function sr5HookInit() {
     factionRegistry: factionRegistryApi(),
     // The shop against the till, item by item: should answer no difference
     shopAudit: () => SR5ShopWorldSource.audit(),
+    // The folder id an actor made from another one goes into, or null for the root (setting sr5SubActorFolder): for
+    // the modules that make one too, as matrice-sr5 its IC. Async; for the GM, a player gets the folder only if it exists
+    subActorFolder: creator => subActorFolderId(creator),
     // GM macro: old-style Mentor Spirit qualities -> quality linked to a mentor item (SR5 p. 76), and back
     convertMentorQualities,
     revertMentorConversion,
@@ -486,6 +497,8 @@ export async function sr5HookInit() {
     contacts: contactsApi(),
     // The information broker's window for the modules (landing-metroplexes-sr5, NETWORKS): open({vendor, buyer, tab})
     infoBroker: infoBrokerApi(),
+    // Network and Contacts, taken out of landing-metroplexes-sr5 (28/10): open the windows, mount the views in a page
+    networkContacts: networkContactsApi(),
   }
 
   // Register DataModels

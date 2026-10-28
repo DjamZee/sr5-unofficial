@@ -46,10 +46,11 @@ function moduleSources(dir = new URL('../modules/', import.meta.url)) {
 }
 
 // The public API of 13.1.0: a key added or taken away is a change for the modules, and for the page that lists it
+// (networkContacts: Network, Contacts and runs taken out of landing-metroplexes-sr5, 28/10)
 const API = ['config', 'entities', 'migration', 'macros', 'rollItemMacro', 'rollMacro', 'compendiumBrowser', 'shop',
-  'primaryLifestyle', 'creationOverLimitItems', 'dealership', 'factions', 'factionRegistry', 'shopAudit',
+  'primaryLifestyle', 'creationOverLimitItems', 'dealership', 'factions', 'factionRegistry', 'shopAudit', 'subActorFolder',
   'convertMentorQualities', 'revertMentorConversion', 'activateAutomaticPowers', 'panCrown', 'combat', 'matrix',
-  'tokenDefaults', 'vendors', 'spriteTypes', 'commcode', 'contacts', 'infoBroker']
+  'tokenDefaults', 'vendors', 'spriteTypes', 'commcode', 'contacts', 'infoBroker', 'networkContacts']
 
 // Every hook the system calls for the modules
 const HOOKS = ['sr5.rollReminders', 'sr5.vendorPrice', 'sr5.purchaseFunds', 'sr5.vendorRefusal',
@@ -280,5 +281,6 @@ describe('game.sr5.panCrown.setReveal: the gamemaster alone reveals a device to 
       uuid: 'Actor.x.Item.cam'
     }, ['pc', 'pc', 3, ''])
     expect(item.setFlag).toHaveBeenLastCalledWith('sr5', 'panRevealTo', ['pc'])
-  })
+    // pan-crown.js pulls in the whole crown on import: past 5 s under a full parallel run (three pre-pushes on 28/10)
+  }, 30000)
 })

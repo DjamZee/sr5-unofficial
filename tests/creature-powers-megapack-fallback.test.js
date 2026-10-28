@@ -90,6 +90,18 @@ describe("base items on auto: the Megapack first, sr5-compendiums as a fallback"
     expect(await watcherPowers()).toEqual(["Manifestation", "Recherche", "Sapience (Mégapack)", "c-astralForm"])
   })
 
+  it("the documents of a category are let go once the cache has expired", async () => {
+    vi.useFakeTimers()
+    try {
+      await SR5_CompendiumUtility.getCategoryItems("creaturePowers")
+      expect(SR5_CompendiumUtility._compendiumCache.has("creaturePowers")).toBe(true)
+      vi.advanceTimersByTime(10000)
+      expect(SR5_CompendiumUtility._compendiumCache.has("creaturePowers")).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("a power the Megapack holds twice is given once, and nothing is loaded twice", async () => {
     await watcherPowers()
     const loaded = loadedIds(megapack)

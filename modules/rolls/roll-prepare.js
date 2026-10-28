@@ -39,6 +39,9 @@ import {
   runningModifierKind
 } from "../system/running.js"
 import {
+  panAimTarget
+} from "../canvas/pan-crown/pan-aim.js"
+import {
   rollAttributes, extractSituational, tickByTargetMetatype, METATYPE_FAMILIES, SPIRIT_TYPE_SKILLS, spiritTypeOffers,
   spiritTypeVisible
 } from "./roll-helpers/situational.js"
@@ -244,6 +247,8 @@ export class SR5_PrepareRollTest {
         //Launched from the crown of a PAN (lot 4, Q6): the attacker already chose the token (targeted by
         //rollMatrixActionOn, so that the checks on game.user.targets read it) and the device
         if (chatData?.panTarget) rollData = SR5_PrepareRollHelper.getPanTargetData(rollData, chatData.panTarget)
+        //An icon aimed at from the crown (DjamZ, 28/10): the sheet's action reads it, the device with it
+        else if (panAimTarget()) rollData = SR5_PrepareRollHelper.getPanTargetData(rollData, panAimTarget())
         else if (game.user.targets.size) rollData = await SR5_PrepareRollHelper.getTargetData(rollData)
         //Lot 19: an action a module offers after another (the chained action of the module Matrice): no action spent
         if (chatData?.offeredAction === true) rollData.matrix.offeredAction = true

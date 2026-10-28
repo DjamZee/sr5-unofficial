@@ -47,6 +47,7 @@ Filled once, in the `init` hook (`modules/hooks/init.js`, `game.sr5 = {…}`). U
 | `game.sr5.factions` | interface/factions-app.js | `open()`: the factions window (Cutting Aces p. 156-160). | anyone (GM writes) | factions tests |
 | `game.sr5.factionRegistry` | interface/faction-registry.js | See below. | reads anyone, `update` active GM | faction-registry-api.test.js |
 | `game.sr5.shopAudit` | interface/shop-window.js | `() → Promise`: checks the shop against the till; should answer no difference. Console tool. | GM | — |
+| `game.sr5.subActorFolder` | entities/actors/subactor-folder.js | `(creator) → Promise`: the folder id an actor made from `creator` goes into (setting `sr5SubActorFolder`): the creator's folder, the "Temporary actors" folder (made once, found by its flag `sr5.temporaryActors`), or `null` for the root. Never throws. For a module that makes an actor from another one (an IC from its host). | GM (a player gets only an existing folder) | subactor-folder.test.js |
 | `game.sr5.convertMentorQualities` | entities/items/mentor-conversion.js | `({actor, all}) → Promise`: old-style Mentor Spirit qualities to a quality linked to a mentor item (SR5 p. 76). Without option, asks which actors. | GM (warning otherwise) | mentor-conversion tests |
 | `game.sr5.revertMentorConversion` | entities/items/mentor-conversion.js | `({actor, all}) → Promise`: undoes the above. | GM | mentor-conversion tests |
 | `game.sr5.activateAutomaticPowers` | entities/items/always-active-macro.js | `({actor, all}) → Promise`: switches on the always active powers of old sheets (SR5 p. 396). | GM (warning otherwise) | always-active-macro.test.js |
@@ -59,6 +60,7 @@ Filled once, in the `init` hook (`modules/hooks/init.js`, `game.sr5 = {…}`). U
 | `game.sr5.commcode` | interface/commcode-api.js | See below. Frozen. | relayed | contacts-api.test.js, api-publique-game-sr5.test.js |
 | `game.sr5.contacts` | interface/commcode-api.js | See below. Frozen. | owner | contacts-api.test.js, api-publique-game-sr5.test.js |
 | `game.sr5.infoBroker` | interface/info-broker-api.js | See below. Frozen. | anyone | api-networks-marks-broker.test.js, api-publique-game-sr5.test.js |
+| `game.sr5.networkContacts` | interface/network-contacts/nc-registry.js | See below. | see below | network-contacts-rules.test.js, network-runs-rules.test.js |
 
 ### game.sr5.factionRegistry (Cutting Aces p. 156-160)
 
@@ -135,6 +137,20 @@ answers, only for a known user. A refusal is a notification on the asking user's
 - `tabs`: `buy`, `sell`, `requests`.
 - `open({vendor, buyer, tab}) → Promise<window>`: a buyer the user does not own is dropped (the gamemaster opens for
   anyone); an unknown tab is ignored.
+
+### game.sr5.networkContacts (taken out of landing-metroplexes-sr5, 28/10)
+
+The book of contacts, the Network (matrix accesses, known shops) and the runs board, behind the world setting
+`ncEnabled`. The views are imported on first use; nothing stays in memory once they are unmounted.
+
+- `enabled`: the world setting. `openNetwork()`, `openContacts()`: the windows (a warning when switched off).
+- `mountNetwork({main, side})`, `mountContacts({main, side})`, `mountFactions(side) → Promise<{redraw(), unmount()}>`:
+  the views in a module's own page (landing-metroplexes-sr5's deck); whoever mounts unmounts.
+- `registerNetworkExtension(extension) → unregister`: a module's tabs, panels, discoveries and the news item of a closed
+  run, read at each drawing (nc-registry.js says the shape). Registered at `ready`.
+- `accesses()`, `shopsDiscovered()`, `runs()`: copies. `writeAccess(access, {remove})`, `grantAccess(host, actorIds)`,
+  `discoverShop(key, actorIds)`: *active GM*, a warning elsewhere. `shopKey(vendorUuid, storageId)`.
+- `changedHook`: the hook called when a register changes (`sr5.networkContactsChanged`).
 
 ## Hooks
 

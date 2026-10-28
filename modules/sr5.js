@@ -76,6 +76,9 @@ import {
   registerFactionsControl
 } from './interface/factions-app.js'
 import {
+  registerNetworkContactsHooks
+} from './interface/network-contacts/nc-registry.js'
+import {
   registerConControls
 } from './interface/con-app.js'
 import {
@@ -366,6 +369,8 @@ registerRiggerEjectionHooks()
 registerChaseHooks()
 // Faction Reputation: the gamemaster's window in the token controls too (lot 10)
 registerFactionsControl()
+// Network and Contacts (taken out of landing-metroplexes-sr5, 28/10): the buttons, the access found, Landing's data
+registerNetworkContactsHooks()
 // Cutting Aces social rules: the con tracker and the bartering window in the token controls (lot 21)
 registerConControls()
 // Drone swarms: a member that changes, enters or leaves the scene prepares its swarm again (Rigger 5.0 p. 35)

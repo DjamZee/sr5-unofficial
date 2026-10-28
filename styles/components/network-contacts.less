@@ -1,0 +1,617 @@
+// Network and Contacts (taken out of landing-metroplexes-sr5 1.8.0, DjamZ's request of 28/10): the mock-up validated by
+// DjamZ on 22/10, as Landing drew it. The window frame is the deck's; .sr5-nc holds the book of contacts and the
+// network, in the window as in Landing's deck page (which places them on its scene).
+// The system theme dresses every window (.window-app:not(...) .window-content): the window's id outweighs it, and
+// the dialogs of the network and the book carry the class
+@nc-win: ~":is(#sr5-nc-network, #sr5-nc-contacts, .sr5-nc-window)";
+/* Fenêtres NETWORKS, CONTACTS, ARCHIVES et dialogues d'accès : la mise en page du Concepteur (coins coupés,
+   quadrillage, titres « // », lignes en bandes pleines) avec les couleurs du deck (DjamZ, 16/10, captures 50-51) */
+@{nc-win} {
+  --nc-bg: #03080a;
+  --nc-panel: #071417;
+  --nc-field: #040d10;
+  --nc-text: #d8f6f2;
+  --nc-muted: #8fbdb7;
+  --nc-teal: #1fc9b7;
+  --nc-teal-dim: #10695f;
+  --nc-yellow: #e9f971;
+  --nc-magenta: #ff2bd6;
+  --nc-sel-bg: #0a2f2b;
+  --nc-grid: rgba(31, 201, 183, 0.06);
+  --nc-cut: 7px;
+  --nc-font-body: "srfoundry_regular", "Signika", "Segoe UI", system-ui, sans-serif;
+  --nc-font-head: "srfoundry_primary", "Signika", "Segoe UI", system-ui, sans-serif;
+  --nc-font-num: "Cascadia Mono", Consolas, Menlo, ui-monospace, monospace;
+  border: 1px solid var(--nc-teal);
+  border-radius: 0;
+  box-shadow: 0 0 14px rgba(31, 201, 183, 0.35);
+}
+@{nc-win} .window-header {
+  background: #000;
+  color: var(--nc-yellow);
+  border-bottom: 1px solid var(--nc-teal);
+  font-family: var(--nc-font-head);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+@{nc-win} .window-header .window-icon { color: var(--nc-magenta); }
+@{nc-win} .window-header button { color: var(--nc-teal); }
+
+/* Le thème sr5 impose la couleur des champs (!important dans sa couche) : on redéfinit sa variable, et le fond
+   des champs est redessiné par des ombres internes (même parade que le Concepteur) */
+@{nc-win} .window-content {
+  --sr-text-color-dark: var(--nc-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1.1rem 0.8rem;
+  color: var(--nc-text);
+  font-family: var(--nc-font-body);
+  font-size: var(--font-size-13, 13px);
+  background-color: var(--nc-bg);
+  background-image:
+    linear-gradient(var(--nc-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nc-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+@{nc-win} .window-content :is(input:not([type="checkbox"]), select, textarea) {
+  --sr-ui-border-color-idle: var(--nc-teal-dim);
+  color: var(--nc-text);
+  background: var(--nc-field);
+  border: 1px solid var(--nc-teal-dim);
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--nc-teal-dim), inset 0 0 0 100vmax var(--nc-field);
+  font-family: var(--nc-font-body);
+  text-indent: 0.35rem;
+}
+@{nc-win} .window-content :is(input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--nc-magenta), inset 0 0 0 100vmax var(--nc-field);
+}
+@{nc-win} .window-content select option { color: var(--nc-text); background: var(--nc-bg); }
+@{nc-win} .window-content input::placeholder { color: var(--nc-muted); opacity: 1; }
+
+/* Boutons : coins coupés, sarcelle ; le survol passe au jaune */
+@{nc-win} .window-content button:not(.sr5-nc *) {
+  width: auto;
+  height: auto;
+  padding: 0.35rem 0.9rem;
+  color: var(--nc-teal);
+  background: var(--nc-panel);
+  background-image: none;
+  border: 1px solid var(--nc-teal);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--nc-font-body);
+  text-transform: none;
+  letter-spacing: normal;
+  clip-path: polygon(0 0, calc(100% - var(--nc-cut)) 0, 100% var(--nc-cut), 100% 100%, var(--nc-cut) 100%, 0 calc(100% - var(--nc-cut)));
+  cursor: pointer;
+}
+@{nc-win} .window-content button:not(.sr5-nc *):hover {
+  color: var(--nc-yellow);
+  border-color: var(--nc-yellow);
+  box-shadow: inset 0 0 9px rgba(31, 201, 183, 0.45);
+}
+@{nc-win} .window-content button:not(.sr5-nc *):focus-visible { outline: 2px solid var(--nc-magenta); outline-offset: 2px; }
+
+
+
+.sr5-nc {
+  --c-bg: #03080a;
+  --c-panel: #071417;
+  --c-text: #d8f6f2;
+  --c-muted: #8fbdb7;
+  --c-teal: #1fc9b7;
+  --c-teal-dim: #10695f;
+  --c-yellow: #e9f971;
+  --c-magenta: #ff2bd6;
+  --c-red: #ff4f5e;
+  --c-green: #5dff9b;
+  --c-head: "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  --c-num: "Cascadia Mono", Consolas, Menlo, ui-monospace, monospace;
+  /* Armadura n'est livrée ni par le système ni par le module (licence de Graviton : pas de redistribution) :
+     prise si elle est installée, sinon la police de titre du système, comme le fait son thème (sr5.less). */
+  --c-armadura: "Armadura Solid", "srfoundry_primary", "Bahnschrift", sans-serif;
+  color: var(--c-text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: normal;
+  text-align: left;
+}
+.sr5-nc *, .sr5-nc *::before, .sr5-nc *::after { box-sizing: border-box; }
+
+/* Les boutons et les champs de Foundry et du thème sr5 : remis à zéro dans le carnet */
+.sr5-nc button {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  line-height: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+.sr5-nc button:hover { box-shadow: none; text-shadow: none; }
+
+/* ---------- La fenêtre (MJ en jeu) ---------- */
+@{nc-win} .window-content:has(.sr5-nc-frame) { padding: 0.6rem; }
+.sr5-nc-frame {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+.sr5-nc-frame .sr5-nc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.sr5-nc-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: #000;
+  border: 1px solid #e9f971;
+  color: #e9f971;
+  padding: 10px 16px;
+  font: 600 14px "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 0 16px rgba(233, 249, 113, 0.35);
+  pointer-events: none;
+}
+.sr5-nc-frame .sr5-nc-side { width: 200px; flex: none; overflow-y: auto; }
+
+/* ---------- Briques ---------- */
+.sr5-nc h2 {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  font: 700 19px var(--c-head);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-yellow);
+}
+.sr5-nc h2::before { content: "// "; color: var(--c-magenta); }
+.sr5-nc .mut { color: var(--c-muted); }
+.sr5-nc .num { font-family: var(--c-num); }
+.sr5-nc .vert { color: var(--c-green) !important; }
+.sr5-nc .rouge { color: var(--c-red) !important; }
+.sr5-nc .mjfond { outline: 1px dashed var(--c-magenta); outline-offset: -1px; }
+.sr5-nc .fantome { opacity: 0.45; }
+.sr5-nc .sr5-nc-vide { margin: 6px 0; color: var(--c-muted); font-style: italic; }
+
+.sr5-nc-c-onglets { display: flex; gap: 4px; margin-bottom: 12px; flex: none; }
+.sr5-nc-c-onglets > * {
+  font: 600 15px var(--c-head) !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  padding: 7px 16px !important;
+  border: 1px solid var(--c-teal-dim) !important;
+  color: var(--c-muted);
+  background: #000c !important;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.sr5-nc-c-onglets > .on { color: #000 !important; background: var(--c-teal) !important; border-color: var(--c-teal) !important; }
+.sr5-nc-c-onglets .sr5-nc-onglet-info { cursor: default; }
+
+.sr5-nc-panneau {
+  background: rgba(4, 13, 16, 0.86);
+  border: 1px solid var(--c-teal-dim);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.sr5-nc .sr5-nc-btn {
+  font: 600 12px var(--c-head);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border: 1px solid var(--c-teal);
+  color: var(--c-teal);
+  background: #000a;
+  white-space: nowrap;
+}
+.sr5-nc .sr5-nc-btn:hover { color: var(--c-yellow); border-color: var(--c-yellow); }
+.sr5-nc .sr5-nc-btn.j { border-color: var(--c-yellow); color: #000; background: var(--c-yellow); }
+.sr5-nc .sr5-nc-btn.j:hover { background: #fff; border-color: #fff; }
+.sr5-nc .sr5-nc-btn.m { border-color: var(--c-magenta); color: var(--c-magenta); }
+.sr5-nc .sr5-nc-btn.eteint { opacity: 0.5; cursor: default; }
+.sr5-nc .sr5-nc-tag {
+  display: inline-block;
+  font: 600 11px var(--c-head);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.sr5-nc .t-eq { color: var(--c-teal); }
+.sr5-nc .t-pr { color: var(--c-muted); }
+.sr5-nc .sr5-nc-tagbtn:hover .sr5-nc-tag { color: var(--c-yellow); }
+
+/* ---------- Grille : la colonne du carnet, et le côté du MJ ---------- */
+.sr5-nc-c-grille { display: grid; grid-template-columns: 1fr; gap: 14px; flex: 1; min-height: 0; }
+.sr5-nc-c-grille.avec-cote { grid-template-columns: minmax(0, 1fr) 290px; }
+.sr5-nc-c-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: scroll;
+  padding-right: 4px;
+}
+.sr5-nc-c-col::-webkit-scrollbar { width: 10px; }
+.sr5-nc-c-col::-webkit-scrollbar-track { background: #021012; }
+.sr5-nc-c-col::-webkit-scrollbar-thumb { background: var(--c-teal-dim); border: 1px solid var(--c-teal); }
+.sr5-nc-c-cote { overflow-y: auto; min-height: 0; }
+.sr5-nc-note { font-size: 13px; line-height: 1.5; }
+
+/* ---------- Favoris : les cartes portrait ---------- */
+.sr5-nc-fav-titre { display: flex; align-items: baseline; gap: 14px; }
+.sr5-nc-fav-titre h2 { margin: 0; }
+.sr5-nc-fav-titre .num { color: var(--c-yellow); }
+.sr5-nc-fav-titre .mut { font-size: 12px; }
+.sr5-nc-favoris { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; flex: none; }
+.sr5-nc-carte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(4, 13, 16, 0.9);
+  border: 1px solid var(--c-teal-dim);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.sr5-nc-carte .por {
+  position: relative;
+  height: 112px;
+  flex: none;
+  background: #000 center 18% / cover;
+  border-bottom: 1px solid var(--c-teal-dim);
+}
+.sr5-nc-carte .por[data-sr5-nc-act] { cursor: pointer; }
+.sr5-nc-carte .prop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 8px;
+  background: linear-gradient(transparent, #000d);
+  font: 600 12px var(--c-head);
+  letter-spacing: 0.06em;
+  color: var(--c-teal);
+  text-transform: uppercase;
+}
+.sr5-nc .etoile-carte {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: var(--c-yellow);
+  font-size: 18px;
+  text-shadow: 0 0 6px #000;
+}
+.sr5-nc-carte .corps { padding: 5px 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.sr5-nc-carte .nom { font: 700 15px var(--c-head); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr5-nc-carte .arch { font-size: 12px; color: var(--c-muted); margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr5-nc-stats { display: flex; gap: 6px; }
+.sr5-nc-stat { flex: 1; min-width: 0; text-align: center; border: 1px solid var(--c-teal-dim); padding: 2px 0; }
+.sr5-nc-stat i { display: block; font: normal 9px var(--c-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-muted); overflow: hidden; }
+.sr5-nc-stat b { font: 700 16px var(--c-num); color: var(--c-yellow); }
+.sr5-nc-stat b.mut { color: var(--c-muted); }
+.sr5-nc-stat.fav-p b { color: var(--c-green); }
+.sr5-nc-stat.fav-m b { color: var(--c-red); }
+.sr5-nc-carte .bas { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: auto; flex-wrap: wrap; }
+
+/* ---------- Recherche et filtres : restent en haut en défilant ---------- */
+.sr5-nc-filtres {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #041012;
+  border: 1px solid var(--c-teal-dim);
+  padding: 7px 8px;
+}
+.sr5-nc .sr5-nc-filtres input {
+  flex: 1;
+  min-width: 260px;
+  height: auto;
+  margin: 0;
+  background: #000 !important;
+  border: 1px solid var(--c-teal) !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  color: var(--c-text) !important;
+  font: 14px "Segoe UI", system-ui, sans-serif;
+  padding: 6px 9px;
+  text-indent: 0;
+}
+.sr5-nc .sr5-nc-filtres input::placeholder { color: var(--c-muted); opacity: 1; }
+.sr5-nc .sr5-nc-filtres select {
+  width: auto;
+  height: auto;
+  margin: 0;
+  background: #000 !important;
+  border: 1px solid var(--c-teal-dim) !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  color: var(--c-text) !important;
+  font: 13px "Segoe UI", system-ui, sans-serif;
+  padding: 5px;
+  text-indent: 0;
+}
+.sr5-nc .sr5-nc-filtres select option { background: #000; color: var(--c-text); }
+.sr5-nc-puces { display: flex; }
+.sr5-nc-puces-titre, .sr5-nc .sr5-nc-puces button {
+  font: 600 12px var(--c-head);
+  letter-spacing: 0.05em;
+  padding: 5px 9px;
+  border: 1px solid var(--c-teal-dim);
+  color: var(--c-muted);
+  background: #000;
+}
+.sr5-nc-puces-titre { margin-right: -6px; }
+.sr5-nc .sr5-nc-puces button.on { background: var(--c-teal); color: #000; border-color: var(--c-teal); }
+.sr5-nc-compteur { font: 12px var(--c-num); color: var(--c-muted); margin: -2px 0 -4px; }
+
+/* ---------- La liste compacte ---------- */
+.sr5-nc-c-liste { flex: none; border: 1px solid var(--c-teal-dim); background: rgba(3, 8, 10, 0.88); }
+.sr5-nc-ligne {
+  display: grid;
+  grid-template-columns: 24px 38px minmax(200px, 1.6fr) 100px minmax(120px, 1fr) 58px 58px 62px 150px 190px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-bottom: 1px solid rgba(31, 201, 183, 0.14);
+  font-size: 13px;
+}
+.sr5-nc-ligne:nth-child(even) { background: rgba(31, 201, 183, 0.035); }
+.sr5-nc-c-grille.avec-cote .sr5-nc-ligne { grid-template-columns: 24px 38px minmax(150px, 1.6fr) 70px minmax(100px, 1fr) 46px 46px 50px 128px 60px; }
+.sr5-nc-ligne.ent {
+  position: sticky;
+  top: var(--nc-hf, 48px);
+  z-index: 2;
+  background: #03100f;
+  font: 600 11px var(--c-head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  border-bottom: 1px solid var(--c-teal);
+}
+.sr5-nc-ligne img { width: 34px; height: 34px; object-fit: cover; object-position: center 20%; border: 1px solid var(--c-teal-dim); }
+.sr5-nc-ligne .nm { min-width: 0; }
+.sr5-nc-ligne .nm b { color: #fff; font-family: var(--c-head); font-size: 14px; }
+.sr5-nc-ligne .nm small { display: block; font-size: 11px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr5-nc-ligne .v { font: 700 15px var(--c-num); text-align: center; color: var(--c-yellow); }
+.sr5-nc-ligne.ent .v { font: inherit; color: inherit; }
+.sr5-nc-ligne .v.mut { color: var(--c-muted); }
+.sr5-nc-ligne .moi { color: var(--c-teal); }
+.sr5-nc-ligne .act { display: flex; gap: 4px; flex-wrap: wrap; }
+.sr5-nc .sr5-nc-ligne .etoile { color: var(--c-yellow); font-size: 16px; }
+.sr5-nc .sr5-nc-ligne .etoile.off { color: var(--c-teal-dim); }
+.sr5-nc .sr5-nc-ligne .etoile.off:hover { color: var(--c-yellow); }
+.sr5-nc .sr5-nc-ligne .sr5-nc-btn { font-size: 10px; padding: 3px 7px; }
+.sr5-nc-c-groupe {
+  position: sticky;
+  top: calc(var(--nc-hf, 48px) + 24px);
+  z-index: 1;
+  padding: 4px 10px;
+  background: #0a2420;
+  font: 700 12px var(--c-head);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-yellow);
+  border-bottom: 1px solid var(--c-teal-dim);
+}
+.sr5-nc-c-groupe span { color: var(--c-muted); font-family: var(--c-num); letter-spacing: 0; }
+
+/* ---------- Appels et demandes ---------- */
+.sr5-nc-dem { border-left: 3px solid var(--c-yellow); background: rgba(233, 249, 113, 0.05); padding: 8px 10px; margin-bottom: 8px; font-size: 14px; }
+.sr5-nc-dem.attente { border-left-color: var(--c-teal-dim); }
+.sr5-nc-dem b { color: #fff; }
+.sr5-nc-dem small { color: var(--c-muted); display: block; }
+.sr5-nc-dem .q { font-style: italic; color: #fff; font-size: 13px; }
+.sr5-nc-dem .boutons { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.sr5-nc-demandes { flex: none; }
+
+/* ---------- Colonne de droite : la police de texte du système, plus petite que le centre ---------- */
+.sr5-nc-side { font-family: "srfoundry_regular", "Segoe UI", sans-serif; }
+.sr5-nc-fac {
+  border: 1px solid var(--c-teal-dim);
+  background: rgba(4, 13, 16, 0.88);
+  padding: 5px 7px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.sr5-nc-fac .fn { font: 12px "srfoundry_bold", "Segoe UI", sans-serif; color: #fff; letter-spacing: 0.02em; }
+.sr5-nc-fac .ft { font-size: 10px; color: var(--c-muted); }
+.sr5-nc-fac .att { font: 700 11px var(--c-num); color: var(--c-muted); }
+.sr5-nc-fac .liens { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.sr5-nc-fac .liens > .mut { font-size: 10px; }
+.sr5-nc .sr5-nc-fac .sr5-nc-btn { font-size: 9px; padding: 2px 5px; }
+.sr5-nc-fac .mjnote { color: var(--c-magenta); font-size: 10px; margin-top: 3px; }
+.sr5-nc .sr5-nc-fac .lien { color: var(--c-magenta); text-decoration: underline; font-size: 10px; }
+.sr5-nc-side > .sr5-nc-vide { font-size: 11px; }
+
+/* ---------- Dialogues du carnet ---------- */
+.sr5-nc-dialogue .sr5-nc-formulaire .case { display: block; margin: 3px 0; }
+.sr5-nc-dialogue .sr5-nc-formulaire .case.retrait { margin-left: 1.6rem; }
+.sr5-nc-dialogue .sr5-nc-formulaire textarea { width: 100%; }
+.sr5-nc-dialogue .sr5-nc-note { font-size: 12px; opacity: 0.85; }
+
+
+
+.sr5-nc .t-mj { color: var(--c-magenta); }
+.sr5-nc .t-ve { color: var(--c-green); }
+.sr5-nc .t-new { color: #000; background: var(--c-yellow); border-color: var(--c-yellow); }
+.sr5-nc .t-jeu-livre { color: var(--c-muted); }
+.sr5-nc .t-jeu-zones { color: var(--c-teal); }
+.sr5-nc .t-jeu-noeuds { color: #9fb0ff; }
+.sr5-nc-c-onglets > .eteint { opacity: 0.5; cursor: default; }
+
+/* Deux panneaux pleine hauteur ; chacun défile seul */
+.sr5-nc-n-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+/* À la hauteur de son contenu, comme la maquette ; au-delà de la page, le tableau défile */
+.sr5-nc .sr5-nc-n-panneau {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.sr5-nc-n-panneau h2 { flex: none; }
+.sr5-nc-n-defil {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #10695f transparent;
+}
+.sr5-nc-n-aide { flex: none; margin-top: 8px; font-size: 12px; color: var(--c-muted); }
+.sr5-nc-n-pied { flex: none; margin-top: 8px; display: flex; justify-content: flex-end; }
+
+/* Les tableaux de la maquette */
+.sr5-nc table.sr5-nc-tbl {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-collapse: collapse;
+  background: none;
+  font-size: 14px;
+}
+.sr5-nc .sr5-nc-tbl tr { background: none; }
+.sr5-nc .sr5-nc-tbl th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 8px;
+  background: #041012;
+  border-bottom: 1px solid var(--c-teal);
+  font: 600 12px var(--c-head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--c-muted);
+}
+.sr5-nc .sr5-nc-tbl td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(31, 201, 183, 0.18);
+  vertical-align: middle;
+  text-align: left;
+}
+.sr5-nc .sr5-nc-tbl tr:nth-child(even) td { background: rgba(31, 201, 183, 0.04); }
+.sr5-nc .sr5-nc-tbl td b { color: #fff; font-family: var(--c-head); }
+.sr5-nc .sr5-nc-tbl td small { display: block; font-size: 12px; color: var(--c-muted); }
+.sr5-nc .sr5-nc-tbl td small.qui { color: var(--c-teal); }
+.sr5-nc .sr5-nc-tbl td.num { font: 700 15px var(--c-num); color: var(--c-text); white-space: nowrap; }
+.sr5-nc .sr5-nc-tbl td.act { text-align: right; white-space: nowrap; }
+.sr5-nc .sr5-nc-tbl td.act .sr5-nc-btn { margin: 1px 0; }
+.sr5-nc .sr5-nc-tbl .t-new { margin-left: 4px; }
+.sr5-nc .sr5-nc-tbl tr.fermee td { opacity: 0.5; }
+.sr5-nc .sr5-nc-logo {
+  display: block;
+  width: 44px;
+  min-width: 44px;
+  max-width: none;
+  height: 44px;
+  object-fit: contain;
+  background: #000;
+  border: 1px solid var(--c-teal-dim);
+}
+
+/* Colonne « Découvertes » : la police de texte du système, petite (comme les factions de CONTACTS) */
+.sr5-nc-mini {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border-bottom: 1px solid rgba(31, 201, 183, 0.2);
+  padding: 5px 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.sr5-nc-mini b { font: 12px "srfoundry_bold", "Segoe UI", sans-serif; color: #fff; letter-spacing: 0.02em; }
+.sr5-nc-mini img, .sr5-nc-mini .ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border: 1px solid var(--c-teal-dim);
+}
+.sr5-nc-mini .ic { display: flex; align-items: center; justify-content: center; color: #9fb0ff; font-size: 18px; }
+.sr5-nc-side > .mjnote { color: var(--c-magenta); font-size: 11px; margin-top: 8px; }
+
+/* 1.4.0 : la seconde colonne porte les boutiques et les dernières annonces, l'une sous l'autre */
+.sr5-nc-n-col { display: flex; flex-direction: column; gap: 14px; max-height: 100%; min-height: 0; }
+.sr5-nc-n-col > .sr5-nc-n-panneau { flex: 0 1 auto; }
+.sr5-nc .sr5-nc-tbl td.paie { color: var(--c-yellow); }
+
+// The runs board (block 6 of the mock-up, captures 05 and 06): cards on three columns
+.sr5-nc-runs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #10695f transparent;
+}
+.sr5-nc-frame .sr5-nc-runs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sr5-nc-run {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(4, 13, 16, 0.9);
+  border: 1px solid var(--c-teal-dim);
+  font-size: 14px;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.sr5-nc-run.encours { border-color: var(--c-yellow); }
+.sr5-nc-run.encours .code { color: var(--c-yellow); }
+.sr5-nc-run.clos { opacity: 0.55; }
+.sr5-nc-run .code { font: 12px var(--c-num); color: var(--c-magenta); letter-spacing: 0.1em; text-transform: uppercase; }
+.sr5-nc-run .rt { font: 700 19px var(--c-head); color: #fff; }
+.sr5-nc-run .tx { font-size: 14px; line-height: 1.4; }
+.sr5-nc-run .paie { font: 700 16px var(--c-num); color: var(--c-yellow); }
+.sr5-nc-run .risque { color: var(--c-red); letter-spacing: 2px; }
+.sr5-nc-run .react { display: flex; gap: 6px; flex-wrap: wrap; }
+.sr5-nc-run .react span { font: 600 12px var(--c-head); padding: 3px 8px; border: 1px solid; }
+.sr5-nc-run .ton-pos { color: var(--c-green); }
+.sr5-nc-run .ton-neg { color: var(--c-red); }
+.sr5-nc-run .ton-neutre { color: var(--c-muted); }
+.sr5-nc-run .mjnote { color: var(--c-magenta); font-size: 12px; }
+.sr5-nc-run .bas { margin-top: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sr5-nc-run .bas small { color: var(--c-muted); font-size: 12px; }
+
+/* Les formulaires d'un run : mouvements de réputation par faction, sur deux colonnes */
+.sr5-nc-dialogue .sr5-nc-r-formulaire fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 10px; }
+.sr5-nc-dialogue .sr5-nc-r-formulaire fieldset legend { grid-column: 1 / -1; }
+.sr5-nc-dialogue .sr5-nc-r-formulaire .sr5-nc-r-fac { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sr5-nc-dialogue .sr5-nc-r-formulaire .sr5-nc-r-fac input { width: 4em; flex: none; }
+.sr5-nc-dialogue .sr5-nc-r-formulaire textarea { width: 100%; resize: vertical; }
+/* Karma et nuyens par personnage (clôture, avance) : une ligne par personnage, deux champs alignés */
+.sr5-nc-dialogue .sr5-nc-r-versements { display: flex; flex-direction: column; gap: 3px; margin: 4px 0; }
+.sr5-nc-dialogue .sr5-nc-r-versements .titre { font-weight: bold; }
+.sr5-nc-dialogue .sr5-nc-r-vers { display: grid; grid-template-columns: minmax(0, 1fr) 5em 7em; align-items: center; gap: 6px; }
+.sr5-nc-dialogue .sr5-nc-r-vers.cases { grid-template-columns: 1.4em minmax(0, 1fr) 5em 7em; }
+.sr5-nc-dialogue .sr5-nc-r-vers.tete { font-size: 0.85em; opacity: 0.75; }
+.sr5-nc-dialogue .sr5-nc-r-vers .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr5-nc-dialogue .sr5-nc-r-vers input[type="number"] { width: 100%; }

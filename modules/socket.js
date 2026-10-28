@@ -149,6 +149,10 @@ export class SR5_SocketHandler {
       //Lot 37a: data bought from or sold to an information broker (Cutting Aces p. 148-149), written by the active GM
       "infoBrokerRequest": [async (message, senderId) => (await import("./interface/info-broker.js"))._socketInfoBrokerRequest(message, senderId)],
       "infoBrokerAnswer": [async (message, senderId) => (await import("./interface/info-broker.js"))._socketInfoBrokerAnswer(message, senderId)],
+      //Network and Contacts: an introduction asked or answered, an access found by a player's character (active GM)
+      "ncIntroduction": [async (message, senderId) => (await import("./interface/network-contacts/nc-registry.js"))._socketIntroduction(message, senderId)],
+      "ncAccessFound": [async (message, senderId) => (await import("./interface/network-contacts/nc-registry.js"))._socketAccessFound(message, senderId)],
+      "ncRunInterest": [async (message, senderId) => (await import("./interface/network-contacts/nc-registry.js"))._socketRunInterest(message, senderId)],
     }
 
     //senderId is added by the server to every custom socket message: a client cannot forge it

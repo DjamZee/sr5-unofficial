@@ -39,6 +39,9 @@ import {
 import {
   PAN_DEPLOY_MS, PAN_RAIN_MAX, ambienceRank, crownHasDevice, currentAmbience, deployScale, pulsePhase, pulsePoint, rainCrownIds
 } from "./pan-ambience.js"
+import {
+  aimedNodeUuid, registerPanAimHooks
+} from "./pan-aim.js"
 
 // The glyphs of the rain of code (lot 9), drawn once in a single texture: a ParticleContainer draws all its sprites
 // from the base texture of the first one
@@ -83,13 +86,31 @@ function bitmapOf(src){
     try {
       const response = await fetch(foundry.utils.getRoute?.(src) ?? src)
       if (!response.ok) return null
-      return await createImageBitmap(await response.blob())
+      const full = await createImageBitmap(await response.blob())
+      // Kept no larger than the mask it feeds: a 2048 px picture held whole weighs 16 MB for as long as the world is open
+      const side = Math.max(full.width, full.height)
+      if (side <= MASK_MAX) return full
+      const ratio = MASK_MAX / side
+      const reduced = await createImageBitmap(full, {
+        resizeWidth: Math.max(1, Math.round(full.width * ratio)),
+        resizeHeight: Math.max(1, Math.round(full.height * ratio)),
+        resizeQuality: "high"
+      })
+      full.close()
+      return reduced
     } catch {
       // A picture that cannot be read (a video, a protected address): no mask, the edge of its box
       return null
     }
   })())
   return bitmaps.get(src)
+}
+
+/** Let go of the pictures read for the crowns: the scene they served is gone, the next one reads its own */
+export function releasePanCrownImages(){
+  for (const promise of bitmaps.values()) promise.then(bitmap => bitmap?.close?.(), () => null)
+  bitmaps.clear()
+  alphaMaps.clear()
 }
 
 // The largest side of a crown's mask, in pixels: beyond, it is drawn at a lower resolution
@@ -998,6 +1019,9 @@ export class SR5PanCrownLayer extends foundry.canvas.layers.CanvasLayer {
     }
     if (node.badges?.vision) badge(node.badges.vision, -1)
     if (node.badges?.cyber) badge("cyber", 1)
+    // The icon this user aims at (DjamZ, 28/10): the four corner arrows Foundry draws on a target, in its hostile red
+    // (the yellow ring is the gamemaster's "hidden", the purple the marks). One Graphics, on that icon alone
+    if (aimedNodeUuid() === node.uuid) icon.addChild(targetArrowsOf(radius))
 
     icon.on("pointerover", () => {
       showLabel()
@@ -1220,6 +1244,20 @@ function drawBadgeGlyph(graphics, kind, r, background){
   }
 }
 
+// The corner arrows of a target (Token#_drawTargetArrows), around an icon of the given radius
+function targetArrowsOf(radius){
+  const arrows = new PIXI.Graphics()
+  const l = radius * 0.6, m = radius * 1.15
+  arrows.beginFill(Number(CONFIG.Canvas?.dispositionColors?.HOSTILE ?? 0xe72124), 1).lineStyle({
+    color: 0x000000, width: Math.max(1, radius * 0.08), join: PIXI.LINE_JOIN.BEVEL
+  })
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) arrows.drawPolygon([
+    sx * m, sy * m, sx * (m + l), sy * m, sx * m, sy * (m + l)
+  ])
+  arrows.endFill()
+  return arrows
+}
+
 function dashedCircle(graphics, radius, count){
   const step = Math.PI * 2 / count
   for (let i = 0; i < count; i++){
@@ -1234,7 +1272,10 @@ export function registerPanCrownHooks(){
   const layer = () => canvas?.sr5PanCrown
   Hooks.on("refreshToken", token => layer()?.onRefreshToken(token))
   // The radial menu goes with the scene shown, the token, the actor it was opened on
-  Hooks.on("canvasTearDown", () => closeRadialMenu())
+  Hooks.on("canvasTearDown", () => {
+    closeRadialMenu()
+    releasePanCrownImages()
+  })
   Hooks.on("deleteActor", () => closeRadialMenu())
   Hooks.on("deleteToken", document => {
     closeRadialMenuOf(document.id)
@@ -1256,6 +1297,8 @@ export function registerPanCrownHooks(){
   })
   // Lot 4: a click on an icon opens its radial menu, for everyone (the gamemaster's reveal is in it)
   Hooks.on("sr5.panCrownClickIcon", data => openRadialMenu(data))
+  // An icon aimed at from its menu (DjamZ, 28/10) is no longer once the user targets something else
+  registerPanAimHooks()
   // Lot 8: the openings on hover, always, and in the AR view follow the scene and its tokens
   Hooks.on("hoverToken", (token, hovered) => layer()?.onHoverToken(token, hovered))
   for (const hook of ["canvasReady", "createToken", "deleteToken", "deleteActor"]){
