@@ -77,7 +77,8 @@ describe('game.sr5, what docs/API-publique.md promises', () => {
     for (const match of sources.matchAll(/callAll\??\.?\(\s*"(sr5[A-Z]\w+)"/g)) called.add(match[1])
     expect([...called].sort()).toEqual([...HOOKS].sort())
     for (const hook of HOOKS) expect(doc, hook).toContain(`\`${hook}\``)
-  })
+    // reads every module file: past 5 s under a full parallel run (pre-push of 28/10)
+  }, 30000)
 })
 
 describe('the frozen parts of the API: a module cannot replace a call of the system', () => {

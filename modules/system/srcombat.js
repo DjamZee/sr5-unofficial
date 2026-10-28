@@ -29,6 +29,9 @@ import {
   SR5_MiscellaneousHelpers
 } from "../rolls/roll-helpers/miscellaneous.js"
 import {
+  amplificationEnd, volumeLossEffect, AMPLIFICATION_VOLUME_TARGET
+} from "./nanite-amplification.js"
+import {
   clearRunning
 } from "./running.js"
 import {
@@ -1091,12 +1094,48 @@ export class SR5Combat extends Combat {
   }
 
 
+  //End of a monad amplification (Whisper Nets p. 150, house rule of the Concepteur): one box only past the natural
+  //maximum, Physical or Stun as the attribute, then the Nanite Volume lowered by the boost for one minute
+  static async endNaniteAmplification(actor, combatant, amplified){
+    const {
+      SR5_ActorHelper
+    } = await import("../entities/actors/entityActor-helpers.js")
+    const who = `${combatant.name}${game.i18n.localize("SR5.Colons")}`
+    const type = amplified.damageType
+    if (amplified.boxes > 0 && actor.system.conditionMonitors?.[type]) {
+      // Excess Stun carries over to Physical, then to overflow (SR5 p. 171, 172), as the head case boost
+      let monitors = foundry.utils.deepClone(actor.system.conditionMonitors)
+      monitors[type].actual.base += amplified.boxes
+      SR5_EntityHelpers.updateValue(monitors[type].actual, 0)
+      const overflow = SR5_ActorHelper.carryMonitorOverflow(monitors, actor.type)
+      let monitorUpdates = {
+      }
+      for (let key of ["stun", "physical", "overflow"]) {
+        if (monitors[key]?.actual) monitorUpdates[`system.conditionMonitors.${key}.actual.base`] = monitors[key].actual.base
+      }
+      await actor.update(monitorUpdates)
+      ui.notifications.info(`${who} ${game.i18n.format("SR5.INFO_NaniteAmplificationDamage", {
+        damage: amplified.boxes, type: game.i18n.localize(SR5.damageTypesShort[type])
+      })}`)
+      if (overflow.isDead) await SR5_ActorHelper.createDeadEffect(actor.id)
+      else if (monitors.stun?.actual && monitors.stun.actual.value >= monitors.stun.value) await SR5_ActorHelper.createKoEffect(actor.id)
+    }
+    if (amplified.volumeLoss > 0) {
+      const label = SR5_EntityHelpers.getLabelByKey(AMPLIFICATION_VOLUME_TARGET) || game.i18n.localize("SR5.NaniteVolume")
+      await actor.createEmbeddedDocuments("Item", [volumeLossEffect(game.i18n.localize("SR5.NaniteAmplificationVolume"), label, amplified.volumeLoss)])
+      ui.notifications.info(`${who} ${game.i18n.format("SR5.INFO_NaniteAmplificationVolume", {
+        loss: amplified.volumeLoss
+      })}`)
+    }
+  }
+
   //Do stuff on actor when turn is ending
   static async manageTurnEnd(combatant){
     let actor = SR5Combat.getActorFromCombatant(combatant)
     if (!actor) return
 
     let damageInfo
+    const amplifiedEnds = []
 
     //Decrease external effect duration
     for (let item of actor.items){
@@ -1108,8 +1147,11 @@ export class SR5Combat extends Combat {
           itemData.duration -= 1
           //Delete effect if duration < 0;
           if (itemData.duration <= 0){
+            //Monad amplification (nanite-amplification.js): read while the attribute still carries the boost
+            const amplified = itemData.type === "naniteAmplification" ? amplificationEnd(actor, itemData, SR5_CharacterUtility.getMetatype(actor)) : null
             await actor.deleteEmbeddedDocuments("Item", [item.id])
             await SR5_EntityHelpers.deleteEffectOnActor(actor, item.system.type)
+            if (amplified) amplifiedEnds.push(amplified)
             ui.notifications.info(`${combatant.name}${game.i18n.localize("SR5.Colons")} ${game.i18n.format("SR5.INFO_DurationFinished", {
               effect: item.name
             })}`)
@@ -1233,6 +1275,8 @@ export class SR5Combat extends Combat {
       }
 
     }
+    //After the loop: the Nanite Volume effect it makes would otherwise lose a turn at once
+    for (let amplified of amplifiedEnds) await SR5Combat.endNaniteAmplification(actor, combatant, amplified)
 
     //Remove full defense effect
     if (actor.effects.find(e => e.origin === "fullDefense")){

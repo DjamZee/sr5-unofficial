@@ -38,5 +38,6 @@ describe("relative imports", () => {
       }
     }
     expect(missing).toEqual([])
-  })
+    // reads every module file: past 5 s under a full parallel run (pre-push of 28/10)
+  }, 30000)
 })

@@ -53,6 +53,9 @@ import {
   extendTimedEffect
 } from "../../system/effect-expiry.js"
 import {
+  amplificationValue
+} from "../../system/nanite-amplification.js"
+import {
   calendarStartYear
 } from "../../system/calendar.js"
 import {
@@ -2643,6 +2646,10 @@ export class SR5_ActorHelper {
     let isNaniteBoost = Object.values(itemData.systemEffects || {
     }).some(s => s.value === "naniteAttributeBoost")
     let naniteBoostMarked = false
+    // Monad amplification (Whisper Nets p. 150, house rule of the Concepteur): the same, capped at +4, its end in
+    // SR5Combat.manageTurnEnd (nanite-amplification.js)
+    const isNaniteAmplification = Object.values(itemData.systemEffects || {
+    }).some(s => s.value === "naniteAmplification")
     //Damage the GM declined, or that its clicker may not write: the card keeps its button, unless another entry of the
     //same card was posed (a second click would pose it twice)
     let declined = false, posed = false
@@ -2657,6 +2664,7 @@ export class SR5_ActorHelper {
         const replaces = isReplaceEffectType(e.type)
         const baseType = replaces ? e.type.replace("Replace", "") : e.type
         if (["hits", "netHits", "value", "rating"].includes(baseType)) value = entryValue(e, data.roll, item.system.itemRating)
+        if (isNaniteAmplification && e.category === "characterAttributes") value = amplificationValue(value, actor.system.specialAttributes?.nanite?.augmented?.value)
         //An area spell resisted totally gets its effect at 0 (test-ResistanceResult), only to mark the token as
         //having resisted inside the template: a fixed value or the resistor's hits must not apply the spell
         if (data.test?.type === "spellResistance" && data.roll.netHits <= 0) value = 0
@@ -2746,6 +2754,11 @@ export class SR5_ActorHelper {
             itemEffect["system.type"] = "naniteAttributeBoost"
             naniteBoostMarked = true
           }
+        }
+        if (isNaniteAmplification) {
+          itemEffect["system.duration"] = data.roll.hits
+          itemEffect["system.durationType"] = "round"
+          if (e.category === "characterAttributes") itemEffect["system.type"] = "naniteAmplification"
         }
 
         if (effectType === "customEffects"){
