@@ -231,6 +231,37 @@ export function advancedMedkitDice(rating, charge){
   return (Number(rating) || 0) + ((Number(charge) || 0) > 0 ? 0 : -3)
 }
 
+// BB p. 18, table « Réserves de dés de Biotech »: with the advanced rules the medkit adds its rating to the dice only,
+// the limit stays Mental. Core rules: the rating adds to the limit too (SR5 p. 208)
+export function medkitLimitBonus(rating, advanced){
+  return advanced ? 0 : Number(rating) || 0
+}
+
+// BB p. 18-19: with the advanced rules a medkit's supplies go down once per patient (useMedkitSupplies), so a roll
+// does not spend a charge of it; any other gear, or a medkit under the core rules, spends one by roll
+export function rollUsesGearCharge(isMedkit, advanced){
+  return !(isMedkit && advanced)
+}
+
+// SR5 p. 453, BB p. 18: a medkit holds (rating) uses of supplies. Its rating changed, its supplies are set to the new
+// rating; a charge changed by hand in the same update wins, and a charge edited alone is the GM's. The sheet sends
+// the whole form: a charge equal to the stored one is not an edit. Returns the new charge, or undefined to leave it
+export function medkitChargeOnRatingChange(source, changes){
+  const read = (key) => `system.${key}` in (changes ?? {
+  }) ? changes[`system.${key}`] : changes?.system?.[key]
+  const rating = read("itemRating")
+  if (rating === undefined || Number(rating) === Number(source?.itemRating)) return undefined
+  const charge = read("charge")
+  if (charge !== undefined && Number(charge) !== Number(source?.charge)) return undefined
+  return Math.max(0, Number(rating) || 0)
+}
+
+// BB p. 14: a Combat Turn has gone by when round 2 or later begins; the start of the combat (round 1) is the first
+// turn beginning, none over yet
+export function roundEndsATurn(round){
+  return (Number(round) || 0) > 1
+}
+
 // Improvised supplies. Core rules: -1 (SR5 p. 208). Bullets & Bandages p. 18 (optional rule, with the advanced
 // medkits): a Complex Action of First Aid + Intuition, each hit taking 1 off the -3 of "no supplies", down to 0.
 // The hits come from the player's own improvising roll, capped at 3

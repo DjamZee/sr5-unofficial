@@ -20,7 +20,7 @@ import {
   bloodDrain, bloodSpending, martyrPoints
 } from "../system/blood-magic-rules.js"
 import {
-  advancedMedkitDice, bbModeDiagnosisDice, improvisedSuppliesDice
+  advancedMedkitDice, bbModeDiagnosisDice, improvisedSuppliesDice, medkitLimitBonus
 } from "../system/bb-healing-rules.js"
 import {
   activateSocialDialog
@@ -1709,9 +1709,10 @@ export default class SR5_RollDialog {
                 dialogData.owner.itemUuid = advancedKit.uuid
                 dialogData.test.bbMedkitUuid = advancedKit.uuid
                 dialogData.test.bbMedkitRating = Number(advancedKit.system.itemRating) || 0
-                dialogData.limit.modifiers.healingSupplies.value = dialogData.test.bbMedkitRating
+                //BB p. 18, table « Réserves de dés de Biotech »: the limit stays Mental
+                dialogData.limit.modifiers.healingSupplies.value = medkitLimitBonus(dialogData.test.bbMedkitRating, true)
                 dialogData.limit.modifiers.healingSupplies.label = game.i18n.localize(SR5.dicePoolModTypes[modifierName])
-                if (suppliesLimitInput) suppliesLimitInput.value = dialogData.test.bbMedkitRating
+                if (suppliesLimitInput) suppliesLimitInput.value = dialogData.limit.modifiers.healingSupplies.value
                 if (!(Number(advancedKit.system.charge) > 0)) ui.notifications.warn(game.i18n.localize("SR5.BB_MedkitEmpty"))
                 break
               }

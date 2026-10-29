@@ -7,6 +7,7 @@ import {
   physicalTotal, canBleed, ledgerAfterWound, ledgerAfterBleedBox, isStabilizeSpell, stabilizeSpellDrain, ledgerAfterRound, ledgerAfterStabilization,
   spellStabilizes, believedStabilizationReduction, stabilizationLabelKey,
   ledgerWithDiagnosis, ledgerWithoutDiagnosis, diagnosisBonus, woundDiagnosisThreshold, DIAGNOSIS_THRESHOLDS, ledgerCleaned, penaltyReduction, stabilizationThreshold,
+  roundEndsATurn,
 } from "./bb-healing-rules.js"
 import {
   SR5_SystemHelpers
@@ -111,6 +112,7 @@ async function onUpdateCombat(combat, changes, options){
   if (!isWriter() || !("round" in (changes ?? {
   }))) return
   if ((options?.direction ?? 1) < 0) return
+  if (!roundEndsATurn(changes.round)) return
   const actors = new Map()
   for (const c of combat.combatants) if (c.actor?.uuid) actors.set(c.actor.uuid, c.actor)
   let due = []

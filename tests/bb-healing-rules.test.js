@@ -8,6 +8,7 @@ import {
   ledgerWithDiagnosis, ledgerWithoutDiagnosis, ledgerCleaned, advancedMedkitDice, ledgerAfterBleedBox,
   isStabilizeSpell, stabilizeSpellDrain, woundDiagnosisThreshold,
   bbModeDiagnosisDice, spellStabilizes, believedHits, believedStabilizationReduction, stabilizationLabelKey,
+  medkitLimitBonus, rollUsesGearCharge, roundEndsATurn, medkitChargeOnRatingChange,
 } from '../modules/system/bb-healing-rules.js'
 import {
   removedButtonKeys
@@ -190,6 +191,78 @@ describe('Balles et Pansements p. 18-19 : médikits avancés', () => {
   it('indice en dés, et -3 sans fournitures', () => {
     expect(advancedMedkitDice(4, 3)).toBe(4)
     expect(advancedMedkitDice(4, 0)).toBe(1)
+  })
+  // Mesuré le 29/10 (Philippa#3961) : indice 3, limite Mentale 5 lue 8 sur la carte
+  it('la limite reste Mentale (table des Réserves de dés de Biotech), +indice en règles de base', () => {
+    expect(medkitLimitBonus(3, true)).toBe(0)
+    expect(medkitLimitBonus(3, false)).toBe(3)
+    expect(medkitLimitBonus(undefined, false)).toBe(0)
+  })
+  // Mesuré le 29/10 : un patient stabilisé en deux jets coûtait 3 fournitures (deux jets + l'application)
+  it('une fourniture par patient : le jet ne consomme pas la charge du médikit', () => {
+    expect(rollUsesGearCharge(true, true)).toBe(false)
+    expect(rollUsesGearCharge(true, false)).toBe(true)
+    expect(rollUsesGearCharge(false, true)).toBe(true)
+  })
+  // Relevé de Lucien#5427 : un médikit acheté d'indice 1 puis passé à 4 gardait 1 fourniture
+  it('SR5 p. 453 : changer l\'indice remet les fournitures au nouvel indice, la charge à la main reste au MJ', () => {
+    const kit = {
+      itemRating: 1, charge: 1 
+    }
+    expect(medkitChargeOnRatingChange(kit, {
+      "system.itemRating": 4 
+    })).toBe(4)
+    expect(medkitChargeOnRatingChange(kit, {
+      system: {
+        itemRating: 4, charge: 1 
+      } 
+    })).toBe(4)
+    expect(medkitChargeOnRatingChange({
+      itemRating: 4, charge: 4 
+    }, {
+      system: {
+        itemRating: 2 
+      } 
+    })).toBe(2)
+    // La charge seule, ou l'indice inchangé : rien
+    expect(medkitChargeOnRatingChange({
+      itemRating: 4, charge: 4 
+    }, {
+      "system.charge": 2 
+    })).toBeUndefined()
+    expect(medkitChargeOnRatingChange({
+      itemRating: 4, charge: 2 
+    }, {
+      system: {
+        itemRating: 4, charge: 2 
+      } 
+    })).toBeUndefined()
+    // Indice et charge changés ensemble : la charge du MJ gagne
+    expect(medkitChargeOnRatingChange(kit, {
+      "system.itemRating": 4, "system.charge": 3 
+    })).toBeUndefined()
+    expect(medkitChargeOnRatingChange(kit, {
+      name: "x" 
+    })).toBeUndefined()
+  })
+})
+
+describe('Balles et Pansements p. 14 : tours de combat écoulés', () => {
+  // Une blessure d'avant le combat saignait au début du tour 3, après deux tours seulement (mesuré le 29/10)
+  it('le début du combat (tour 1) n\'est pas un tour écoulé', () => {
+    expect(roundEndsATurn(1)).toBe(false)
+    expect(roundEndsATurn(0)).toBe(false)
+    expect(roundEndsATurn(2)).toBe(true)
+    let ledger = ledgerAfterWound({
+    }, 'A', 3)
+    const due = []
+    for (const round of [1, 2, 3, 4]) {
+      if (!roundEndsATurn(round)) continue
+      const after = ledgerAfterRound(ledger, ['A'])
+      ledger = after.ledger
+      if (after.due.length) due.push(round)
+    }
+    expect(due).toEqual([4])
   })
 })
 

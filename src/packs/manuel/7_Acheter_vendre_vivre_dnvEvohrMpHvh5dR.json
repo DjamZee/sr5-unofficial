@@ -23,7 +23,7 @@
       "image": {},
       "text": {
         "format": 1,
-        "content": "<p>Cette partie suit l'argent du personnage : comment il s'équipe à la boutique, comment le MJ tient ses marchands et rachète le butin, où vivent les nuyens et le loyer, et comment l'horloge du monde fait arriver les commandes et tomber les échéances. Le joueur ou la joueuse lit surtout les chapitres 7.1 et 7.3 ; le MJ lit les quatre.</p>\n<p>Le système applique ici les règles d'achat et de revente du livre de base (<em>Livre de base p. 419-421</em>). Ce manuel ne les recopie pas : il montre les fenêtres, dit ce que le système calcule seul et ce qui reste à la main du MJ.</p><table><tbody><tr><td><p>@UUID[.FcFAEQCYnWId4zg4]{7.1 La boutique du joueur ou de la joueuse}</p></td><td><p>Joueur ou joueuse</p></td></tr><tr><td><p>&emsp;@UUID[.rCD4P3khNagAnODN]{La fenêtre de la boutique}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.KCwO9LeINSJYoROJ]{Acheter : le panier, le test, la caisse}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.aG5xz2odvcmkng4w]{La livraison}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.NIeZQKqXM58Cg2Jz]{S'équiper pendant la création}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.2icQRYXbLSObM3f5]{Les implants : gammes et Essence}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.cPo7hXSrHjyXq4bg]{Ce que fait le système, réglages et références}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.5DdV0wykUSSWuaSG]{7.2 La boutique du MJ, la fourgue, les factions}</p></td><td><p>MJ</p></td></tr><tr><td><p>&emsp;@UUID[.cHcctuavWeEIK3QH]{Configurer la boutique}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.SyI6YSnFTX8x0idb]{Les vendeurs}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.kfVv5yBRr0BFrJfI]{Revendre : la fourgue}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.AKjSwcLBTCl5WB3C]{Le courtier en informations}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.HzE2wFoGu9CxID8V]{Les factions}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.WsdsU4MlUP0QztsL]{Le suivi des arnaques}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.WpxIBztMXHhclflG]{Réglages et références du MJ}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.qk2XJEf1NvKmaJ6R]{7.3 Argent, créditubes, style de vie}</p></td><td><p>Tous</p></td></tr><tr><td><p>&emsp;@UUID[.mobgPpSfFUKzOT6f]{Les comptes}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.rsDpQnk1XgPMWKFB]{Le liquide : les créditubes}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.GLoMzcHu3JGOVedj]{Le style de vie}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.7vDJsSf9jlfFUhd1]{Ce que fait le système et références}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.e6Mpw7TMwnO5VSpW]{7.4 Le calendrier}</p></td><td><p>Tous</p></td></tr><tr><td><p>&emsp;@UUID[.vT1M2MQ7gSHMPYdr]{Les événements}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.rTWBi4ijKRG8vNXP]{Les échéances du MJ}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Hlsqwkfzz0afMWu5]{Réglages liés et références}</p></td><td><p></p></td></tr></tbody></table>"
+        "content": "<p>Cette partie suit l'argent du personnage : comment il s'équipe à la boutique, comment le MJ tient ses marchands et rachète le butin, où vivent les nuyens et le loyer, et comment l'horloge du monde fait arriver les commandes et tomber les échéances. Le chapitre 7.5 montre le carnet des contacts, le Réseau et le tableau des runs, d'où partent l'avance et la paie d'un job. Le joueur ou la joueuse lit surtout les chapitres 7.1, 7.3 et 7.5 ; le MJ lit les cinq.</p>\n<p>Le système applique ici les règles d'achat et de revente du livre de base (<em>Livre de base p. 419-421</em>). Ce manuel ne les recopie pas : il montre les fenêtres, dit ce que le système calcule seul et ce qui reste à la main du MJ.</p><table><tbody><tr><td><p>@UUID[.FcFAEQCYnWId4zg4]{7.1 La boutique du joueur ou de la joueuse}</p></td><td><p>Joueur ou joueuse</p></td></tr><tr><td><p>&emsp;@UUID[.rCD4P3khNagAnODN]{La fenêtre de la boutique}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.KCwO9LeINSJYoROJ]{Acheter : le panier, le test, la caisse}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.aG5xz2odvcmkng4w]{La livraison}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.NIeZQKqXM58Cg2Jz]{S'équiper pendant la création}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.2icQRYXbLSObM3f5]{Les implants : gammes et Essence}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.cPo7hXSrHjyXq4bg]{Ce que fait le système, réglages et références}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.5DdV0wykUSSWuaSG]{7.2 La boutique du MJ, la fourgue, les factions}</p></td><td><p>MJ</p></td></tr><tr><td><p>&emsp;@UUID[.cHcctuavWeEIK3QH]{Configurer la boutique}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.SyI6YSnFTX8x0idb]{Les vendeurs}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.kfVv5yBRr0BFrJfI]{Revendre : la fourgue}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.AKjSwcLBTCl5WB3C]{Le courtier en informations}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.HzE2wFoGu9CxID8V]{Les factions}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.WsdsU4MlUP0QztsL]{Le suivi des arnaques}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.WpxIBztMXHhclflG]{Réglages et références du MJ}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.qk2XJEf1NvKmaJ6R]{7.3 Argent, créditubes, style de vie}</p></td><td><p>Tous</p></td></tr><tr><td><p>&emsp;@UUID[.mobgPpSfFUKzOT6f]{Les comptes}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.rsDpQnk1XgPMWKFB]{Le liquide : les créditubes}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.GLoMzcHu3JGOVedj]{Le style de vie}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.7vDJsSf9jlfFUhd1]{Ce que fait le système et références}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.e6Mpw7TMwnO5VSpW]{7.4 Le calendrier}</p></td><td><p>Tous</p></td></tr><tr><td><p>&emsp;@UUID[.vT1M2MQ7gSHMPYdr]{Les événements}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.rTWBi4ijKRG8vNXP]{Les échéances du MJ}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Hlsqwkfzz0afMWu5]{Réglages liés et références}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs}</p></td><td><p>Tous</p></td></tr><tr><td><p>&emsp;@UUID[.MjTBxRPagVVVfF0K]{Le carnet des contacts}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.hx7RHasMJRzogpc8]{Le Réseau : accès et boutiques}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.mDn2zytwQrWN5Pxt]{Le tableau des runs}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.tTDKuEUeRUOSlHFZ]{Ce que fait le système, réglages et références}</p></td><td><p></p></td></tr></tbody></table>"
       },
       "video": {
         "controls": true,
@@ -671,7 +671,142 @@
       "image": {},
       "text": {
         "format": 1,
-        "content": "<h4>Ce que le système fait tout seul</h4>\n<ul>\n<li><p>Il date commandes, loyers, drogues, effets et sevrages sur l'horloge, et les regroupe dans une carte du MJ à chaque mouvement.</p></li>\n<li><p>Il rappelle chaque événement une seule fois au MJ, et avance l'heure de trois secondes par tour de combat.</p></li>\n</ul>\n\n<h4>Ce que le MJ fait à la main</h4>\n<ul>\n<li><p>Il avance l'horloge quand le temps passe dans l'histoire.</p></li>\n<li><p>Il clique chaque bouton d'échéance : livrer, débiter, retirer, lancer.</p></li>\n</ul>\n\n<h4>Réglages liés</h4>\n<table>\n<thead><tr><th>Réglage (onglet Calendrier)</th><th>Par défaut</th></tr></thead>\n<tbody>\n<tr><td><strong>Calendrier : année de départ</strong></td><td>2070 (la changer décale toutes les dates du monde)</td></tr>\n<tr><td><strong>Calendrier : le combat avance l'heure</strong></td><td>coché</td></tr>\n<tr><td><strong>Calendrier : montrer les échéances aux joueurs</strong></td><td>décoché</td></tr>\n</tbody>\n</table>\n\n<h4>Références</h4>\n<ul>\n<li><p>Durée d'un tour de combat : (<em>Livre de base p. 51</em>). Sevrage : (<em>Livre de base p. 79</em>). Mois de loyer payés d'avance : (<em>Livre de base p. 377</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Calendrier\">wiki : Calendrier</a>.</p></li>\n</ul><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.e6Mpw7TMwnO5VSpW]{7.4 Le calendrier}</p><p>← @UUID[.rTWBi4ijKRG8vNXP]{Les échéances du MJ}</p>"
+        "content": "<h4>Ce que le système fait tout seul</h4>\n<ul>\n<li><p>Il date commandes, loyers, drogues, effets et sevrages sur l'horloge, et les regroupe dans une carte du MJ à chaque mouvement.</p></li>\n<li><p>Il rappelle chaque événement une seule fois au MJ, et avance l'heure de trois secondes par tour de combat.</p></li>\n</ul>\n\n<h4>Ce que le MJ fait à la main</h4>\n<ul>\n<li><p>Il avance l'horloge quand le temps passe dans l'histoire.</p></li>\n<li><p>Il clique chaque bouton d'échéance : livrer, débiter, retirer, lancer.</p></li>\n</ul>\n\n<h4>Réglages liés</h4>\n<table>\n<thead><tr><th>Réglage (onglet Calendrier)</th><th>Par défaut</th></tr></thead>\n<tbody>\n<tr><td><strong>Calendrier : année de départ</strong></td><td>2070 (la changer décale toutes les dates du monde)</td></tr>\n<tr><td><strong>Calendrier : le combat avance l'heure</strong></td><td>coché</td></tr>\n<tr><td><strong>Calendrier : montrer les échéances aux joueurs</strong></td><td>décoché</td></tr>\n</tbody>\n</table>\n\n<h4>Références</h4>\n<ul>\n<li><p>Durée d'un tour de combat : (<em>Livre de base p. 51</em>). Sevrage : (<em>Livre de base p. 79</em>). Mois de loyer payés d'avance : (<em>Livre de base p. 377</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Calendrier\">wiki : Calendrier</a>.</p></li>\n</ul><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.e6Mpw7TMwnO5VSpW]{7.4 Le calendrier}</p><p>← @UUID[.rTWBi4ijKRG8vNXP]{Les échéances du MJ} · @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "KDH7m8fExvlmeCmE",
+      "_key": "!journal.pages!dnvEvohrMpHvh5dR.KDH7m8fExvlmeCmE",
+      "name": "7.5 Réseau, Contacts et runs",
+      "type": "text",
+      "sort": 2600000,
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p><strong style=\"border:1px solid currentColor;border-radius:3px;padding:0 4px;font-size:0.85em;white-space:nowrap\">Tous</strong></p><h4>À quoi ça sert</h4>\n<p>Deux fenêtres tiennent ce que l'équipe sait du monde. <strong>Contacts</strong> est le carnet des contacts de tous les personnages, avec leur Loyauté, leur Influence et les faveurs dues. <strong>Réseau</strong> liste les accès matriciels et les boutiques que l'équipe connaît, et porte le tableau des runs : le MJ y propose les jobs, l'équipe s'y dit intéressée, et l'avance, la paie et le Karma partent de là sur les fiches. Ces fenêtres venaient du module Landing Page et Metroplexes ; le système les porte depuis sa version 1.1.</p>\n\n<h4>Où les trouver</h4>\n<ul>\n<li><p><strong>Sans Landing Page et Metroplexes</strong> : deux boutons dans les contrôles des jetons, à gauche de la scène, ① <strong>Réseau</strong> et ② <strong>Contacts</strong>, pour le MJ comme pour le joueur ou la joueuse.</p></li>\n<li><p><strong>Avec Landing Page et Metroplexes 1.9.0 ou plus</strong> : ces deux boutons n'apparaissent pas ; les boutons CONTACTS et NETWORKS du deck de Landing ouvrent les mêmes fenêtres (ou leur page dans le deck, une fois le deck reconstruit par le MJ). Landing y ajoute ses propres blocs, <strong>Lieux découverts</strong> et <strong>Dernières annonces</strong>.</p></li>\n<li><p><strong>Avec une version plus ancienne de Landing</strong>, Landing garde sa propre copie de ces fenêtres ; le système cache ses boutons et invite le MJ à mettre le module à jour.</p></li>\n</ul>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-boutons.webp\" width=\"124\" alt=\"Sans Landing, les contrôles des jetons : ① Réseau, ② Contacts.\" /><figcaption><strong>Figure 7.5.1</strong> — Sans Landing, les contrôles des jetons : ① <strong>Réseau</strong>, ② <strong>Contacts</strong>.</figcaption></figure>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-landing.webp\" width=\"1528\" alt=\"Avec Landing 1.9.0, NETWORKS ouvre la fenêtre Réseau du système, complétée par les blocs de Landing Lieux découverts et Dernières annonces.\" /><figcaption><strong>Figure 7.5.2</strong> — Avec Landing 1.9.0, NETWORKS ouvre la fenêtre <strong>Réseau</strong> du système, complétée par les blocs de Landing <strong>Lieux découverts</strong> et <strong>Dernières annonces</strong>.</figcaption></figure>\n\n<p>Le réglage de monde <strong>Réseau et Contacts</strong>, coché par défaut, les met en service ; décoché, les boutons disparaissent et les fenêtres refusent de s'ouvrir. Il n'ajoute aucune règle. Toute modification du Réseau (accès, boutiques, runs) passe par le MJ actif : sans MJ connecté, une demande d'un joueur ou d'une joueuse attend.</p><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU}</p><p>← @UUID[.Hlsqwkfzz0afMWu5]{Réglages liés et références} · @UUID[.MjTBxRPagVVVfF0K]{Le carnet des contacts} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "MjTBxRPagVVVfF0K",
+      "_key": "!journal.pages!dnvEvohrMpHvh5dR.MjTBxRPagVVVfF0K",
+      "name": "Le carnet des contacts",
+      "type": "text",
+      "sort": 2700000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>La fenêtre <strong>Contacts</strong> lit les contacts posés sur les fiches : leur métier, leur Influence, leur Loyauté et leurs faveurs (<em>Livre de base p. 388-392</em>). Elle a deux onglets, <strong>Carnet de l'équipe</strong> et <strong>Mes contacts</strong>, et, à droite, les factions qui connaissent le personnage.</p>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-contacts.webp\" width=\"1504\" alt=\"Le carnet vu par le joueur ou la joueuse de Kira : Tanya Fixe en favori, les autres contacts rangés par métier ; Mikki Sato est partagée avec l'équipe en Carnet.\" /><figcaption><strong>Figure 7.5.3</strong> — Le carnet vu par le joueur ou la joueuse de Kira : Tanya Fixe en favori, les autres contacts rangés par métier ; Mikki Sato est partagée avec l'équipe en <strong>Carnet</strong>.</figcaption></figure>\n\n<ul>\n<li><p><strong>Favoris</strong> : l'étoile ☆ d'une ligne place le contact en carte, en haut ; l'étoile ★ d'une carte l'en retire. Douze au plus, et chacun ou chacune a les siens.</p></li>\n<li><p><strong>Filtres</strong> : une recherche par nom, métier ou faction ; <strong>De</strong> (tous, moi ou un personnage), le métier, la faction, la Loyauté minimale, <strong>Faveurs</strong> (<strong>me doivent</strong>, <strong>je dois</strong>) et le tri (métier, nom, Influence, Loyauté).</p></li>\n<li><p><strong>Appeler</strong> passe par la messagerie commcode (voir @UUID[Compendium.sr5.manuel.JournalEntry.eQD8W5rCT4vBEAW9.JournalEntryPage.ppMeoTy8wgmHEQvi]{Messages et appels par commcode}) ; le MJ décroche au nom du contact. <strong>Faveur</strong>, sur vos propres contacts, lance la même demande que <strong>Demander une faveur</strong> sur la fiche du contact (@UUID[Compendium.sr5.manuel.JournalEntry.QOnlNlLLjtaxDQDL.JournalEntryPage.qVwaxKhvT1ma91YW]{Les faveurs des contacts}).</p></li>\n<li><p><strong>Fiche</strong> (MJ) ouvre la fiche du contact. Le MJ voit tous les contacts de l'équipe, y compris les privés, comptés à part.</p></li>\n</ul>\n\n<h4>Pas à pas : partager un contact</h4>\n<ol>\n<li><p>Dans la colonne <strong>Partage</strong>, cliquez sur l'étiquette du contact (<strong>Privé</strong> par défaut). Seul le propriétaire du contact peut la changer, jamais le MJ.</p></li>\n<li><p>Choisissez ce que voient les autres : <strong>Privé</strong> (vous seul ou seule), <strong>Portrait</strong> (visage, nom, métier, Influence) ou <strong>Carnet</strong> (en plus la Loyauté et les faveurs).</p></li>\n<li><p>Choisissez à qui : <strong>Toute l'équipe</strong>, ou <strong>Certains partenaires seulement</strong>, cochés un par un.</p></li>\n<li><p>Au besoin, corrigez <strong>Rangement dans le carnet</strong> (par défaut, d'après son métier), puis <strong>Enregistrer</strong>. L'étiquette devient par exemple <strong>Carnet · Équipe</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-partage.webp\" width=\"408\" alt=\"La fenêtre de partage d'un contact : le niveau, les destinataires, le rangement.\" /><figcaption><strong>Figure 7.5.4</strong> — La fenêtre de partage d'un contact : le niveau, les destinataires, le rangement.</figcaption></figure>\n\n<p>Un partenaire qui voit votre contact peut vous demander une <strong>Présentation</strong> : vous acceptez ou non, puis le MJ décide, et chacun l'apprend par un message privé. La colonne de droite liste les factions connues et le contact qui permet de les joindre ; le MJ peut y révéler ou cacher une faction (registre des factions : @UUID[.HzE2wFoGu9CxID8V]{7.2}).</p><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs}</p><p>← @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs} · @UUID[.hx7RHasMJRzogpc8]{Le Réseau : accès et boutiques} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "hx7RHasMJRzogpc8",
+      "_key": "!journal.pages!dnvEvohrMpHvh5dR.hx7RHasMJRzogpc8",
+      "name": "Le Réseau : accès et boutiques",
+      "type": "text",
+      "sort": 2800000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>L'onglet <strong>Accès &amp; boutiques</strong> a deux tableaux, et une colonne des dernières découvertes à droite.</p>\n<ul>\n<li><p><strong>Accès matriciels</strong> : un accès s'ajoute de lui-même quand un personnage pose une mark sur un hôte ou y entre ; le MJ peut aussi en donner un. L'<strong>Indice</strong> est lu sur l'hôte ; la colonne <strong>Marks</strong> montre celles que le personnage tient encore (<em>Livre de base p. 237</em>).</p></li>\n<li><p><strong>Boutiques connues</strong> : une boutique y figure dès qu'un personnage en est client (case cochée sur la fiche du vendeur) ou que le MJ la lui fait découvrir. <strong>Ouvrir</strong> mène à sa boutique (@UUID[.SyI6YSnFTX8x0idb]{les vendeurs}). Une boutique fermée est grisée, sans bouton.</p></li>\n</ul>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-reseau.webp\" width=\"1248\" alt=\"Le Réseau vu par le joueur ou la joueuse de Kira : un accès donné par le MJ, une boutique découverte, et les deux nouveautés dans la colonne de droite.\" /><figcaption><strong>Figure 7.5.5</strong> — Le Réseau vu par le joueur ou la joueuse de Kira : un accès donné par le MJ, une boutique découverte, et les deux nouveautés dans la colonne de droite.</figcaption></figure>\n\n<h4>Pas à pas : donner un accès (MJ)</h4>\n<ol>\n<li><p>Sous <strong>Accès matriciels</strong>, cliquez sur <strong>Ajouter un accès</strong>.</p></li>\n<li><p>Donnez un nom et un type (<strong>Serveur</strong> ou <strong>Paradis de données</strong>), glissez l'acteur hôte dans <strong>Hôte</strong> et, au besoin, un journal dans <strong>Journal</strong>. L'<strong>Indice</strong> saisi ne sert que si l'hôte n'est plus lisible.</p></li>\n<li><p>Notez le niveau d'accès et une note, cochez les personnages qui le connaissent, puis <strong>Enregistrer</strong>. La ligne apparaît chez eux, marquée <strong>Nouveau</strong>.</p></li>\n</ol>\n<p>Le MJ voit aussi les boutiques que personne ne connaît encore, grisées, avec <strong>Faire découvrir</strong> : cochez les personnages, et la boutique entre dans leur Réseau. Une ligne en bas de la colonne de droite lui rappelle combien d'accès sont cachés et de boutiques pas encore découvertes.</p><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs}</p><p>← @UUID[.MjTBxRPagVVVfF0K]{Le carnet des contacts} · @UUID[.mDn2zytwQrWN5Pxt]{Le tableau des runs} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "mDn2zytwQrWN5Pxt",
+      "_key": "!journal.pages!dnvEvohrMpHvh5dR.mDn2zytwQrWN5Pxt",
+      "name": "Le tableau des runs",
+      "type": "text",
+      "sort": 2900000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>Les onglets <strong>Tableau des runs</strong> et <strong>Archives des runs</strong> suivent un job de sa proposition à sa paie. Chaque run reçoit un code (<strong>JOB-2070-101</strong>…) et passe par cinq états : <strong>Brouillon</strong>, <strong>Ouvert</strong>, <strong>Rendez-vous</strong>, <strong>En cours</strong>, <strong>Clos</strong>.</p>\n\n<h4>Pas à pas : proposer un run (MJ)</h4>\n<ol>\n<li><p>Onglet <strong>Tableau des runs</strong>, cliquez sur <strong>Nouveau run</strong>. Remplissez le titre, le texte, qui le propose (<strong>Fixer</strong> ou <strong>Johnson</strong>, un contact de l'équipe ou un nom libre), la <strong>Paie</strong> (totale, ou <strong>Paie par personne</strong>), l'<strong>Avance</strong> en pourcentage de la paie, le <strong>Karma</strong> de chaque personnage et le <strong>Risque</strong> (0 à 5).</p></li>\n<li><p>Au besoin, ajoutez les factions qui réagissent (une par ligne, « - Shiawase : sur les dents », « + Tamanous : appréciera » : de simples étiquettes), les écarts de réputation prévus si le run réussit, un lieu et des notes (glissez un journal), un accès du Réseau lié, une note du MJ. <strong>Enregistrer</strong> : le run est en <strong>Brouillon</strong>, invisible des joueurs et des joueuses.</p></li>\n<li><p>Cliquez sur <strong>Publier</strong>, puis <strong>Publier pour l'équipe</strong>, ou cochez des personnages et <strong>Publier pour les cochés seuls</strong> (un fixer qui appelle quelqu'un). Le run passe <strong>Ouvert</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-runs.webp\" width=\"1248\" alt=\"Le tableau des runs côté MJ : un run ouvert auquel Kira s'est dite intéressée, et un brouillon, en pointillé, invisible des joueurs et des joueuses.\" /><figcaption><strong>Figure 7.5.6</strong> — Le tableau des runs côté MJ : un run ouvert auquel Kira s'est dite intéressée, et un brouillon, en pointillé, invisible des joueurs et des joueuses.</figcaption></figure>\n\n<p>Le joueur ou la joueuse voit le run publié, sans la ligne du Karma ni celle de l'avance, et clique sur <strong>Intéressé·e</strong> (ou <strong>Plus intéressé·e</strong> pour se retirer) ; le MJ lit les noms au bas de la carte.</p>\n\n<h4>Pas à pas : mener le run jusqu'à la paie (MJ)</h4>\n<ol>\n<li><p><strong>Rendez-vous</strong> marque la rencontre avec l'employeur. <strong>En cours</strong> lance le run : si aucune équipe n'a été cochée, ce sont les personnages intéressés.</p></li>\n<li><p>Au passage <strong>En cours</strong>, la fenêtre <strong>Avance de …</strong> propose, pour chaque personnage de l'équipe, sa part de l'avance en nuyens ; chaque ligne se corrige. <strong>Verser l'avance</strong> l'inscrit sur les fiches en gain de nuyens, <strong>Plus tard</strong> la garde.</p></li>\n<li><p>À la fin, <strong>Clôturer</strong> : choisissez l'issue (<strong>Réussi</strong>, <strong>Raté</strong>, <strong>Abandonné</strong>), vérifiez le Karma et les nuyens de chaque personnage coché (la paie proposée est le solde, avance déduite) et les mouvements de réputation.</p></li>\n<li><p>Laissez <strong>Verser maintenant sur les fiches</strong> coché pour payer tout de suite, ou décochez-le : le solde reste sur le run, et un bouton <strong>Verser</strong> l'attend dans les archives. Validez par <strong>Clore et diffuser</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-cloture.webp\" width=\"548\" alt=\"La clôture d'un run : l'issue, le Karma et les nuyens de chaque personnage, la réputation écrite au registre des factions.\" /><figcaption><strong>Figure 7.5.7</strong> — La clôture d'un run : l'issue, le Karma et les nuyens de chaque personnage, la réputation écrite au registre des factions.</figcaption></figure>\n\n<p>Le run clos part dans les <strong>Archives des runs</strong>, avec ce qui a été payé (par exemple « Versé : Kira 9 000 ¥, 5 Karma » pour une paie de 12 000 ¥ dont 25 % d'avance). Les gains portent le code et le titre du run dans l'historique de karma et de nuyens de la fiche. La réputation est écrite au registre des factions ; cochée <strong>En attente</strong>, elle s'applique avec le Karma (<em>Cutting Aces p. 157</em>). Avec Landing, la clôture peut aussi écrire un écho dans son fil d'infos.</p><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs}</p><p>← @UUID[.hx7RHasMJRzogpc8]{Le Réseau : accès et boutiques} · @UUID[.tTDKuEUeRUOSlHFZ]{Ce que fait le système, réglages et références} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "tTDKuEUeRUOSlHFZ",
+      "_key": "!journal.pages!dnvEvohrMpHvh5dR.tTDKuEUeRUOSlHFZ",
+      "name": "Ce que fait le système, réglages et références",
+      "type": "text",
+      "sort": 3000000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<h4>Ce que le système fait tout seul</h4>\n<ul>\n<li><p>Il ajoute un accès quand un personnage pose une mark sur un hôte ou y entre, et une boutique quand un personnage devient client d'un vendeur.</p></li>\n<li><p>Il calcule l'avance et le solde de chaque personnage, et ne verse jamais deux fois la même étape d'un run.</p></li>\n<li><p>Au premier chargement d'un monde qui utilisait Landing, le MJ actif reprend ce que Landing tenait (accès, boutiques découvertes, partage et rangement des contacts, favoris, factions révélées, demandes de présentation, runs avec ce qu'ils ont déjà versé) ; une notification dit combien. Rien n'est effacé chez Landing, et un versement fait par Landing ne repart pas.</p></li>\n</ul>\n\n<h4>Ce que le MJ fait à la main</h4>\n<ul>\n<li><p>Il donne les accès et fait découvrir les boutiques qui ne viennent ni d'une mark ni d'un vendeur.</p></li>\n<li><p>Il fait avancer chaque run d'un état à l'autre, et clique pour verser l'avance et la paie.</p></li>\n<li><p>Il décide des présentations entre contacts.</p></li>\n</ul>\n\n<h4>Réglages liés</h4>\n<table>\n<thead><tr><th>Réglage</th><th>Onglet</th><th>Par défaut</th></tr></thead>\n<tbody>\n<tr><td><strong>Réseau et Contacts</strong></td><td>Interface</td><td>coché</td></tr>\n<tr><td><strong>Réseau : toutes les boutiques ouvertes sont connues</strong></td><td>Boutique</td><td>décoché : seulement celles dont le personnage est client ou que le MJ lui a fait découvrir</td></tr>\n<tr><td><strong>Avance des runs (% de la paie)</strong></td><td>Outils du MJ</td><td>0, le livre ne prévoit pas d'avance (<em>Livre de base p. 377</em>) ; modifiable run par run</td></tr>\n</tbody>\n</table>\n\n<h4>Références</h4>\n<ul>\n<li><p>Contacts, Loyauté et Influence : (<em>Livre de base p. 57, 388-392</em>). Marks : (<em>Livre de base p. 237</em>). Avance : (<em>Livre de base p. 377</em>). Karma d'un run : (<em>Livre de base p. 379</em>). Réputation auprès des factions : (<em>Cutting Aces p. 157</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Reseau-et-Contacts\">wiki : Réseau, Contacts et runs</a>.</p></li>\n</ul><hr /><p><strong>Backlinks :</strong> @UUID[.DhMZWuputJHuues7]{MENU} &gt; @UUID[.KDH7m8fExvlmeCmE]{7.5 Réseau, Contacts et runs}</p><p>← @UUID[.mDn2zytwQrWN5Pxt]{Le tableau des runs}</p>"
       },
       "video": {
         "controls": true,

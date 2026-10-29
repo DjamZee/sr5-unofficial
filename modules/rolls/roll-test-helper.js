@@ -13,6 +13,12 @@ import {
 import {
   vehiclePilotId
 } from "../system/rigging-rules.js"
+import {
+  advancedMedkitRules
+} from "../system/bb-healing.js"
+import {
+  rollUsesGearCharge
+} from "../system/bb-healing-rules.js"
 
 export class SR5_RollTestHelper {
 
@@ -195,8 +201,9 @@ export class SR5_RollTestHelper {
       newItem.system.netHits = cardData.previousMessage.hits - cardData.roll.hits
       if (newItem.system.netHits < 0) newItem.system.netHits = 0
     }
-    //updateCharge
-    if (newItem.type === "itemGear"){
+    //updateCharge. Bullets & Bandages p. 18-19 (advanced medkits): one use of a medkit's supplies per patient, taken
+    //when the care is applied (useMedkitSupplies), not one per roll of an extended test
+    if (newItem.type === "itemGear" && rollUsesGearCharge(item.system?.isMedkit, advancedMedkitRules())){
       newItem.system.charge -= 1
     }
 

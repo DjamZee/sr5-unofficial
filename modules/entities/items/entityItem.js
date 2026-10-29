@@ -35,7 +35,10 @@ import {
   contactCommcodeFromFlag
 } from "../../interface/contact-commcode.js"
 import {
-  SR5_CharacterUtility 
+  medkitChargeOnRatingChange
+} from "../../system/bb-healing-rules.js"
+import {
+  SR5_CharacterUtility
 } from "../actors/utilityActor.js"
 import {
   SR5ShopGrades
@@ -244,6 +247,12 @@ export class SR5Item extends Item {
     if (updateTakesOut(this, changes)) foundry.utils.setProperty(changes, `flags.sr5.-=${CONCEALED_FLAG}`, null)
     //The factory box unticked: the Mégapack's flag goes with it, or it would tick it again (Rigger 5.0 p. 156)
     if (foundry.utils.getProperty(changes, "system.isFactory") === false && this.flags?.sr5?.isFactory) foundry.utils.setProperty(changes, "flags.sr5.-=isFactory", null)
+    //SR5 p. 453: a medkit's new rating refills its supplies to that rating, owned or not; the GM keeps the charge
+    if (this.type === "itemGear" && this.system.isMedkit) {
+      const charge = medkitChargeOnRatingChange(this._source.system, changes)
+      if (charge !== undefined && "system.charge" in changes) changes["system.charge"] = charge
+      else if (charge !== undefined) foundry.utils.setProperty(changes, "system.charge", charge)
+    }
     //Rigger 5.0 p. 153: fitting it, or making it bigger, beyond the slots left is refused
     if (this.type === "itemVehicleMod" && this.parent?.type === "actorDrone" && changes.system &&
       vehicleModSlotsRefused(this.parent, this, preparedCopy(this, changes))) return false

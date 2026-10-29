@@ -23,7 +23,7 @@
       "image": {},
       "text": {
         "format": 1,
-        "content": "<p>This part follows the character's money: how they gear up at the shop, how the GM keeps their merchants and buys back the loot, where nuyen and rent live, and how the world's clock makes orders arrive and deadlines fall due. The player mostly reads chapters 7.1 and 7.3; the GM reads all four.</p>\n<p>The system applies here the core rulebook's buying and reselling rules (<em>Core Rulebook p. 417-419</em>). This manual does not copy them: it shows the windows, says what the system computes on its own and what stays in the GM's hands.</p><table><tbody><tr><td><p>@UUID[.zKky8MvmSeq77inw]{7.1 The player's shop}</p></td><td><p>Player</p></td></tr><tr><td><p>&emsp;@UUID[.oWsse7X06aNkVpuz]{The shop window}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.6BUwVHBpL3loQaYF]{Buying: the cart, the test, the till}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Ga0gO6SMY0vVY4nv]{Delivery}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.nejrzviZ0D1jpTjm]{Gearing up during creation}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.oJidqmfjizxDUjzt]{Implants: grades and Essence}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.HA3thjxEZp1b1Bwv]{What the system does, settings and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.VJKiwMTDWIl9kXMx]{7.2 The GM's shop, fencing, factions}</p></td><td><p>GM</p></td></tr><tr><td><p>&emsp;@UUID[.GhvHZiEOvNRmUArw]{Configuring the shop}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.DacFECvJtqV9g4Gd]{Vendors}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.2LvxxwcOSdgiTH6h]{Reselling: fencing}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.l8rRYGR64VWk7joD]{The information broker}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.mMDyWNoSU9tpR5kD]{Factions}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Vig8guILL3yvgIjc]{Tracking cons}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.buYFUZvPmkEXBidv]{The GM's settings and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.auDjqd2HZaWxiGoy]{7.3 Money, credsticks, lifestyle}</p></td><td><p>All</p></td></tr><tr><td><p>&emsp;@UUID[.thCvdVd0A90MS7Hu]{Accounts}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.4LEyPQ9AgJkFgbA1]{Cash: credsticks}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.65rJIY7hXJu0RL8b]{Lifestyle}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.O9C65CpkGH7Oku4d]{What the system does and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.aK1sRuW82YTF1xdL]{7.4 The calendar}</p></td><td><p>All</p></td></tr><tr><td><p>&emsp;@UUID[.k6HPPvnYtpX7FlMJ]{Events}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.pwCb4DcvUXgqhV9V]{The GM's deadlines}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.1VkMQQvx0DjUOQRQ]{Related settings and references}</p></td><td><p></p></td></tr></tbody></table>"
+        "content": "<p>This part follows the character's money: how they gear up at the shop, how the GM keeps their merchants and buys back the loot, where nuyen and rent live, and how the world's clock makes orders arrive and deadlines fall due. Chapter 7.5 shows the contacts book, the Network and the run board, from which a job's advance and pay are given. The player mostly reads chapters 7.1, 7.3 and 7.5; the GM reads all five.</p>\n<p>The system applies here the core rulebook's buying and reselling rules (<em>Core Rulebook p. 417-419</em>). This manual does not copy them: it shows the windows, says what the system computes on its own and what stays in the GM's hands.</p><table><tbody><tr><td><p>@UUID[.zKky8MvmSeq77inw]{7.1 The player's shop}</p></td><td><p>Player</p></td></tr><tr><td><p>&emsp;@UUID[.oWsse7X06aNkVpuz]{The shop window}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.6BUwVHBpL3loQaYF]{Buying: the cart, the test, the till}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Ga0gO6SMY0vVY4nv]{Delivery}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.nejrzviZ0D1jpTjm]{Gearing up during creation}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.oJidqmfjizxDUjzt]{Implants: grades and Essence}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.HA3thjxEZp1b1Bwv]{What the system does, settings and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.VJKiwMTDWIl9kXMx]{7.2 The GM's shop, fencing, factions}</p></td><td><p>GM</p></td></tr><tr><td><p>&emsp;@UUID[.GhvHZiEOvNRmUArw]{Configuring the shop}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.DacFECvJtqV9g4Gd]{Vendors}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.2LvxxwcOSdgiTH6h]{Reselling: fencing}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.l8rRYGR64VWk7joD]{The information broker}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.mMDyWNoSU9tpR5kD]{Factions}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.Vig8guILL3yvgIjc]{Tracking cons}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.buYFUZvPmkEXBidv]{The GM's settings and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.auDjqd2HZaWxiGoy]{7.3 Money, credsticks, lifestyle}</p></td><td><p>All</p></td></tr><tr><td><p>&emsp;@UUID[.thCvdVd0A90MS7Hu]{Accounts}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.4LEyPQ9AgJkFgbA1]{Cash: credsticks}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.65rJIY7hXJu0RL8b]{Lifestyle}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.O9C65CpkGH7Oku4d]{What the system does and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.aK1sRuW82YTF1xdL]{7.4 The calendar}</p></td><td><p>All</p></td></tr><tr><td><p>&emsp;@UUID[.k6HPPvnYtpX7FlMJ]{Events}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.pwCb4DcvUXgqhV9V]{The GM's deadlines}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.1VkMQQvx0DjUOQRQ]{Related settings and references}</p></td><td><p></p></td></tr><tr><td><p>@UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs}</p></td><td><p>All</p></td></tr><tr><td><p>&emsp;@UUID[.xJ1d4lVUQbCVuQNd]{The contacts book}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.sxSrN1BQTooghvQu]{The Network: accesses and shops}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.M7w2XFzsOSpyhGZu]{The run board}</p></td><td><p></p></td></tr><tr><td><p>&emsp;@UUID[.vWhC5bps7wcHbchp]{What the system does, settings and references}</p></td><td><p></p></td></tr></tbody></table>"
       },
       "video": {
         "controls": true,
@@ -671,7 +671,142 @@
       "image": {},
       "text": {
         "format": 1,
-        "content": "<h4>What the system does on its own</h4>\n<ul>\n<li><p>It dates orders, rents, drugs, effects and withdrawals on the clock, and gathers them in a GM card at each movement.</p></li>\n<li><p>It reminds the GM of each event only once, and moves the time forward by three seconds per Combat Turn.</p></li>\n</ul>\n\n<h4>What the GM does by hand</h4>\n<ul>\n<li><p>Moves the clock forward when time passes in the story.</p></li>\n<li><p>Clicks each deadline button: deliver, debit, remove, roll.</p></li>\n</ul>\n\n<h4>Related settings</h4>\n<table>\n<thead><tr><th>Setting (Calendar tab)</th><th>Default</th></tr></thead>\n<tbody>\n<tr><td><strong>Calendar: start year</strong></td><td>2070 (changing it shifts all the world's dates)</td></tr>\n<tr><td><strong>Calendar: combat advances the clock</strong></td><td>ticked</td></tr>\n<tr><td><strong>Calendar: show deadlines to players</strong></td><td>unticked</td></tr>\n</tbody>\n</table>\n\n<h4>References</h4>\n<ul>\n<li><p>Length of a combat turn: (<em>Core Rulebook p. 49</em>). Withdrawal: (<em>Core Rulebook p. 77</em>). Months of rent paid in advance: (<em>Core Rulebook p. 370</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Calendrier\">wiki: Calendar</a>.</p></li>\n</ul><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.aK1sRuW82YTF1xdL]{7.4 The calendar}</p><p>← @UUID[.pwCb4DcvUXgqhV9V]{The GM's deadlines}</p>"
+        "content": "<h4>What the system does on its own</h4>\n<ul>\n<li><p>It dates orders, rents, drugs, effects and withdrawals on the clock, and gathers them in a GM card at each movement.</p></li>\n<li><p>It reminds the GM of each event only once, and moves the time forward by three seconds per Combat Turn.</p></li>\n</ul>\n\n<h4>What the GM does by hand</h4>\n<ul>\n<li><p>Moves the clock forward when time passes in the story.</p></li>\n<li><p>Clicks each deadline button: deliver, debit, remove, roll.</p></li>\n</ul>\n\n<h4>Related settings</h4>\n<table>\n<thead><tr><th>Setting (Calendar tab)</th><th>Default</th></tr></thead>\n<tbody>\n<tr><td><strong>Calendar: start year</strong></td><td>2070 (changing it shifts all the world's dates)</td></tr>\n<tr><td><strong>Calendar: combat advances the clock</strong></td><td>ticked</td></tr>\n<tr><td><strong>Calendar: show deadlines to players</strong></td><td>unticked</td></tr>\n</tbody>\n</table>\n\n<h4>References</h4>\n<ul>\n<li><p>Length of a combat turn: (<em>Core Rulebook p. 49</em>). Withdrawal: (<em>Core Rulebook p. 77</em>). Months of rent paid in advance: (<em>Core Rulebook p. 370</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Calendrier\">wiki: Calendar</a>.</p></li>\n</ul><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.aK1sRuW82YTF1xdL]{7.4 The calendar}</p><p>← @UUID[.pwCb4DcvUXgqhV9V]{The GM's deadlines} · @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "JJ7KhXu6TMmjjrPk",
+      "_key": "!journal.pages!bqnSE0NCUfCmiCd8.JJ7KhXu6TMmjjrPk",
+      "name": "7.5 Network, Contacts and runs",
+      "type": "text",
+      "sort": 2600000,
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p><strong style=\"border:1px solid currentColor;border-radius:3px;padding:0 4px;font-size:0.85em;white-space:nowrap\">All</strong></p><h4>What it is for</h4>\n<p>Two windows hold what the team knows of the world. <strong>Contacts</strong> is the book of every character's contacts, with their Loyalty, their Connection and the favors owed. <strong>Network</strong> lists the Matrix accesses and the shops the team knows, and carries the run board: the GM offers jobs there, the team says it is interested, and the advance, the pay and the Karma go from there to the sheets. These windows came from the Landing Page and Metroplexes module; the system carries them since its version 1.1.</p>\n\n<h4>Where to find them</h4>\n<ul>\n<li><p><strong>Without Landing Page and Metroplexes</strong>: two buttons in the token controls, left of the scene, ① <strong>Network</strong> and ② <strong>Contacts</strong>, for the GM as for the player.</p></li>\n<li><p><strong>With Landing Page and Metroplexes 1.9.0 or later</strong>: these two buttons do not show; the CONTACTS and NETWORKS buttons of Landing's deck open the same windows (or their page in the deck, once the GM has rebuilt the deck). Landing adds its own blocks, <strong>Lieux découverts</strong> and <strong>Dernières annonces</strong> (discovered places, latest announcements).</p></li>\n<li><p><strong>With an older version of Landing</strong>, Landing keeps its own copy of these windows; the system hides its buttons and asks the GM to update the module.</p></li>\n</ul>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-boutons.webp\" width=\"124\" alt=\"Without Landing, the token controls: ① Network, ② Contacts.\" /><figcaption><strong>Figure 7.5.1</strong> — Without Landing, the token controls: ① <strong>Network</strong>, ② <strong>Contacts</strong>.</figcaption></figure>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-landing.webp\" width=\"1528\" alt=\"With Landing 1.9.0, NETWORKS opens the system's Network window, completed by Landing's blocks of discovered places and latest announcements.\" /><figcaption><strong>Figure 7.5.2</strong> — With Landing 1.9.0, NETWORKS opens the system's <strong>Network</strong> window, completed by Landing's blocks of discovered places and latest announcements.</figcaption></figure>\n\n<p>The world setting <strong>Network and Contacts</strong>, ticked by default, turns them on; unticked, the buttons disappear and the windows refuse to open. It adds no rule. Every change to the Network (accesses, shops, runs) goes through the active GM: with no GM connected, a player's request waits.</p><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU}</p><p>← @UUID[.1VkMQQvx0DjUOQRQ]{Related settings and references} · @UUID[.xJ1d4lVUQbCVuQNd]{The contacts book} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "xJ1d4lVUQbCVuQNd",
+      "_key": "!journal.pages!bqnSE0NCUfCmiCd8.xJ1d4lVUQbCVuQNd",
+      "name": "The contacts book",
+      "type": "text",
+      "sort": 2700000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>The <strong>Contacts</strong> window reads the contacts on the sheets: their trade, their Connection, their Loyalty and their favors (<em>Core Rulebook p. 386-389</em>). It has two tabs, <strong>Team book</strong> and <strong>My contacts</strong>, and, on the right, the factions that know the character.</p>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-contacts.webp\" width=\"1504\" alt=\"The book as Kira's player sees it: Tanya Fixe as a favorite, the other contacts sorted by trade; Mikki Sato is shared with the team as Book.\" /><figcaption><strong>Figure 7.5.3</strong> — The book as Kira's player sees it: Tanya Fixe as a favorite, the other contacts sorted by trade; Mikki Sato is shared with the team as <strong>Book</strong>.</figcaption></figure>\n\n<ul>\n<li><p><strong>Favorites</strong>: the ☆ star of a line puts the contact on a card, at the top; the ★ star of a card takes it off. Twelve at most, and each user has their own.</p></li>\n<li><p><strong>Filters</strong>: a search by name, trade or faction; <strong>From</strong> (all, me or one character), the trade, the faction, the minimum Loyalty, <strong>Favors</strong> (<strong>owe me</strong>, <strong>I owe</strong>) and the sort (trade, name, Connection, Loyalty).</p></li>\n<li><p><strong>Call</strong> goes through the commcode messaging (see @UUID[Compendium.sr5.manual.JournalEntry.CKM0UvZC23LLnCgv.JournalEntryPage.6tBbo4KfG1RXgBmJ]{Messages and calls by commcode}); the GM answers for the contact. <strong>Favor</strong>, on your own contacts, starts the same request as <strong>Ask a favor</strong> on the contact's sheet (@UUID[Compendium.sr5.manual.JournalEntry.hqT1pRAqlBA4yN9s.JournalEntryPage.BUsLZAG8i1RjsKwC]{Contacts' favors}).</p></li>\n<li><p><strong>Sheet</strong> (GM) opens the contact's sheet. The GM sees all the team's contacts, private ones included, counted apart.</p></li>\n</ul>\n\n<h4>Step by step: share a contact</h4>\n<ol>\n<li><p>In the <strong>Sharing</strong> column, click the contact's tag (<strong>Private</strong> by default). Only the contact's owner can change it, never the GM.</p></li>\n<li><p>Choose what the others see: <strong>Private</strong> (you alone), <strong>Portrait</strong> (face, name, trade, Connection) or <strong>Book</strong> (plus Loyalty and favors).</p></li>\n<li><p>Choose to whom: <strong>The whole team</strong>, or <strong>Some partners only</strong>, ticked one by one.</p></li>\n<li><p>If needed, correct <strong>Place in the book</strong> (by default, from their trade), then <strong>Save</strong>. The tag becomes, for instance, <strong>Book · Team</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-partage.webp\" width=\"408\" alt=\"A contact's sharing window: the level, the recipients, the place in the book.\" /><figcaption><strong>Figure 7.5.4</strong> — A contact's sharing window: the level, the recipients, the place in the book.</figcaption></figure>\n\n<p>A partner who sees your contact can ask you for an <strong>Introduction</strong>: you accept or not, then the GM decides, and everyone learns it by a private message. The right column lists the known factions and the contact who can reach them; the GM can reveal or hide a faction there (factions register: @UUID[.mMDyWNoSU9tpR5kD]{7.2}).</p><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs}</p><p>← @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs} · @UUID[.sxSrN1BQTooghvQu]{The Network: accesses and shops} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "sxSrN1BQTooghvQu",
+      "_key": "!journal.pages!bqnSE0NCUfCmiCd8.sxSrN1BQTooghvQu",
+      "name": "The Network: accesses and shops",
+      "type": "text",
+      "sort": 2800000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>The <strong>Accesses &amp; shops</strong> tab has two tables, and a column of the latest discoveries on the right.</p>\n<ul>\n<li><p><strong>Matrix accesses</strong>: an access adds itself when a character puts a mark on a host or enters it; the GM can also give one. The <strong>Rating</strong> is read on the host; the <strong>Marks</strong> column shows those the character still holds (<em>Core Rulebook p. 236</em>).</p></li>\n<li><p><strong>Known shops</strong>: a shop shows as soon as a character is its customer (box ticked on the vendor's sheet) or the GM lets them discover it. <strong>Open</strong> leads to its shop (@UUID[.DacFECvJtqV9g4Gd]{vendors}). A closed shop is greyed, with no button.</p></li>\n</ul>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-reseau.webp\" width=\"1248\" alt=\"The Network as Kira's player sees it: an access given by the GM, a discovered shop, and both novelties in the right column.\" /><figcaption><strong>Figure 7.5.5</strong> — The Network as Kira's player sees it: an access given by the GM, a discovered shop, and both novelties in the right column.</figcaption></figure>\n\n<h4>Step by step: give an access (GM)</h4>\n<ol>\n<li><p>Under <strong>Matrix accesses</strong>, click <strong>Add an access</strong>.</p></li>\n<li><p>Give a name and a type (<strong>Server</strong> or <strong>Data haven</strong>), drop the host actor in <strong>Host</strong> and, if needed, a journal in <strong>Journal</strong>. The <strong>Rating</strong> typed in only serves if the host can no longer be read.</p></li>\n<li><p>Note the access level and a note, tick the characters who know it, then <strong>Save</strong>. The line shows for them, marked <strong>new</strong>.</p></li>\n</ol>\n<p>The GM also sees the shops nobody knows yet, greyed, with <strong>Let discover</strong>: tick the characters, and the shop enters their Network. A line at the bottom of the right column reminds them how many accesses are hidden and how many shops not yet discovered.</p><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs}</p><p>← @UUID[.xJ1d4lVUQbCVuQNd]{The contacts book} · @UUID[.M7w2XFzsOSpyhGZu]{The run board} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "M7w2XFzsOSpyhGZu",
+      "_key": "!journal.pages!bqnSE0NCUfCmiCd8.M7w2XFzsOSpyhGZu",
+      "name": "The run board",
+      "type": "text",
+      "sort": 2900000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>The <strong>Run board</strong> and <strong>Run archives</strong> tabs follow a job from its offer to its pay. Each run gets a code (<strong>JOB-2070-101</strong>…) and goes through five states: <strong>Draft</strong>, <strong>Open</strong>, <strong>Meet</strong>, <strong>Under way</strong>, <strong>Closed</strong>.</p>\n\n<h4>Step by step: offer a run (GM)</h4>\n<ol>\n<li><p><strong>Run board</strong> tab, click <strong>New run</strong>. Fill in the title, the text, who offers it (<strong>Fixer</strong> or <strong>Johnson</strong>, a contact of the team or a free name), the <strong>Pay</strong> (total, or <strong>Pay per person</strong>), the <strong>Advance</strong> as a percentage of the pay, each character's <strong>Karma</strong> and the <strong>Risk</strong> (0 to 5).</p></li>\n<li><p>If needed, add the factions that react (one per line, \"- Shiawase: on edge\", \"+ Tamanous: will like it\": mere tags), the reputation shifts planned should the run succeed, a place and notes (drop a journal), a linked access of the Network, a GM note. <strong>Save</strong>: the run is a <strong>Draft</strong>, invisible to the players.</p></li>\n<li><p>Click <strong>Publish</strong>, then <strong>Publish for the team</strong>, or tick characters and <strong>Publish for the ticked ones only</strong> (a fixer calling someone). The run becomes <strong>Open</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-runs.webp\" width=\"1248\" alt=\"The run board on the GM's side: an open run Kira said she was interested in, and a draft, dashed, invisible to the players.\" /><figcaption><strong>Figure 7.5.6</strong> — The run board on the GM's side: an open run Kira said she was interested in, and a draft, dashed, invisible to the players.</figcaption></figure>\n\n<p>The player sees the published run, without the Karma and advance line, and clicks <strong>Interested</strong> (or <strong>No longer interested</strong> to back out); the GM reads the names at the bottom of the card.</p>\n\n<h4>Step by step: take the run to the pay (GM)</h4>\n<ol>\n<li><p><strong>Meet</strong> marks the meeting with the employer. <strong>Under way</strong> starts the run: if no team was ticked, the interested characters are the team.</p></li>\n<li><p>On the way to <strong>Under way</strong>, the <strong>Advance for …</strong> window offers each team member's share of the advance in nuyen; each line can be corrected. <strong>Give the advance</strong> writes it on the sheets as a nuyen gain, <strong>Later</strong> keeps it.</p></li>\n<li><p>At the end, <strong>Close</strong>: choose the outcome (<strong>Success</strong>, <strong>Failed</strong>, <strong>Abandoned</strong>), check the Karma and nuyen of each ticked character (the pay offered is the balance, advance deducted) and the reputation shifts.</p></li>\n<li><p>Leave <strong>Give it now on the sheets</strong> ticked to pay at once, or untick it: the balance stays on the run, and a <strong>Give</strong> button waits for it in the archives. Confirm with <strong>Close and publish</strong>.</p></li>\n</ol>\n\n<figure><img src=\"systems/sr5/manuel/captures/7-5-cloture.webp\" width=\"548\" alt=\"Closing a run: the outcome, each character's Karma and nuyen, the reputation written to the factions register.\" /><figcaption><strong>Figure 7.5.7</strong> — Closing a run: the outcome, each character's Karma and nuyen, the reputation written to the factions register.</figcaption></figure>\n\n<p>The closed run goes to the <strong>Run archives</strong>, with what was paid (for instance \"Given: Kira 9,000 ¥, 5 Karma\" for a pay of 12,000 ¥ with a 25% advance). The gains carry the run's code and title in the sheet's karma and nuyen history. The reputation is written to the factions register; with <strong>Pending</strong> ticked, it applies with the Karma (<em>Cutting Aces p. 157</em>). With Landing, closing can also write an echo in its news feed.</p><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs}</p><p>← @UUID[.sxSrN1BQTooghvQu]{The Network: accesses and shops} · @UUID[.vWhC5bps7wcHbchp]{What the system does, settings and references} →</p>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "category": null
+    },
+    {
+      "_id": "vWhC5bps7wcHbchp",
+      "_key": "!journal.pages!bqnSE0NCUfCmiCd8.vWhC5bps7wcHbchp",
+      "name": "What the system does, settings and references",
+      "type": "text",
+      "sort": 3000000,
+      "title": {
+        "show": true,
+        "level": 2
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<h4>What the system does on its own</h4>\n<ul>\n<li><p>It adds an access when a character puts a mark on a host or enters it, and a shop when a character becomes a vendor's customer.</p></li>\n<li><p>It computes each character's advance and balance, and never gives the same step of a run twice.</p></li>\n<li><p>On the first load of a world that used Landing, the active GM takes over what Landing kept (accesses, discovered shops, contacts' sharing and sorting, favorites, revealed factions, introduction requests, runs with what they already gave); a notification says how many. Nothing is erased in Landing, and a payment Landing made is not made again.</p></li>\n</ul>\n\n<h4>What the GM does by hand</h4>\n<ul>\n<li><p>They give the accesses and let characters discover the shops that come neither from a mark nor from a vendor.</p></li>\n<li><p>They move each run from one state to the next, and click to give the advance and the pay.</p></li>\n<li><p>They decide on introductions between contacts.</p></li>\n</ul>\n\n<h4>Related settings</h4>\n<table>\n<thead><tr><th>Setting</th><th>Tab</th><th>Default</th></tr></thead>\n<tbody>\n<tr><td><strong>Network and Contacts</strong></td><td>Interface</td><td>ticked</td></tr>\n<tr><td><strong>Network: every open shop is known</strong></td><td>Shop</td><td>unticked: only those the character is a customer of or the GM let them discover</td></tr>\n<tr><td><strong>Run advance (% of the pay)</strong></td><td>Gamemaster's tools</td><td>0, the book has no advance (<em>Core Rulebook p. 371</em>); changeable run by run</td></tr>\n</tbody>\n</table>\n\n<h4>References</h4>\n<ul>\n<li><p>Contacts, Loyalty and Connection: (<em>Core Rulebook p. 55, 386-389</em>). Marks: (<em>Core Rulebook p. 236</em>). Advance and pay: (<em>Core Rulebook p. 371</em>). A run's Karma: (<em>Core Rulebook p. 372</em>). Reputation with factions: (<em>Cutting Aces p. 157</em>).</p></li>\n<li><p><a href=\"https://github.com/DjamZee/sr5-unofficial/wiki/Reseau-et-Contacts\">wiki: Network, Contacts and runs (in French)</a>.</p></li>\n</ul><hr /><p><strong>Backlinks:</strong> @UUID[.Bny2vhbixifttrfK]{MENU} &gt; @UUID[.JJ7KhXu6TMmjjrPk]{7.5 Network, Contacts and runs}</p><p>← @UUID[.M7w2XFzsOSpyhGZu]{The run board}</p>"
       },
       "video": {
         "controls": true,
