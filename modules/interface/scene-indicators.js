@@ -7,6 +7,9 @@ import {
 import {
   effectiveSceneBackgroundCount, activeManaShifts
 } from "../system/background-count.js"
+import {
+  clampSceneNoise
+} from "../system/scene-noise.js"
 
 // Players panel layout: players list (expand button on the own player row), then scene noise / background count, then latency / FPS
 export function arrangePlayersPanel() {
@@ -37,7 +40,7 @@ export function renderSceneIndicators() {
 
   const flags = canvas.scene?.flags?.sr5 ?? {
   }
-  const noise = Number(flags.matrixNoise) || 0
+  const noise = clampSceneNoise(flags.matrixNoise)
   //Shadow Spells p. 25: the count with its running Mana Flux / Ebb
   const now = game.time?.worldTime ?? 0
   const backgroundCount = effectiveSceneBackgroundCount(flags, now)

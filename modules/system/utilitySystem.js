@@ -35,6 +35,9 @@ import {
   registerSocialSettings
 } from "./social-settings.js"
 import {
+  registerBossBarSettings
+} from "./bossbar-compat.js"
+import {
   SR5NegotiationRepair
 } from "../interface/negotiation-repair.js"
 import {
@@ -336,6 +339,9 @@ export class SR5_SystemHelpers {
 
     // Network and Contacts (taken out of landing-metroplexes-sr5, 28/10): the switch and the registers
     registerNetworkContactsSettings()
+
+    // Boss Bar (module by TheRipper93): the bar of SR5 monitors, offered only when the module is active
+    registerBossBarSettings()
 
     // Cutting Aces social rules (lot 21): the dialog's maneuvers and con steps, the con tracker (p. 153-164)
     registerSocialSettings()

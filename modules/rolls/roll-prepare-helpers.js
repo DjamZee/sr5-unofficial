@@ -4,6 +4,9 @@ import {
 import {
   SR5 
 } from "../config.js"
+import {
+  clampSceneNoise, actorRollScene
+} from "../system/scene-noise.js"
 
 //The augmentation cap's line that cuts nothing (the help of the sheet, worth 0) is noise in a roll and on its card
 export const capNoteOnly = m => m?.type === "augmentationCap" && !Number(m.value)
@@ -148,10 +151,12 @@ export class SR5_PrepareRollHelper {
   }
 
   //Get scene Noise modifier
-  static getSceneNoise(){
-    if (canvas.scene) {
-      if (game.scenes.active) return -game.scenes.active.getFlag("sr5", "matrixNoise") || 0
-    } else return null
+  static getSceneNoise(actor){
+    //The scene of the rolling token, the one its indicator shows (actorRollScene), else the active scene
+    const scene = actorRollScene(actor).scene
+    if (!scene) return null
+    //A rating of 0 or more (SR5 p. 232-233): a typed value out of range never turns into bonus dice
+    return -clampSceneNoise(scene.getFlag("sr5", "matrixNoise")) || 0
   }
 
   //Get Cumulative defense 

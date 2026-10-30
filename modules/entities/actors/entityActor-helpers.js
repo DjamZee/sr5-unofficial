@@ -1031,21 +1031,10 @@ export class SR5_ActorHelper {
     if (item.type === "itemSpirit") {
       let baseItems = await SR5_CompendiumUtility.getBaseItems("actorSpirit", itemData.type, itemData.itemRating, itemData.insectRace)
       baseItems = await SR5_CompendiumUtility.addOptionalSpiritPowersFromItem(baseItems, itemData.optionalPowers)
-
-      for (let power of baseItems){
-        if (power.system.systemEffects.length){
-          for (let syseffect of power.system.systemEffects){
-            if (syseffect.value === "noxiousBreath" && power.type === "itemPower"){
-              let newWeapon = await SR5_CompendiumUtility.getWeaponFromCompendium("noxiousBreath")
-              if (newWeapon) baseItems.push(newWeapon)
-            }
-            if (syseffect.value === "corrosiveSpit" && power.type === "itemPower"){
-              let newWeapon = await SR5_CompendiumUtility.getWeaponFromCompendium("corrosiveSpit", itemData.itemRating)
-              if (newWeapon) baseItems.push(newWeapon)
-            }
-          }
-        }
-      }
+      // The weapons of the optional powers chosen (Elemental Attack, Natural Weapon, Noxious Breath…)
+      baseItems = baseItems.concat(await SR5_CompendiumUtility.powerWeapons(baseItems, {
+        force: Number(itemData.itemRating) || 0, spiritType: itemData.type
+      }))
 
       sideKickData = foundry.utils.mergeObject(sideKickData, {
         "system.sideKickPrototypeToken": itemData.sideKickPrototypeToken,

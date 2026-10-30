@@ -1,6 +1,9 @@
 import {
   SR5 
 } from "../config.js"
+import {
+  clampSceneNoise
+} from "../system/scene-noise.js"
 
 export default class SR5MeasuredTemplateConfig extends foundry.applications.sheets.MeasuredTemplateConfig {
 
@@ -33,16 +36,26 @@ export default class SR5MeasuredTemplateConfig extends foundry.applications.shee
     return context
   }
 
+  //The zones are shortcuts: they fill the noise rating, which the GM may then change (SR5 p. 232-233)
+  computeMatrixNoise(element) {
+    const read = (name) => element?.querySelector(`[name="flags.sr5.${name}"]`)?.value ?? this.document.flags.sr5?.[name]
+    return clampSceneNoise((parseInt(read("matrixSpam")) || 0) + (parseInt(read("matrixStatic")) || 0))
+  }
+
   updateMatrixNoise(element) {
-    let matrixNoise = (parseInt(this.document.flags.sr5?.matrixSpam) || 0) + (parseInt(this.document.flags.sr5?.matrixStatic) || 0)
-    const noiseField = element.querySelector('[name="sceneNoiseRating"]')
-    if (noiseField) noiseField.value = matrixNoise
-    this.document.setFlag("sr5", "matrixNoise", matrixNoise)
+    const noiseField = element.querySelector('[name="flags.sr5.matrixNoise"]')
+    if (noiseField) noiseField.value = this.computeMatrixNoise(element)
+  }
+
+  _prepareSubmitData(event, form, formData, updateData) {
+    const submitData = super._prepareSubmitData(event, form, formData, updateData)
+    const typed = form?.querySelector('[name="flags.sr5.matrixNoise"]')?.value
+    foundry.utils.setProperty(submitData, "flags.sr5.matrixNoise", clampSceneNoise(typed ?? this.computeMatrixNoise(form)))
+    return submitData
   }
 
   async _onRender(context, options) {
     await super._onRender(context, options)
-    this.updateMatrixNoise(this.element)
 
     const matrixSpam = this.element.querySelector('[name="flags.sr5.matrixSpam"]')
     if (matrixSpam) matrixSpam.addEventListener("change", _ev => {

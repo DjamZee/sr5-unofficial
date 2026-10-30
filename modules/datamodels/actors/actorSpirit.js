@@ -300,6 +300,10 @@ export class sr5ActorSpiritDataModel extends foundry.abstract.TypeDataModel {
       freeEdge: new fields.NumberField({
         initial: null, nullable: true
       }),
+      // What the gamemaster adds to or takes from the Magic (null: none, the Magic is the Force). From his ledger too
+      magicAdjustment: new fields.NumberField({
+        initial: null, nullable: true
+      }),
       wildBanishTotal: new fields.NumberField({
         initial: 0
       }),

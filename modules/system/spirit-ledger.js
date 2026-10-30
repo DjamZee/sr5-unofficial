@@ -45,13 +45,17 @@ export function withCharacterField(ledger, actorId, field, value){
 // of a free spirit (Street Grimoire p. 133), which lets it spend the Edge of its character; whether the spirit is free
 // (SR5 p. 306-307), and the Edge the gamemaster gave it (freeEdge, a number; null: the default of freeSpiritEdge)
 export const SPIRIT_TRAITS = ["isElemental", "isWild", "hasDomain", "magicPact", "isFree"]
-export const SPIRIT_VALUES = ["freeEdge"]
+// magicAdjustment: what the gamemaster adds to or takes from the Magic of a spirit, equal to its Force in the book
+// (SR5 p. 305-307); asked by a MJ on 29/10. It may be negative
+export const SPIRIT_VALUES = ["freeEdge", "magicAdjustment"]
+const SIGNED_VALUES = ["magicAdjustment"]
 
-// A value of the gamemaster's: a whole number from 0, or null when left empty
-function spiritValue(value){
+// A value of the gamemaster's: a whole number (from 0 unless it is signed), or null when left empty
+function spiritValue(value, signed = false){
   if (value === null || value === undefined || value === "") return null
-  const n = Math.floor(Number(value))
-  return Number.isFinite(n) ? Math.max(0, n) : null
+  const n = Math.trunc(Number(value))
+  if (!Number.isFinite(n)) return null
+  return signed ? n : Math.max(0, n)
 }
 
 export function spiritEntry(ledger, key){
@@ -59,14 +63,14 @@ export function spiritEntry(ledger, key){
   }
   return {
     ...Object.fromEntries(SPIRIT_TRAITS.map(t => [t, !!entry[t]])),
-    ...Object.fromEntries(SPIRIT_VALUES.map(v => [v, spiritValue(entry[v])])),
+    ...Object.fromEntries(SPIRIT_VALUES.map(v => [v, spiritValue(entry[v], SIGNED_VALUES.includes(v))])),
   }
 }
 export function withSpiritTrait(ledger, key, trait, value){
   if (!SPIRIT_TRAITS.includes(trait) && !SPIRIT_VALUES.includes(trait)) throw new Error(`unknown spirit trait ${trait}`)
   const next = foundryCopy(ledger)
   next.spirits[key] = {
-    ...spiritEntry(next, key), [trait]: SPIRIT_VALUES.includes(trait) ? spiritValue(value) : !!value
+    ...spiritEntry(next, key), [trait]: SPIRIT_VALUES.includes(trait) ? spiritValue(value, SIGNED_VALUES.includes(trait)) : !!value
   }
   return next
 }

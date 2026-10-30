@@ -7269,6 +7269,13 @@ exports[`N4: computeLayout keeps its output > default layout of SR5SpriteSheet 1
             {
               "blocks": [
                 {
+                  "id": "spriteAttributes",
+                  "label": "SR5.SheetConfig.Block.SpriteAttributes",
+                  "partial": "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/spriteAttributes.hbs",
+                  "size": "single",
+                  "uid": "spriteAttributes",
+                },
+                {
                   "id": "matrixAttributes",
                   "label": "SR5.SheetConfig.Block.MatrixAttributes",
                   "partial": "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/matrixAttributes.hbs",

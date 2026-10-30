@@ -46,6 +46,8 @@ const BUILT_IN = {
       attack: -1, dataProcessing: 4, firewall: 2 
     }
   },
+  //Cybercombat as in the English book (SR5 p. 259) and no erratum: the French one, p. 261, prints "Informatique,
+  //Guerre électronique, Hacking", the Crack sprite's line copied, for the sprite made for matrix combat (Solène's review)
   fault: {
     skills: ["computer", "cybercombat", "hacking"], matrix: {
       attack: 3, dataProcessing: 1, firewall: 2 
@@ -61,9 +63,10 @@ const BUILT_IN = {
       attack: -1, sleaze: 1, firewall: 4 
     }
   },
+  // Initiative (Level x 2) + 1 (Kill Code p. 100 VO, p. 110 VF): the + 1 is its Data Processing's, no bonus of its own
   generalist: {
     skills: ["computer", "electronicWarfare", "hacking"], matrix: {
-      attack: 1, sleaze: 1, dataProcessing: 1, firewall: 1, initiative: 1 
+      attack: 1, sleaze: 1, dataProcessing: 1, firewall: 1
     }
   },
 }

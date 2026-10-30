@@ -62,8 +62,9 @@
     <div class="form-group">
         <label>{{localize 'SR5.SceneNoiseRating'}}</label>
         <div class="form-fields">
-            <input disabled type="number" name="sceneNoiseRating" placeholder="0" value="{{document.flags.sr5.matrixNoise}}"/>
+            <input type="number" min="0" max="36" step="1" name="flags.sr5.matrixNoise" placeholder="0" value="{{document.flags.sr5.matrixNoise}}"/>
         </div>
+        <p class="hint">{{localize 'SR5.SceneNoiseRatingHint'}}</p>
     </div>
 </div>
 
@@ -85,8 +86,9 @@
     <div class="form-group">
         <label>{{localize 'SR5.SceneBackgroundCountRating'}}</label>
         <div class="form-fields">
-            <input type="number" min="-24" max="24" name="flags.sr5.backgroundCountValue" placeholder="0" value="{{document.flags.sr5.backgroundCountValue}}"/>
+            <input type="number" min="-24" max="24" step="1" name="flags.sr5.backgroundCountValue" placeholder="0" value="{{document.flags.sr5.backgroundCountValue}}"/>
         </div>
+        <p class="hint">{{localize 'SR5.SceneBackgroundCountRatingHint'}}</p>
     </div>
     <div class="form-group">
         <label>{{localize 'SR5.SceneBackgroundCountAlignement'}}</label>

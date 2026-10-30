@@ -8,6 +8,9 @@ import {
   activeManaShifts
 } from "../system/background-count.js"
 import {
+  clampSceneNoise
+} from "../system/scene-noise.js"
+import {
   removeManaShift
 } from "../system/mana-shift.js"
 import {
@@ -69,25 +72,33 @@ export default class SR5SceneConfig extends foundry.applications.sheets.SceneCon
     return context
   }
 
-  //The form's values when it is open (not yet saved), the scene's otherwise
+  //The form's values when it is open (not yet saved), the scene's otherwise. The zones and the phenomenon are
+  //shortcuts: they fill the noise rating, which the GM may then change (SR5 p. 232-233)
   computeMatrixNoise(element) {
     const read = (name) => element?.querySelector(`[name="flags.sr5.${name}"]`)?.value ?? this.document.flags.sr5?.[name]
-    return (parseInt(read("matrixSpam")) || 0) + (parseInt(read("matrixStatic")) || 0) +
-      phenomenonNoise(read("backgroundCountPhenomenon"), read("backgroundCountValue"))
+    return clampSceneNoise((parseInt(read("matrixSpam")) || 0) + (parseInt(read("matrixStatic")) || 0) +
+      phenomenonNoise(read("backgroundCountPhenomenon"), read("backgroundCountValue")))
   }
 
-  //Shows the noise; it is only saved with the form (or here on render, from saved values): saving it
-  //on a field change redrew the sheet and lost every value not yet saved
+  //Shows the shortcuts' noise; it is only saved with the form: saving it on a field change redrew the sheet and
+  //lost every value not yet saved. On render, only a scene that never had a rating gets its shortcuts' sum: a
+  //typed noise is kept
   updateMatrixNoise(element, save = false) {
-    const matrixNoise = this.computeMatrixNoise(element)
-    const noiseField = element.querySelector('[name="sceneNoiseRating"]')
-    if (noiseField) noiseField.value = matrixNoise
-    if (save && matrixNoise !== this.document.flags.sr5?.matrixNoise) this.document.setFlag("sr5", "matrixNoise", matrixNoise)
+    const noiseField = element.querySelector('[name="flags.sr5.matrixNoise"]')
+    if (save) {
+      if (this.document.flags.sr5?.matrixNoise !== undefined) return
+      const matrixNoise = this.computeMatrixNoise(null)
+      if (noiseField) noiseField.value = matrixNoise
+      if (matrixNoise) this.document.setFlag("sr5", "matrixNoise", matrixNoise)
+      return
+    }
+    if (noiseField) noiseField.value = this.computeMatrixNoise(element)
   }
 
   _prepareSubmitData(event, form, formData, updateData) {
     const submitData = super._prepareSubmitData(event, form, formData, updateData)
-    foundry.utils.setProperty(submitData, "flags.sr5.matrixNoise", this.computeMatrixNoise(form))
+    const typed = form?.querySelector('[name="flags.sr5.matrixNoise"]')?.value
+    foundry.utils.setProperty(submitData, "flags.sr5.matrixNoise", clampSceneNoise(typed ?? this.computeMatrixNoise(form)))
     return submitData
   }
 
@@ -117,8 +128,9 @@ export default class SR5SceneConfig extends foundry.applications.sheets.SceneCon
       }
       this.updateMatrixNoise(this.element)
     })
+    //Only a phenomenon that adds noise refills it: a count changed on its own leaves a typed noise alone
     if (countField) countField.addEventListener("change", _ev => {
-      this.updateMatrixNoise(this.element)
+      if (BACKGROUND_COUNT_PHENOMENA[phenomenon?.value]?.noise) this.updateMatrixNoise(this.element)
     })
     for (const button of this.element.querySelectorAll(".sr5-mana-shift-remove")) {
       button.addEventListener("click", ev => removeManaShift(this.document, ev.currentTarget.dataset.id))

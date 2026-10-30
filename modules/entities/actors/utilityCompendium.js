@@ -63,6 +63,7 @@ export class SR5_CompendiumUtility extends Actor {
   // given once: the first item found with it wins, so a power the Megapack holds twice is not doubled.
   static KEY_CATEGORIES = ["baseOwnItem", "spiritPower", "spritePower"]
   static UNIQUE_CATEGORIES = ["spiritPower", "spritePower"]
+  static SHARED_WEAPON_KEY = "spiritPower:elementalAttack"
 
   // What the index must carry to choose the items without loading them
   static INDEX_FIELDS = ["type", "system.systemEffects", "system.source"]
@@ -208,8 +209,9 @@ export class SR5_CompendiumUtility extends Actor {
         if (!keys.length) continue
         // A fallback compendium only adds what the ones before it lack
         if (rank > 0 && keys.every(k => provided.has(k))) continue
-        // A power is given once: first found wins
-        if (keys.some(k => provided.has(k) && SR5_CompendiumUtility.UNIQUE_CATEGORIES.includes(k.split(":")[0]))) continue
+        // A power is given once: first found wins. Save the Elemental Attack weapons, which share the power's key, one
+        // per element: the gamemaster picks one (powerWeapons)
+        if (keys.some(k => provided.has(k) && !(itemType === "itemWeapon" && k === SR5_CompendiumUtility.SHARED_WEAPON_KEY) &&SR5_CompendiumUtility.UNIQUE_CATEGORIES.includes(k.split(":")[0]))) continue
         for (const k of keys) provided.add(k)
         chosen.push(entry._id)
       }
@@ -270,6 +272,7 @@ export class SR5_CompendiumUtility extends Actor {
       // A custom type borrows the natural weapon of the type it is based on.
       const weaponType = SR5_SpiritTypes.baseType(actorSubType) || actorSubType
       baseItems = await SR5_CompendiumUtility.findBaseItemInCompendium(baseItems, weapons, weaponType)
+      baseItems = SR5_CompendiumUtility.addSpiritBareHands(baseItems, weapons, weaponType)
       baseItems = await SR5_CompendiumUtility.findBaseSpiritPowersInCompendium(baseItems, powers, actorSubType)
       // The race of an insect spirit gives powers and takes some away (Dark Terrors p. 22-34)
       if (insectRace) baseItems = SR5_CompendiumUtility.applyInsectRacePowers(baseItems, powers, weaponType, insectRace)
@@ -277,6 +280,10 @@ export class SR5_CompendiumUtility extends Actor {
       // The type's own items, after the Force was written into the inherited weapons: theirs follow the Force by
       // themselves (weapon-ratings.js) and keep what the type says
       baseItems = baseItems.concat(SR5_SpiritTypes.givenItems(actorSubType))
+      // The weapons of its base powers (Elemental Attack of a spirit of fire, Engulf…) it does not hold yet
+      baseItems = baseItems.concat(await SR5_CompendiumUtility.powerWeapons(baseItems, {
+        force: Number(actorLevel) || 0, spiritType: actorSubType
+      }))
     }
 
     if (actorType === "actorSprite") {
@@ -360,10 +367,108 @@ export class SR5_CompendiumUtility extends Actor {
     return baseItems
   }
 
-  //Modify weapons based on Force for Spirit
+  // Every spirit of the book has Unarmed Combat among its skills (SR5 p. 305-307), but the compendiums only give the
+  // bare hands to characters and grunts (retour d'un MJ, 29/10: spirits came without a weapon of their own). A spirit
+  // takes the ones marked for it, else the characters' own, recognized by their key and by a damage that follows
+  // Strength. A watcher has no physical form (SR5 p. 301)
+  static addSpiritBareHands(baseItems, compendium, spiritType) {
+    if (spiritType === "watcher") return baseItems
+    const bareHands = owner => compendium.filter(i => i.type === "itemWeapon" && i.system?.damageValue?.isStrengthBased &&
+      Object.values(i.system.systemEffects ?? {
+      }).some(e => e?.category === "baseOwnItem" && e.value === owner))
+    const found = bareHands("actorSpirit").length ? bareHands("actorSpirit") : bareHands("actorPc").slice(0, 1)
+    const names = new Set(baseItems.map(i => i.name))
+    return baseItems.concat(found.filter(i => !names.has(i.name)).map(i => SR5_CompendiumUtility.givenItem(i)))
+  }
+
+  // The weapons a spirit power brings, found in the base weapons by the power's key (SR5 p. 396-403): asked by DjamZ
+  // on 29/10 for the optional powers, chosen at the summoning or dropped on the sheet afterwards
+  static POWER_WEAPON_KEYS = ["elementalAttack", "naturalWeapon", "noxiousBreath", "corrosiveSpit", "engulfAir", "engulfWater", "engulfFire", "engulfEarth"]
+
+  // The weapons whose values the book gives from the spirit's ratings. Elemental Attack: DV (Magic x 2)P, AP -(Magic),
+  // range increment (Magic) (SR5 p. 397), read on the Magic at every preparation (weapon-ratings.js), the gamemaster's
+  // adjustment included; the range is written from the Force. Natural Weapon of a spirit of beasts: DV (Force)P, AP -
+  // (SR5 p. 307)
+  static SHAPED_WEAPONS = {
+    elementalAttack: (system, force) => {
+      system.damageValue.base = 0
+      system.damageValue.magicMultiplier = 2
+      system.armorPenetration.base = 0
+      system.armorPenetration.linkedAttribute = "magic"
+      system.damageType = "physical"
+      for (const [key, step] of [["short", 1], ["medium", 2], ["long", 3], ["extreme", 4]]) system.range[key].base = force * step
+    },
+    naturalWeapon: (system, force) => {
+      system.damageValue.base = force
+      system.damageValue.magicMultiplier = 0
+      system.damageValue.isStrengthBased = false
+      system.armorPenetration.base = 0
+      system.damageType = "physical"
+    },
+    // A toxin whose Power is the Magic (SR5 p. 403, toxins.js): the weapon is kept as it is, its range follows the Body
+    noxiousBreath: () => {},
+    // As it was given before this lot; its range follows the Body (utilityItem.js)
+    corrosiveSpit: (system, force) => {
+      system.damageValue.base = force * 2
+      system.armorPenetration.base = -force
+    },
+  }
+
+  /**
+   * The weapons the powers of a spirit bring, those it holds already left out (by the power's key). An Elemental
+   * Attack is of the spirit's element: fire for a spirit of fire, the gamemaster's choice for the others (DjamZ,
+   * 29/10); closing the window gives none.
+   * @param {object[]} items The spirit's items (data), its powers among them
+   * @param {{force: number, spiritType: string, chooseElement?: Function}} options
+   * @returns {Promise<object[]>} The weapons' data, to create
+   */
+  static async powerWeapons(items, {
+    force, spiritType, chooseElement = SR5_CompendiumUtility.chooseElement
+  }) {
+    const held = new Set(items.filter(i => i.type === "itemWeapon").flatMap(i => SR5_CompendiumUtility.spiritPowerKeys(i)))
+    const wanted = [...new Set(items.filter(i => i.type === "itemPower").flatMap(i => SR5_CompendiumUtility.spiritPowerKeys(i)))]
+      .filter(k => SR5_CompendiumUtility.POWER_WEAPON_KEYS.includes(k) && !held.has(k))
+    if (!wanted.length) return []
+    const weapons = (await SR5_CompendiumUtility.getCategoryItems("baseWeapons")).filter(i => i.type === "itemWeapon")
+    const given = []
+    for (const key of wanted) {
+      let found = weapons.filter(w => SR5_CompendiumUtility.spiritPowerKeys(w).includes(key))
+      if (key === "elementalAttack" && found.length) {
+        const elements = [...new Set(found.map(w => w.system.damageElement).filter(Boolean))]
+        const baseType = SR5_SpiritTypes.baseType(spiritType) || spiritType
+        // Asked even with a single element found: a spirit of air is never given fire unawares
+        const element = (baseType === "fire" && elements.includes("fire")) ? "fire" : await chooseElement(elements)
+        found = found.filter(w => w.system.damageElement === element)
+      }
+      if (!found.length) continue
+      given.push(SR5_CompendiumUtility.givenItem(found[0]))
+    }
+    return SR5_CompendiumUtility.modifyBaseSpiritWeapon(given, force)
+  }
+
+  // The gamemaster picks the element of an Elemental Attack (SR5 p. 397: "defined for a specific elemental type").
+  // Null when the window is closed
+  static async chooseElement(elements) {
+    const options = elements.map(e => `<option value="${e}">${game.i18n.localize(SR5.specialDamageTypes[e] ?? e)}</option>`).join("")
+    const result = await foundry.applications.api.DialogV2.prompt({
+      window: {
+        title: game.i18n.localize("SR5.SpiritPowerElementalAttack")
+      },
+      content: `<p>${game.i18n.localize("SR5.ChooseElementalAttack")}</p><div class="form-group"><select name="element">${options}</select></div>`,
+      ok: {
+        label: game.i18n.localize("Confirm"), callback: (event, button) => button.form.elements.element.value
+      },
+      rejectClose: false,
+    })
+    return result || null
+  }
+
+  //Modify weapons based on Force for Spirit; the bare hands keep a damage that follows the spirit's Strength
   static async modifyBaseSpiritWeapon(baseItems, force) {
     for (let i of baseItems) {
-      if (i.type === "itemWeapon") {
+      const shaped = i.type === "itemWeapon" && SR5_CompendiumUtility.spiritPowerKeys(i).find(k => k in SR5_CompendiumUtility.SHAPED_WEAPONS)
+      if (shaped) SR5_CompendiumUtility.SHAPED_WEAPONS[shaped](i.system, Number(force) || 0)
+      else if (i.type === "itemWeapon" && !i.system.damageValue?.isStrengthBased) {
         i.system.damageValue.base = force * 2
         i.system.armorPenetration.base = -force
         i.system.range.short.base = force
@@ -485,25 +590,5 @@ export class SR5_CompendiumUtility extends Actor {
     }
 
     return baseItems
-  }
-
-  //Get a particular item from a particular compendium
-  static async getWeaponFromCompendium(weapon, force) {
-    let weapons = await SR5_CompendiumUtility.getCategoryItems("baseWeapons")
-    for (let i of weapons) {
-      let systemEffects = i.system.systemEffects
-      if (systemEffects.length) {
-        for (let systemEffect of Object.values(systemEffects)) {
-          if (systemEffect.value === weapon) {
-            let iObject = i.toObject(false)
-            if (weapon === "corrosiveSpit") {
-              iObject.system.damageValue.base = force * 2
-              iObject.system.armorPenetration.base = -force
-            }
-            return iObject
-          }
-        }
-      }
-    }
   }
 }

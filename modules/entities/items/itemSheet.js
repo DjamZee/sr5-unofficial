@@ -1,4 +1,7 @@
 import {
+  ammoTypeItems, ammoTypeSlug
+} from "../../system/ammo-types.js"
+import {
   SR5_UiModifications
 } from "../../system/utilitySystem.js"
 import {
@@ -556,12 +559,11 @@ export class SR5ItemSheet extends foundry.applications.api.HandlebarsApplication
       context.limbAttributes = limbAttributes(item, item.actor?.items)
     }
 
-    // Custom ammunition type choices for weapon ammo dropdown
+    // Custom ammunition type choices for weapon ammo dropdown: the world's and the active compendiums' (ammo-types.js)
     if (item.type === 'itemWeapon') {
-      context.weaponAmmoTypeChoices = game.items
-        .filter(i => i.type === 'itemAmmunitionType')
+      context.weaponAmmoTypeChoices = ammoTypeItems()
         .map(i => {
-          const slug = i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+          const slug = ammoTypeSlug(i.name)
           return {
             slug,
             name: i.name,
@@ -684,10 +686,9 @@ export class SR5ItemSheet extends foundry.applications.api.HandlebarsApplication
       context.adeptPowerChoices = SR5_UtilityItem._generateQiFocusAdeptPowerList(item.actor)
     }
 
-    // Ammunition type choices for itemAmmunition (world itemAmmunitionType items)
+    // Ammunition type choices for itemAmmunition: the world's and the active compendiums' itemAmmunitionType items
     if (item.type === 'itemAmmunition') {
-      context.ammunitionTypeChoices = game.items
-        .filter(i => i.type === 'itemAmmunitionType')
+      context.ammunitionTypeChoices = ammoTypeItems()
         .map(i => ({
           uuid: i.uuid,
           name: i.name,
@@ -899,9 +900,10 @@ export class SR5ItemSheet extends foundry.applications.api.HandlebarsApplication
         ev.stopPropagation()
         const uuid = ev.target.value
         if (!uuid) return
-        const ammoType = game.items.get(uuid.split('.').pop())
+        //A type of the world or of an active compendium (ammo-types.js)
+        const ammoType = ammoTypeItems().find(i => i.uuid === uuid)
         if (!ammoType) return
-        const slug = ammoType.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+        const slug = ammoTypeSlug(ammoType.name)
         const s = ammoType.system
         await this.item.update({
           'system.type': slug,

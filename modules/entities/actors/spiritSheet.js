@@ -13,6 +13,9 @@ import {
 import {
   INSECT_RACES, isInsectCaste, insectRaceOptions
 } from "../items/insect-races.js"
+import {
+  SR5_CompendiumUtility
+} from "./utilityCompendium.js"
 
 /**
  * An Actor sheet for spirit type actors in the Shadowrun 5 system.
@@ -47,6 +50,9 @@ export class SR5SpiritSheet extends ActorSheetSR5 {
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options)
+    // Set at preparation, not a field of the spirit's model: the copy the sheet reads lost it, and the Magic line
+    // showed neither its value nor the gamemaster's adjustment (retour d'un MJ, 29/10)
+    context.system.activeSpecialAttribute = this.actor.system.activeSpecialAttribute
 
     this._prepareItems(context.actor)
     this._prepareSkills(context.actor)
@@ -92,6 +98,8 @@ export class SR5SpiritSheet extends ActorSheetSR5 {
     const powers = []
     const externalEffects = []
     const traditions = []
+    // The Foci block can be added to a spirit's sheet (retour d'un MJ, 29/10: its + created a focus never shown)
+    const focuses = []
 
     // Iterate through items, allocating to containers
     for (let i of actor.items) {
@@ -100,6 +108,7 @@ export class SR5SpiritSheet extends ActorSheetSR5 {
       else if (i.type === "itemPower") powers.push(i)
       else if (i.type === "itemEffect") externalEffects.push(i)
       else if (i.type === "itemTradition") traditions.push(i)
+      else if (i.type === "itemFocus") focuses.push(i)
     }
 
     actor.weapons = weapons
@@ -107,6 +116,7 @@ export class SR5SpiritSheet extends ActorSheetSR5 {
     actor.powers = powers
     actor.externalEffects = externalEffects
     actor.traditions = traditions
+    actor.focuses = focuses
   }
 
   /** @override */
@@ -120,8 +130,21 @@ export class SR5SpiritSheet extends ActorSheetSR5 {
       case "itemWeapon":
         this._activeUnlessOneIs(item, i => i.type === "itemWeapon" && i.system.category === item.system.category)
         return super._onDropItemCreate(item)
-      case "itemPower":
+      case "itemPower": {
         if (isAlwaysActive(item)) item.system.isActive = true
+        const created = await super._onDropItemCreate(item)
+        if (!created) return created
+        // The weapon the power brings (Elemental Attack, Natural Weapon…), unless the spirit holds it (DjamZ, 29/10)
+        const held = [...this.actor.items.values()].map(i => (i.toObject ? i.toObject(false) : i))
+        const weapons = await SR5_CompendiumUtility.powerWeapons([...held, item], {
+          force: Number(this.actor.system?.force?.value) || 0, spiritType: this.actor.system?.type
+        })
+        if (weapons.length) await this.actor.createEmbeddedDocuments("Item", weapons)
+        return created
+      }
+      // Switched on, as on a grunt's sheet
+      case "itemFocus":
+        item.system.isActive = true
         return super._onDropItemCreate(item)
       case "itemSpell":
       case "itemEffect":

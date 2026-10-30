@@ -42,7 +42,7 @@ describe('the book types keep their values (SR5 p. 261, Kill Code p. 110)', () =
       attack: -1, sleaze: 1, firewall: 4 
     }],
     generalist: [['computer', 'electronicWarfare', 'hacking'], {
-      attack: 1, sleaze: 1, dataProcessing: 1, firewall: 1, initiative: 1 
+      attack: 1, sleaze: 1, dataProcessing: 1, firewall: 1
     }],
   }
   for (const [type, [skills, matrix]] of Object.entries(book)) {

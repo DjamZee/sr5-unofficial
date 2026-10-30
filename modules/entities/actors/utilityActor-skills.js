@@ -276,7 +276,8 @@ export class SR5_CharacterSkillsUtility {
           let label = `${game.i18n.localize(SR5.characterSpecialAttributes[linkedAttribute])}`
           SR5_EntityHelpers.updateModifier(actorData.skills[key].test, label, "linkedAttribute", actorData.specialAttributes[linkedAttribute].augmented.value)
         } else {
-          let label = `${game.i18n.localize(SR5.characterAttributes[linkedAttribute])}`
+          //A sprite's mental attributes are its Level, named so by the book in its tests ("Hardware + Level", SR5 p. 257)
+          let label = `${game.i18n.localize(actor.type === "actorSprite" ? 'SR5.Level' : SR5.characterAttributes[linkedAttribute])}`
           SR5_EntityHelpers.updateModifier(actorData.skills[key].test, label, "linkedAttribute", actorData.attributes[linkedAttribute].augmented.value)
         }
         SR5_EntityHelpers.updateValue(actorData.skills[key].rating, 0)

@@ -1,4 +1,7 @@
 import {
+  findAmmoTypeBySlug
+} from "../system/ammo-types.js"
+import {
   SR5 
 } from "../config.js"
 import {
@@ -352,12 +355,9 @@ export class SR5_EntityHelpers {
     if (!typeKey) return ''
     const i18nKey = SR5.allAmmunitionTypes?.[typeKey]
     if (i18nKey) return game.i18n.localize(i18nKey)
-    // Custom type — find matching world itemAmmunitionType by slug
-    for (const item of game.items) {
-      if (item.type !== 'itemAmmunitionType') continue
-      const slug = item.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-      if (slug === typeKey) return `${game.i18n.localize('SR5.Custom')} (${item.name})`
-    }
+    // Custom type — find the itemAmmunitionType of the world or of an active compendium by slug
+    const item = findAmmoTypeBySlug(typeKey)
+    if (item) return `${game.i18n.localize('SR5.Custom')} (${item.name})`
     return `${game.i18n.localize('SR5.Custom')} (${typeKey})`
   }
 

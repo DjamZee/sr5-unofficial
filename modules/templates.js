@@ -93,6 +93,7 @@ export const preloadHandlebarsTemplates = async function () {
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/device.hbs",
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/noDevice.hbs",
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/matrixAttributes.hbs",
+    "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/spriteAttributes.hbs",
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/collection.hbs",
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/noiseReduction.hbs",
     "systems/sr5/templates/actors/_partials/left-tabs/matrixUser/attributes/sharing.hbs",

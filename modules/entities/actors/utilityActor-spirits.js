@@ -38,6 +38,8 @@ export class SR5_CharacterSpiritsUtility {
     }
     actorData.activeSpecialAttribute = "magic"
     specialAttributes.magic.natural.base = actorData.force.value
+    //The gamemaster's adjustment, from his ledger: the Magic stays the Force otherwise (SR5 p. 305-307)
+    if (actorData.magicAdjustment) SR5_EntityHelpers.updateModifier(specialAttributes.magic.natural, game.i18n.localize('SR5.SpiritMagicAdjustment'), "gmAdjustment", actorData.magicAdjustment)
     SR5_EntityHelpers.updateValue(specialAttributes.magic.natural)
     //Only a free spirit has Edge of its own (SR5 p. 306-307); a summoned or bound one has none, its summoner lends his (p. 306)
     //An extraplanar entity prints its own, CHC P/2 or P (Howling Shadows p. 128 and following)

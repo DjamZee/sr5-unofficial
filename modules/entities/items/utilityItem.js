@@ -1,4 +1,7 @@
 import {
+  findAmmoTypeBySlug
+} from "../../system/ammo-types.js"
+import {
   applyVintageWireless, vintageAccessoryPrice, hasWeaponTrait, osmiumProfile, weaponDamageBonusApplies
 } from './weaponTraits.js'
 import {
@@ -727,13 +730,9 @@ export class SR5_UtilityItem extends Actor {
       }
     }
 
-    // Try resolving custom ammo type directly from world items (weapon may not have matching ammo on actor)
+    // Try resolving custom ammo type directly from the world's or a compendium's types (weapon may not have matching ammo on actor)
     if (!SR5.allAmmunitionTypes[itemData.ammunition.type] && game.items) {
-      const slug = itemData.ammunition.type
-      const ammoTypeItem = game.items.find(i => {
-        if (i.type !== 'itemAmmunitionType') return false
-        return i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug
-      })
+      const ammoTypeItem = findAmmoTypeBySlug(itemData.ammunition.type)
       if (ammoTypeItem) {
         this._applyAmmoTypeEffects(itemData, ammoTypeItem.system, ammoTypeItem.name)
         return
@@ -1280,10 +1279,9 @@ export class SR5_UtilityItem extends Actor {
         )
         let fx = ammoItem?.system.ammunitionTypeUuid && ammoItem.system.ammunitionTypeUuid !== 'pending' ? ammoItem.system.effects : null
         let fxLabel = ammoItem?.name
-        // Resolve from world ammo type items if not found on actor
+        // Resolve from the world's or a compendium's ammo types if not found on actor
         if (!fx && !SR5.allAmmunitionTypes[itemData.ammunition.type] && game.items) {
-          const slug = itemData.ammunition.type
-          const ammoTypeItem = game.items.find(i => i.type === 'itemAmmunitionType' && i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug)
+          const ammoTypeItem = findAmmoTypeBySlug(itemData.ammunition.type)
           if (ammoTypeItem) {
             fx = ammoTypeItem.system
             fxLabel = ammoTypeItem.name

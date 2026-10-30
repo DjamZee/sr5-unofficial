@@ -196,8 +196,16 @@
 					</div>
 					<div class="col-2 SR-TextCenter">{{system.specialAttributes.magic.natural.value}}</div>			
 				{{else ife actor.type 'actorSpirit'}}
-					<div class="col-2 SR-TextCenter"></div>
-					<div class="col-2 SR-TextCenter">{{system.specialAttributes.magic.natural.value}}</div>
+					{{!-- The Magic of a spirit is its Force; the gamemaster's adjustment goes to his ledger, never to the sheet --}}
+					<div class="col-2 SR-TextCenter">
+						{{#if system.isGM}}
+						<input type="text" class="input sr5-spirit-ledger" data-trait="magicAdjustment" value="{{system.magicAdjustment}}" placeholder="±0" onfocus="this.select()"
+						  data-tooltip="{{localize 'SR5.SpiritMagicAdjustment_D'}}" aria-label="{{localize 'SR5.SpiritMagicAdjustment'}}">
+						{{/if}}
+					</div>
+					<div class="col-2 SR-TextCenter"
+					  data-helpTitle="{{localize 'SR5.HELP_AttributeNat' key=(localize 'SR5.Magic')}}"
+					  data-helpDetails="system.specialAttributes.magic.natural">{{system.specialAttributes.magic.natural.value}}</div>
 				{{/ife}}
 				<div class="col-2 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="magic"
 				  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Magic')}}"

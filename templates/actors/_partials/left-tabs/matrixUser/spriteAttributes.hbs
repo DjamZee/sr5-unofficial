@@ -1,0 +1,39 @@
+<!-- SPRITE ATTRIBUTES: its Level stands for its Device Rating, its Resonance, its skills and its mental attributes (SR5 p. 256) -->
+<div class="SRBlockSheet">
+	<ul>
+		<li class="item grid SR-LigneEnTete SR-TextUppercase">
+			<div class="col-12" data-helpTitle="{{localize 'SR5.SpriteAttributes'}}" data-helpMessage="{{localize 'SR5.HELP_SpriteAttributesMsg'}}">{{localize 'SR5.SpriteAttributes'}}</div>
+		</li>
+		<li class="grid">
+			<div class="col-9">{{localize 'SR5.Level'}}</div>
+			<div class="col-3 SR-TextCenter">{{system.level}}</div>
+		</li>
+		<li class="grid">
+			<div class="col-9">{{localize 'SR5.DeviceRating'}}</div>
+			<div class="col-3 SR-TextCenter">{{system.matrix.deviceRating}}</div>
+		</li>
+		<li class="grid">
+			<div class="col-9">{{localize 'SR5.Resonance'}}</div>
+			<div class="col-3 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="resonance"
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(localize 'SR5.Resonance')}}"
+			  data-helpDetails="system.specialAttributes.resonance.augmented"
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+				{{system.specialAttributes.resonance.augmented.value}}
+			</div>
+		</li>
+		<!-- The mental attributes only: a sprite has no body -->
+		{{#each system.attributes}}
+		{{#if (or (eq @key 'logic') (eq @key 'intuition') (eq @key 'willpower') (eq @key 'charisma'))}}
+		<li class="grid">
+			<div class="col-9">{{findTranslation 'characterAttributes' @key}}</div>
+			<div class="col-3 SR-TextCenter roll-logo sr-roll" data-rolltype="attribute" data-rollkey="{{@key}}"
+			  data-helpTitle="{{localize 'SR5.HELP_AttributeAug' key=(findTranslation 'characterAttributes' @key)}}"
+			  data-helpDetails="system.attributes.{{@key}}.augmented"
+			  data-helpMessage="{{localize 'SR5.HELP_AttributeAugMsg'}}">
+				{{augmented.value}}
+			</div>
+		</li>
+		{{/if}}
+		{{/each}}
+	</ul>
+</div>

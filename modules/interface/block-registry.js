@@ -292,6 +292,9 @@ export const BLOCK_REGISTRY = {
   iceAttack:           {
     partial: `${PARTIAL_ROOT}/right-tabs/matrix/iceAttack.hbs`,             label: 'SR5.SheetConfig.Block.IceAttack',        size: BLOCK_SIZE.DOUBLE 
   },
+  spriteAttributes:    {
+    partial: `${PARTIAL_ROOT}/left-tabs/matrixUser/spriteAttributes.hbs`,   label: 'SR5.SheetConfig.Block.SpriteAttributes', size: BLOCK_SIZE.SINGLE
+  },
   spritePowers:        {
     partial: `${PARTIAL_ROOT}/right-tabs/matrix/spritePowers.hbs`,          label: 'SR5.SheetConfig.Block.SpritePowers',     size: BLOCK_SIZE.DOUBLE 
   },

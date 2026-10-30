@@ -1,8 +1,8 @@
 // Background count rules shared by the scene, the actor and the area templates.
 
-// Aetherologie p. 34: the count runs from -24 to +24
+// Aetherologie p. 34: the count runs from -24 to +24, a whole number (the GM types it freely)
 export function clampBackgroundCount(value){
-  return Math.max(-24, Math.min(24, Number(value) || 0))
+  return Math.max(-24, Math.min(24, Math.trunc(Number(value)) || 0))
 }
 
 // What a count weighs on one tradition. Below 0 (mana ebb or void) its absolute value is a penalty for

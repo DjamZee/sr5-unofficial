@@ -1,4 +1,7 @@
 import {
+  findAmmoTypeBySlug
+} from "../../system/ammo-types.js"
+import {
   SR5
 } from "../../config.js"
 import {
@@ -169,13 +172,9 @@ export default async function weapon(rollData, actor, item){
         rollData.combat.ammo.effects = ammoItem.system.effects
       }
     }
-    // Resolve from world ammo type items if not found on actor
+    // Resolve from the world's or a compendium's ammo types if not found on actor
     if (!rollData.combat.ammo.effects && !SR5.allAmmunitionTypes[itemData.ammunition.type] && game.items) {
-      const slug = itemData.ammunition.type
-      const ammoTypeItem = game.items.find(i => {
-        if (i.type !== 'itemAmmunitionType') return false
-        return i.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug
-      })
+      const ammoTypeItem = findAmmoTypeBySlug(itemData.ammunition.type)
       if (ammoTypeItem) {
         rollData.combat.ammo.effects = ammoTypeItem.system
       }

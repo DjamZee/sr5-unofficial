@@ -1,3 +1,6 @@
+import {
+  findAmmoTypeBySlug
+} from "../../system/ammo-types.js"
 /**
  * The attack card behind a defense or a resistance, read again by the browser that rolls it (Honoré's finding, 06/10).
  *
@@ -295,7 +298,7 @@ export function weaponAmmoEffects(actor, itemData) {
   const ammoItem = actor?.items?.find?.(i => i.type === "itemAmmunition" && i.system.type === type && (i.system.class === itemData.type || !i.system.class))
   if (ammoItem?.system.ammunitionTypeUuid && ammoItem.system.ammunitionTypeUuid !== "pending") return ammoItem.system.effects
   if (!SR5.allAmmunitionTypes?.[type] && globalThis.game?.items) {
-    const ammoTypeItem = game.items.find(i => i.type === "itemAmmunitionType" && i.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") === type)
+    const ammoTypeItem = findAmmoTypeBySlug(type)
     if (ammoTypeItem) return ammoTypeItem.system
   }
   return null

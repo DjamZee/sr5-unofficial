@@ -235,7 +235,7 @@ async function finishMatrixAction(rollData, rollKey, actor){
   }
 
   //Add scene noise modifier, if any
-  let noiseScene = SR5_PrepareRollHelper.getSceneNoise()
+  let noiseScene = SR5_PrepareRollHelper.getSceneNoise(actor)
   if (noiseScene) rollData.matrix.noiseScene = noiseScene
   rollData.matrix.personalNoise = -actor.system.matrix.noise.value
 

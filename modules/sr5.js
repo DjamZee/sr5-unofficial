@@ -67,6 +67,9 @@ import {
   registerCyberlimbNotice
 } from './system/cyberlimb-notice.js'
 import {
+  registerBossBarHooks
+} from './system/bossbar-compat.js'
+import {
   registerRiggerEjectionHooks
 } from './system/rigger-ejection.js'
 import {
@@ -220,7 +223,7 @@ Hooks.on('updateToken', sr5HookUpdateTokenOverwatch)
 // A player lowers the score of an unlinked token through the token or its delta too, not only through the actor
 Hooks.on('preUpdateToken', sr5HookPreUpdateTokenOverwatch)
 Hooks.on('preUpdateActorDelta', sr5HookPreUpdateActorDeltaOverwatch)
-Hooks.once('canvasReady', sr5HookCanvasReady)
+Hooks.on('canvasReady', sr5HookCanvasReady)
 Hooks.once('renderChatLog', sr5HookRenderChatLog)
 Hooks.on('renderChatLog', sr5PlaceChatJumpToBottom)
 Hooks.on('renderChatInput', sr5PlaceChatJumpToBottom)
@@ -363,6 +366,8 @@ Hooks.on('renderChatMessageHTML', onRenderConvergenceNotice)
 registerInsectRaceHooks()
 // The cyberlimb enhancements raise the limb only: the active GM is told once which characters to check (SR5 p. 459)
 registerCyberlimbNotice()
+// Boss Bar (module by TheRipper93): its setting shown once the modules are known to be active
+registerBossBarHooks()
 // A rigger ejected from his vehicle: it is out of control until the next Combat Turn, then on autopilot (SR5 p. 271)
 registerRiggerEjectionHooks()
 // Vehicle chases: the window in the token controls, and the turn that follows the encounter (R12)
@@ -386,4 +391,11 @@ Hooks.once('ready', () => import('./interface/commcode-default.js').then(m => m.
 Hooks.on('createItem', onBlightCreated)
 // ...and an actor under Blight is put in order at the world's load, by the active GM (Clémence's review)
 Hooks.once('ready', () => sweepBlight().catch(e => console.error("SR5 | Blight", e)))
+// The custom ammunition types of the active compendiums, offered by the ammunition menus beside the world's (Amandine's
+// review, 29/10): read once in the background, then the weapons that use one are prepared again
+Hooks.once('ready', () => import('./system/ammo-types.js').then(async m => {
+  await m.loadCompendiumAmmoTypes()
+  m.refreshCustomAmmoWeapons()
+  Hooks.on('updateCompendium', m.sr5HookCompendiumAmmoTypes)
+}).catch(e => console.error("SR5 | ammunition types", e)))
 for (const hook of ['createActor', 'deleteActor', 'createToken', 'deleteToken', 'canvasReady']) Hooks.on(hook, sr5HookResetJumpedInRiggers)

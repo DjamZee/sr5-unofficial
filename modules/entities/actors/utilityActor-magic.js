@@ -23,6 +23,9 @@ import {
   effectiveSceneBackgroundCount, backgroundCountFor
 } from "../../system/background-count.js"
 import {
+  actorRollScene
+} from "../../system/scene-noise.js"
+import {
   updateGreyMana
 } from "../../system/grey-mana.js"
 
@@ -215,11 +218,13 @@ export class SR5_CharacterMagicUtility {
   // Background count calcultations
   static updateBackgroundCount(actor) {
     let actorData = actor.system
-    let scene = game.scenes.active
+    //The scene of the actor's token, the one the indicator shows to whoever looks at it (actorRollScene)
+    let {
+      scene, hasToken 
+    } = actorRollScene(actor)
     if (scene) {
-      let token = scene.tokens.find((t) => t.actorId === actor.id)
       //check if actor already has a modifier on background count to avoid scene modifiers and prefer template modifier
-      if (token && !actorData.magic.bgCount.modifiers.length) {
+      if (hasToken && !actorData.magic.bgCount.modifiers.length) {
         let sceneData = scene.flags.sr5
         //A scene whose background count was never set stores null, or nothing at all, and both
         //differ from 0 : read the rating as a number so they add no empty modifier to the actor

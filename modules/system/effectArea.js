@@ -12,6 +12,9 @@ import {
   backgroundCountFor
 } from "./background-count.js"
 import {
+  clampSceneNoise
+} from "./scene-noise.js"
+import {
   noiseSpellKind, noiseSpellValue, noiseGridThreshold
 } from "./noise-spells.js"
 import {
@@ -316,7 +319,7 @@ export class SR5_EffectArea {
     //value here gave every device inside the template bonus dice.
     //Increase / Decrease Noise (Street Grimoire p. 113-114): the net hits of the cast over the threshold of the grid
     //chosen raise or lower the Noise in the area. Added to the template's own, which a player's template never has
-    let matrixNoise = parseInt(templateData.matrixNoise) || 0
+    let matrixNoise = clampSceneNoise(templateData.matrixNoise)
     const noiseKind = noiseSpellKind(sourceItem)
     if (noiseKind) matrixNoise += await SR5_EffectArea.noiseSpellRating(sourceItem, noiseKind, templateData, template, actor)
     if (!matrixNoise) await existingEffect("system.matrix.noise")?.delete()

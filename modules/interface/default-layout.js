@@ -230,6 +230,7 @@ function _spriteDefaultLayout() {
     panels: [
       _panel('SIDEBAR', 1, [
         _tab('Matrix', 'matrix', [
+          _block('spriteAttributes'),
           _block('matrixAttributes'), _block('matrixSilentMode'),
           _block('matrixGrid'), _block('initiatives'),
           _block('matrixResistances'), _block('matrixMarksControled'),

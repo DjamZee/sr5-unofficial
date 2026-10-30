@@ -126,6 +126,9 @@ import {
 import {
   giveStarterKit
 } from "../../system/starter-kit.js"
+import {
+  prepareBossBar
+} from "../../system/bossbar-compat.js"
 
 /**
  * Extend the base Actor class to implement additional logic specialized for Shadowrun 5.
@@ -528,6 +531,8 @@ export class SR5Actor extends Actor {
     this.prepareDerivedData()
     this.sortLists(this.system)
     this.updateItems(this) // second pass on items to get characters data for final items calculations
+    // Boss Bar: the monitor its bar shows, prepared only when the module is active and the world setting is on
+    prepareBossBar(this)
   }
 
   prepareBaseData() {

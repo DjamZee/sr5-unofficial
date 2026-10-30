@@ -3202,7 +3202,6 @@ SR5.spiritOptionalPowersearth = {
   elementalAttack            : "SR5.SpiritPowerElementalAttack",
   engulfEarth                : "SR5.SpiritPowerEngulfEarth",
   fear                       : "SR5.SpiritPowerFear",
-  search                     : "SR5.SpiritPowerSearch",
 }
 
 SR5.spiritBasePowersfire = {
@@ -3672,6 +3671,7 @@ SR5.spiritBasePowerswater = {
 
 SR5.spiritOptionalPowerswater = {
   accident                   : "SR5.SpiritPowerAccident",
+  binding                    : "SR5.SpiritPowerBinding",
   elementalAttack            : "SR5.SpiritPowerElementalAttack",
   energyAura                 : "SR5.SpiritPowerEnergyAura",
   guard                      : "SR5.SpiritPowerGuard",

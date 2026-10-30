@@ -11,11 +11,20 @@ import {
   noteRemovedAreaTemplate
 } from "../system/areaEffectScene.js"
 
+//A linked actor reads the background count of the viewed scene when it has a token there (actorRollScene): on each
+//scene change, prepare again those of the new scene and of the one left, the count being 0 or not
+let previousSceneId = null
 export function sr5HookCanvasReady(data) {
-  for (let token of data.tokens.placeables.filter(t => t.isOwner)){
-    if (token.document.actorLink && ((Number(token.scene.flags.sr5?.backgroundCountValue) || 0) !== 0)){
-      token.document.actor.prepareData()
-    }
+  const prepared = new Set()
+  const left = previousSceneId && previousSceneId !== data.scene?.id ? game.scenes.get(previousSceneId) : null
+  previousSceneId = data.scene?.id ?? null
+  const tokens = [...(data.scene?.tokens ?? []), ...(left?.tokens ?? [])]
+  for (let token of tokens){
+    const actor = token.actorLink ? token.actor : null
+    if (!actor?.isOwner || prepared.has(actor.id)) continue
+    prepared.add(actor.id)
+    actor.prepareData()
+    if (actor.sheet?.rendered) actor.sheet.render()
   }
 }
 
