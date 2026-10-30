@@ -1,4 +1,7 @@
 import {
+  magicPowerMigration
+} from "./entities/items/weapon-ratings.js"
+import {
   SR5_SystemHelpers 
 } from "./system/utilitySystem.js"
 import {
@@ -381,6 +384,43 @@ export default class Migration {
     if (failed) return false
     // The world flag is written as every GM register is, in its turn (gm-ledger.js)
     await updateLedger("migrationFlashlightEffect", () => true)
+    return true
+  }
+
+  /**
+   * Run once per world: a spirit's engulf or attack written from its Force follows its Magic now (SR5 p. 397, 399,
+   * 402), on world actors, unlinked tokens and unlocked world compendiums.
+   * @return {Promise<boolean>} true when the migration is done (now or before)
+   */
+  async migrateSpiritMagicPowers() {
+    if (game.settings.get("sr5", "migrationSpiritMagicPowers")) return true
+    const actors = [...game.actors.contents]
+    for (const s of game.scenes.contents) {
+      for (const t of s.tokens.contents) {
+        if (!t.actorLink && t.actor) actors.push(t.actor)
+      }
+    }
+    for (const p of game.packs) {
+      if (p.metadata.packageType === "world" && !p.locked && p.documentName === "Actor") actors.push(...await p.getDocuments())
+    }
+
+    let failed = false
+    for (const a of actors.filter(a => a.type === "actorSpirit")) {
+      for (const i of a.items?.contents ?? []) {
+        try {
+          const updateData = magicPowerMigration(i, Number(a.system?.force?.base) || 0)
+          if (!updateData) continue
+          SR5_SystemHelpers.srLog(2, `Migrating the weapon ${i.name} of ${a.name}`)
+          await i.update(updateData)
+        } catch (err) {
+          failed = true
+          err.message = `Failed sr5 spirit power migration for Item ${i.name}: ${err.message}`
+          console.error(err)
+        }
+      }
+    }
+    if (failed) return false
+    await updateLedger("migrationSpiritMagicPowers", () => true)
     return true
   }
 

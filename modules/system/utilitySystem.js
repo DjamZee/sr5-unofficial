@@ -157,6 +157,15 @@ export class SR5_SystemHelpers {
       default: false
     })
 
+    // A spirit's engulf or attack written from its Force follows its Magic: once per world
+    game.settings.register("sr5", "migrationSpiritMagicPowers", {
+      name: "SR5.TEXT_TBD",
+      scope: "world",
+      config: false,
+      type: Boolean,
+      default: false
+    })
+
     // Developper Extra Logging Toggle
     game.settings.register("sr5", "sr5Log.active", {
       name: "SR5.SETTINGS_DevLogActive_T",

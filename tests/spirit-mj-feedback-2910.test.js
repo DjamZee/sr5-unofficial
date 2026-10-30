@@ -118,10 +118,14 @@ describe("1. a new spirit fights bare-handed (SR5 p. 305-307)", () => {
     expect(SR5_CompendiumUtility.addSpiritBareHands([], [fixed], "man")).toEqual([])
   })
 
-  it("the Force sets the damage of its natural weapons, not of its bare hands", async () => {
+  it("an engulf follows the Magic (SR5 p. 399), the bare hands keep following the Strength", async () => {
     const [engulf, hands] = await SR5_CompendiumUtility.modifyBaseSpiritWeapon([engulfAir.toObject(), bareHands.toObject()], 4)
-    expect(engulf.system.damageValue.base).toBe(8)
-    expect(engulf.system.armorPenetration.base).toBe(-4)
+    expect(engulf.system.damageValue).toMatchObject({
+      base: 0, magicMultiplier: 2
+    })
+    expect(engulf.system.armorPenetration).toMatchObject({
+      base: 0, linkedAttribute: "magic"
+    })
     expect(hands.system.damageValue.base).toBe(0)
     expect(hands.system.armorPenetration.base).toBe(0)
   })

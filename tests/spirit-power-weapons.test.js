@@ -1,6 +1,12 @@
 import {
   describe, it, expect, vi, beforeEach
 } from "vitest"
+import {
+  readFileSync
+} from "node:fs"
+import {
+  resolve
+} from "node:path"
 
 // The weapons of a spirit's powers (DjamZ, 29/10): an optional power chosen at the summoning, or dropped on the sheet
 // afterwards, brings its weapon, found in the base weapons by the power's key. Elemental Attack: DV (Magic x 2)P,
@@ -29,7 +35,7 @@ import {
   SR5_CompendiumUtility
 } from "../modules/entities/actors/utilityCompendium.js"
 import {
-  weaponRatingModifiers
+  weaponRatingModifiers, powerAttackAction, magicPowerMigration
 } from "../modules/entities/items/weapon-ratings.js"
 
 const {
@@ -126,7 +132,7 @@ describe("the weapon of a spirit power", () => {
     })).toEqual([])
   })
 
-  it("a Natural Weapon of DV (Force)P; Noxious Breath as it is; Corrosive Spit as before", async () => {
+  it("a Natural Weapon of DV (Force)P; Noxious Breath as it is; Corrosive Spit on the Magic", async () => {
     const given = await SR5_CompendiumUtility.powerWeapons([power("naturalWeapon"), power("noxiousBreath"), power("corrosiveSpit")], {
       force: 5, spiritType: "beasts"
     })
@@ -138,8 +144,12 @@ describe("the weapon of a spirit power", () => {
     })
     expect(byName["Souffle nocif"].damageValue.base).toBe(0)
     expect(byName["Souffle nocif"].range.short.base).toBe(0)
-    expect(byName["Salive corrosive"].damageValue.base).toBe(10)
-    expect(byName["Salive corrosive"].armorPenetration.base).toBe(-5)
+    expect(byName["Salive corrosive"].damageValue).toMatchObject({
+      base: 0, magicMultiplier: 2 
+    })
+    expect(byName["Salive corrosive"].armorPenetration).toMatchObject({
+      base: 0, linkedAttribute: "magic" 
+    })
   })
 
   it("a power without a weapon brings none, and the compendium is not read", async () => {
@@ -224,5 +234,104 @@ describe("a power dropped on a spirit's sheet", () => {
       name: "Arme naturelle (mêlée)"
     })])
     expect(createEmbeddedDocuments.mock.calls[0][1][0].system.damageValue.base).toBe(4)
+  })
+})
+
+describe("the powers that follow the Magic (Maxence, 30/10)", () => {
+  const given = async key => (await SR5_CompendiumUtility.modifyBaseSpiritWeapon([weapon(key, [["spiritPower", key]])], 4))[0]
+
+  it.each(["engulfAir", "engulfWater", "engulfFire", "engulfEarth", "corrosiveSpit"])("%s: DV (Magic x 2), AP -(Magic), not the Force (SR5 p. 399, 402)", async key => {
+    const {
+      system 
+    } = await given(key)
+    expect(system.damageValue).toMatchObject({
+      base: 0, magicMultiplier: 2
+    })
+    expect(system.armorPenetration).toMatchObject({
+      base: 0, linkedAttribute: "magic"
+    })
+    // Force 4 and a Magic the gamemaster brought to 6
+    const actor = {
+      specialAttributes: {
+        magic: {
+          augmented: {
+            value: 6
+          }
+        }
+      }
+    }
+    expect(weaponRatingModifiers(system, actor)).toEqual([
+      {
+        target: "damageValue", label: "SR5.Magic", value: 12
+      },
+      {
+        target: "armorPenetration", label: "SR5.Magic", value: -6
+      },
+    ])
+  })
+})
+
+describe("the action of a power's ranged attack", () => {
+  const system = keys => ({
+    systemEffects: effects(keys)
+  })
+
+  it.each(["noxiousBreath", "corrosiveSpit", "elementalAttack"])("%s is a Complex action (SR5 p. 397, 402, 403)", key => {
+    expect(powerAttackAction(system([["spiritPower", key]]))).toEqual({
+      type: "complex", value: 1, source: "attack"
+    })
+  })
+
+  it("reads the effects kept as an object too, and leaves the other weapons to their firing mode", () => {
+    expect(powerAttackAction({
+      systemEffects: {
+        0: {
+          category: "spiritPower", value: "noxiousBreath"
+        }
+      }
+    })?.type).toBe("complex")
+    expect(powerAttackAction(system([["baseOwnItem", "fire"]]))).toBeNull()
+    expect(powerAttackAction({
+    })).toBeNull()
+  })
+
+  it("the dialog keeps it when the firing mode is read", () => {
+    const dialog = readFileSync(resolve(__dirname, "../modules/rolls/roll-dialog.js"), "utf8")
+    expect(dialog.match(/action = dialogData\.combat\.powerAttackAction \?\? SR5_ConverterHelpers\.firingModeToAction/g)).toHaveLength(2)
+    expect(dialog).not.toMatch(/action = SR5_ConverterHelpers\.firingModeToAction/)
+  })
+
+  it("a weapon on the Physical limit shows it on the card", () => {
+    const prepare = readFileSync(resolve(__dirname, "../modules/rolls/roll-prepare-case/rollData-Weapon.js"), "utf8")
+    expect(prepare).toMatch(/rollData\.limit\.type = itemData\.accuracy\.isPhysicalLimitBased \? "physicalLimit" : "accuracy"/)
+  })
+})
+
+describe("the migration of a spirit's weapons", () => {
+  const old = (key, base, ap, multiplier) => ({
+    type: "itemWeapon",
+    system: {
+      systemEffects: effects([["spiritPower", key]]),
+      damageValue: {
+        base, magicMultiplier: multiplier
+      },
+      armorPenetration: {
+        base: ap
+      },
+    },
+  })
+
+  it("moves a weapon written from the Force onto the Magic", () => {
+    expect(magicPowerMigration(old("engulfFire", 8, -4), 4)).toEqual({
+      "system.damageValue.base": 0, "system.damageValue.magicMultiplier": 2,
+      "system.armorPenetration.base": 0, "system.armorPenetration.linkedAttribute": "magic",
+    })
+  })
+
+  it("leaves alone a weapon the gamemaster changed, one already moved, and the others", () => {
+    expect(magicPowerMigration(old("engulfFire", 10, -4), 4)).toBeNull()
+    expect(magicPowerMigration(old("engulfFire", 0, 0, 2), 4)).toBeNull()
+    expect(magicPowerMigration(old("naturalWeapon", 8, -4), 4)).toBeNull()
+    expect(magicPowerMigration(old("engulfFire", 0, 0), 0)).toBeNull()
   })
 })

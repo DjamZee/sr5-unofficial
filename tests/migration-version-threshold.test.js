@@ -81,7 +81,7 @@ describe('sr5RunMigrations', () => {
   let calls
   beforeEach(() => {
     calls = []
-    const names = ['migrateWorld', 'migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateContactCommcodes',
+    const names = ['migrateWorld', 'migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateSpiritMagicPowers', 'migrateContactCommcodes',
       'migrateMegapackLitePaths']
     globalThis.game.sr5 = {
       migration: class {
@@ -96,14 +96,14 @@ describe('sr5RunMigrations', () => {
 
   it('below the threshold: migrateWorld first, then every feature migration', async () => {
     await sr5RunMigrations(true)
-    expect(calls).toEqual(['migrateWorld', 'migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateContactCommcodes',
+    expect(calls).toEqual(['migrateWorld', 'migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateSpiritMagicPowers', 'migrateContactCommcodes',
       'migrateMegapackLitePaths'])
   })
 
   it('a djamz.17 world: no migrateWorld, the feature migrations still run (the Lite images included)', async () => {
     await sr5RunMigrations(needsMigration('13.0.0-djamz.17'))
     expect(calls).not.toContain('migrateWorld')
-    expect(calls).toEqual(['migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateContactCommcodes',
+    expect(calls).toEqual(['migrateHeadcaseNanite', 'migrateFlashlightEffect', 'migrateSpiritMagicPowers', 'migrateContactCommcodes',
       'migrateMegapackLitePaths'])
   })
 })

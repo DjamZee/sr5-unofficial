@@ -1,4 +1,7 @@
 import {
+  followMagic
+} from "../items/weapon-ratings.js"
+import {
   SR5_SystemHelpers 
 } from "../../system/utilitySystem.js"
 import {
@@ -387,17 +390,19 @@ export class SR5_CompendiumUtility extends Actor {
 
   // The weapons whose values the book gives from the spirit's ratings. Elemental Attack: DV (Magic x 2)P, AP -(Magic),
   // range increment (Magic) (SR5 p. 397), read on the Magic at every preparation (weapon-ratings.js), the gamemaster's
-  // adjustment included; the range is written from the Force. Natural Weapon of a spirit of beasts: DV (Force)P, AP -
-  // (SR5 p. 307)
+  // adjustment included; the range is written from the Force. Engulf, DV (Magic x 2), AP -(Magic) (SR5 p. 399), and
+  // Corrosive Spit, DV (Magic x 2)P, AP -(Magic) (SR5 p. 402), the same. Natural Weapon of a spirit of beasts: DV
+  // (Force)P, AP - (SR5 p. 307)
   static SHAPED_WEAPONS = {
     elementalAttack: (system, force) => {
-      system.damageValue.base = 0
-      system.damageValue.magicMultiplier = 2
-      system.armorPenetration.base = 0
-      system.armorPenetration.linkedAttribute = "magic"
+      followMagic(system)
       system.damageType = "physical"
       for (const [key, step] of [["short", 1], ["medium", 2], ["long", 3], ["extreme", 4]]) system.range[key].base = force * step
     },
+    engulfAir: followMagic,
+    engulfWater: followMagic,
+    engulfFire: followMagic,
+    engulfEarth: followMagic,
     naturalWeapon: (system, force) => {
       system.damageValue.base = force
       system.damageValue.magicMultiplier = 0
@@ -407,11 +412,8 @@ export class SR5_CompendiumUtility extends Actor {
     },
     // A toxin whose Power is the Magic (SR5 p. 403, toxins.js): the weapon is kept as it is, its range follows the Body
     noxiousBreath: () => {},
-    // As it was given before this lot; its range follows the Body (utilityItem.js)
-    corrosiveSpit: (system, force) => {
-      system.damageValue.base = force * 2
-      system.armorPenetration.base = -force
-    },
+    // Its range follows the Body (utilityItem.js)
+    corrosiveSpit: followMagic,
   }
 
   /**

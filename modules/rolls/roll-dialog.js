@@ -1450,7 +1450,7 @@ export default class SR5_RollDialog {
             SR5_ConverterHelpers.firingModeChangeCost(weapon.system.firingMode, dialogData.combat.firingMode.selected, false) > 0,
             SR5_RollDialog.changeIsFree(weapon, actor))
           value = this.calculRecoil(html)
-          action = SR5_ConverterHelpers.firingModeToAction(ev.target.value)
+          action = dialogData.combat.powerAttackAction ?? SR5_ConverterHelpers.firingModeToAction(ev.target.value)
           dialogData.combat.actions = SR5_MiscellaneousHelpers.addActions(dialogData.combat.actions, action)
           modifierName = "recoil"
           label = game.i18n.localize(SR5.dicePoolModTypes[modifierName])
@@ -1945,7 +1945,7 @@ export default class SR5_RollDialog {
         case "firingMode":
           selectValue = dialogData.combat.firingMode.selected
           inputValue = this.calculRecoil(html)
-          action = SR5_ConverterHelpers.firingModeToAction(selectValue)
+          action = dialogData.combat.powerAttackAction ?? SR5_ConverterHelpers.firingModeToAction(selectValue)
           dialogData.combat.actions = SR5_MiscellaneousHelpers.addActions(dialogData.combat.actions, action)
           modifierName = "recoil"
           label = game.i18n.localize(SR5.dicePoolModTypes[modifierName])

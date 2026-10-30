@@ -246,6 +246,7 @@ export async function sr5RunMigrations(needsMigration) {
   if (needsMigration) await migration.migrateWorld()
   await migration.migrateHeadcaseNanite()
   await migration.migrateFlashlightEffect()
+  await migration.migrateSpiritMagicPowers()
   await migration.migrateContactCommcodes()
   await migration.migrateMegapackLitePaths()
 }

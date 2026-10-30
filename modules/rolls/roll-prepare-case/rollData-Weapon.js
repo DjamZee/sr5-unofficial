@@ -1,4 +1,7 @@
 import {
+  powerAttackAction
+} from "../../entities/items/weapon-ratings.js"
+import {
   findAmmoTypeBySlug
 } from "../../system/ammo-types.js"
 import {
@@ -96,7 +99,8 @@ export default async function weapon(rollData, actor, item){
   } else {
     rollData.limit.base = SR5_PrepareRollHelper.getBaseLimit(itemData.accuracy.value, itemData.accuracy.modifiers)
     rollData.limit.modifiers = SR5_PrepareRollHelper.getLimitModifiers(rollData, itemData.accuracy.modifiers)
-    rollData.limit.type = "accuracy"
+    //A weapon that uses the Physical limit says so: Noxious Breath, Elemental Attack… [Physical] (SR5 p. 397, 403)
+    rollData.limit.type = itemData.accuracy.isPhysicalLimitBased ? "physicalLimit" : "accuracy"
   }
 
   //Recoil Compensation calculation
@@ -127,7 +131,11 @@ export default async function weapon(rollData, actor, item){
   //Handle ranged weapon current firing mode here too: handleTargetInfo skips it when no scene is viewed
   if (itemData.category === "rangedWeapon" && !rollData.combat.firingMode.selected) rollData.combat.firingMode.selected = SR5_ConverterHelpers.initialFiringMode(itemData.firingMode, rollData.target.fanning)
   //With a firing mode, the dialog replaces this action by the mode's own (same source)
-  if (itemData.category === "rangedWeapon") rollData.combat.actions = SR5_MiscellaneousHelpers.addActions(rollData.combat.actions, SR5_ConverterHelpers.rangedAttackAction(rollData.combat.firingMode.selected))
+  //A creature power keeps its own action, whatever the mode (SR5 p. 397, 402, 403)
+  if (itemData.category === "rangedWeapon") {
+    rollData.combat.powerAttackAction = powerAttackAction(itemData)
+    rollData.combat.actions = SR5_MiscellaneousHelpers.addActions(rollData.combat.actions, rollData.combat.powerAttackAction ?? SR5_ConverterHelpers.rangedAttackAction(rollData.combat.firingMode.selected))
+  }
 
   //Handle Toxin
   if (itemData.damageElement === "toxin") rollData.damage.toxin = itemData.toxin
