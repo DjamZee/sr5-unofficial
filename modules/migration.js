@@ -1,5 +1,5 @@
 import {
-  magicPowerMigration
+  elementalAttackMigration, magicPowerMigration
 } from "./entities/items/weapon-ratings.js"
 import {
   SR5_SystemHelpers 
@@ -393,7 +393,20 @@ export default class Migration {
    * @return {Promise<boolean>} true when the migration is done (now or before)
    */
   async migrateSpiritMagicPowers() {
-    if (game.settings.get("sr5", "migrationSpiritMagicPowers")) return true
+    return this._migrateSpiritWeapons("migrationSpiritMagicPowers", magicPowerMigration)
+  }
+
+  /**
+   * Run once per world, with its own flag (the pass above is already done on the worlds that went through 13.2.4): the
+   * Elemental Attacks it could not see, those of a compendium without the power's key, and the range of them all.
+   * @return {Promise<boolean>} true when the migration is done (now or before)
+   */
+  async migrateSpiritElementalAttacks() {
+    return this._migrateSpiritWeapons("migrationSpiritElementalAttacks", elementalAttackMigration)
+  }
+
+  async _migrateSpiritWeapons(flag, changesOf) {
+    if (game.settings.get("sr5", flag)) return true
     const actors = [...game.actors.contents]
     for (const s of game.scenes.contents) {
       for (const t of s.tokens.contents) {
@@ -408,7 +421,7 @@ export default class Migration {
     for (const a of actors.filter(a => a.type === "actorSpirit")) {
       for (const i of a.items?.contents ?? []) {
         try {
-          const updateData = magicPowerMigration(i, Number(a.system?.force?.base) || 0)
+          const updateData = changesOf(i, Number(a.system?.force?.base) || 0)
           if (!updateData) continue
           SR5_SystemHelpers.srLog(2, `Migrating the weapon ${i.name} of ${a.name}`)
           await i.update(updateData)
@@ -420,7 +433,7 @@ export default class Migration {
       }
     }
     if (failed) return false
-    await updateLedger("migrationSpiritMagicPowers", () => true)
+    await updateLedger(flag, () => true)
     return true
   }
 

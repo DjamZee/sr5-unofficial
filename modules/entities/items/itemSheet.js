@@ -1,6 +1,12 @@
 import {
+  SR5ItemTransfer
+} from '../../interface/item-transfer.js'
+import {
   ammoTypeItems, ammoTypeSlug
 } from "../../system/ammo-types.js"
+import {
+  SR5Credstick
+} from "../../interface/credstick.js"
 import {
   SR5_UiModifications
 } from "../../system/utilitySystem.js"
@@ -1090,7 +1096,10 @@ export class SR5ItemSheet extends foundry.applications.api.HandlebarsApplication
     if (data?.type !== "Item") return
     const dropped = await fromUuid(data.uuid)
     if (!dropped || SR5_SpiritTypes.NOT_GIVEN.includes(dropped.type)) return
-    const copy = dropped.toObject()
+    if (SR5ItemTransfer.foreign(dropped)) return ui.notifications.warn(game.i18n.format("SR5.WARN_Transfer_notYours", {
+      name: dropped.name
+    }))
+    const copy = SR5Credstick.copyOf(dropped).data
     delete copy._id
     delete copy.folder
     delete copy.sort
@@ -1124,6 +1133,9 @@ export class SR5ItemSheet extends foundry.applications.api.HandlebarsApplication
   async #linkToxin(uuid) {
     const toxin = uuid ? await fromUuid(uuid) : null
     if (toxin?.type !== "itemToxin") return ui.notifications.warn(game.i18n.localize("SR5.WARN_NotAToxin"))
+    if (SR5ItemTransfer.foreign(toxin)) return ui.notifications.warn(game.i18n.format("SR5.WARN_Transfer_notYours", {
+      name: toxin.name
+    }))
     await this.document.update({
       "system.damageElement": "toxin",
       "system.toxin.type": "custom",

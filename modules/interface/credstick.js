@@ -10,6 +10,9 @@ import {
 import {
   formatNumber
 } from '../helpers/number-format.js'
+import {
+  pileSize
+} from '../rolls/roll-helpers/pickpocket-rules.js'
 
 /**
  * Certified credsticks: cash a character carries.
@@ -49,10 +52,32 @@ export class SR5Credstick {
     return Number(item?.system?.funds?.value ?? 0) || 0
   }
 
-  /** What a stick can still take in. `max` of 0 means no ceiling. */
+  /**
+   * The most a stick, or a pile of them, can hold: `funds.max` is what one stick
+   * takes (SR5 p. 446) and `funds.value` the balance of the whole pile. 0 means no ceiling.
+   */
+  static capacity(item) {
+    return (Number(item?.system?.funds?.max ?? 0) || 0) * pileSize(item)
+  }
+
+  /** What a stick can still take in. A capacity of 0 means no ceiling. */
   static room(item) {
-    const max = Number(item?.system?.funds?.max ?? 0) || 0
-    return max ? Math.max(0, max - SR5Credstick.funds(item)) : Infinity
+    const capacity = SR5Credstick.capacity(item)
+    return capacity ? Math.max(0, capacity - SR5Credstick.funds(item)) : Infinity
+  }
+
+  /**
+   * The data of a copy of an item: dropped on a sheet, cloned, given to a spirit type. A copy leaves the original
+   * where it is, for any object: a credstick held by an actor comes empty, or its money would exist twice.
+   * @returns {{data: object, emptied: boolean}}
+   */
+  static copyOf(item) {
+    const data = item.toObject()
+    const emptied = !!item.parent && SR5Credstick.is(item) && SR5Credstick.funds(item) > 0
+    if (emptied) data.system.funds.value = 0
+    return {
+      data, emptied
+    }
   }
 
   /** Cash on hand: everything loaded on the sticks the actor carries. */

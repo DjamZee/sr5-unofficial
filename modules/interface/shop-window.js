@@ -195,6 +195,8 @@ export class SR5ShopWorldSource {
       flags: {
         sr5: {
           notForSale: entry.flags?.sr5?.notForSale === true,
+          // What puts a reagent on the magic shelf (isReagentEntry)
+          reagent: entry.flags?.sr5?.reagent === true,
           // The English name, when the compendium gives one: found by the search too (lot 12)
           nameVO: SR5ShopCatalog.nameVO(entry)
         }
@@ -859,7 +861,7 @@ export class SR5ShopWindow extends foundry.applications.api.HandlebarsApplicatio
       legality: row.legality,
       common: !row.availability,
       odds,
-      oddsLabel: odds ? game.i18n.format('SR5.ShopOdds', {
+      oddsLabel: odds ? game.i18n.format(SR5ShopCatalog.oddsLabelKey(pool, game.i18n.lang), {
         pool, availability: row.availability
       }) : '',
       // A search time only where the till makes the purchase wait: none in creation nor in equip mode (review P4)
@@ -1196,6 +1198,12 @@ export class SR5ShopWindow extends foundry.applications.api.HandlebarsApplicatio
           })
           if (verdict.allow && !(await confirmFundsWarning(verdict.warning))) return
         }
+        // GreyWare on an Awakened costs Magic (BTB p. 142): confirmed here too, by the buyer
+        const buyer = SR5Shop.buyerFromKey(this._buyerId)
+        const greyware = SR5Shop.greywareCount(await Promise.all(this._cart.map(async line => ({
+          grade: line.grade, system: line.grade ? null : (await fromUuid(line.uuid))?.system, quantity: line.quantity,
+        }))))
+        if (greyware && SR5ShopGrades.isAwakened(buyer) && !(await SR5Shop.confirmGreyware(buyer.name, greyware))) return
         const sent = await SR5ShopVendor.purchase({
           vendorUuid: this._source.actorUuid,
           storageId: this._source.storageId,

@@ -1,0 +1,59 @@
+<section class="sr-trade-body">
+  <div class="sr-trade-columns">
+    {{#each sides}}
+    <div class="sr-trade-column {{#if accepted}}is-accepted{{/if}}" data-trade-drop="{{#if canEdit}}{{key}}{{/if}}">
+      <header class="sr-trade-who">
+        <img src="{{img}}" alt="" />
+        <strong>{{name}}</strong>
+        {{#if accepted}}<span class="sr-trade-agreed"><i class="fas fa-check"></i> {{localize "SR5.TradeAccepted"}}</span>{{/if}}
+      </header>
+      <ul class="sr-trade-items">
+        {{#each items}}
+        <li class="sr-trade-line {{#if isStick}}is-stick{{/if}}">
+          <img src="{{img}}" alt="" />
+          <span class="sr-trade-name">{{name}}</span>
+          {{#if fundsLabel}}<span class="sr-trade-funds">{{fundsLabel}}</span>{{/if}}
+          {{#if isPile}}
+            {{#if ../canEdit}}
+            <input type="number" name="tradeQuantity" min="1" max="{{max}}" step="1" value="{{quantity}}" data-side="{{../key}}" data-item-id="{{id}}" />
+            <span class="sr-trade-max">/ {{max}}</span>
+            {{else}}
+            <span class="sr-trade-count">×{{quantity}}</span>
+            {{/if}}
+          {{/if}}
+          {{#if ../canEdit}}<a class="sr-trade-remove fas fa-xmark" data-action="remove" data-side="{{../key}}" data-item-id="{{id}}" data-tooltip="{{localize "SR5.TradeRemove"}}"></a>{{/if}}
+        </li>
+        {{else}}
+        <li class="sr-trade-empty">{{#if canEdit}}{{localize "SR5.TradeDropHere"}}{{else}}{{localize "SR5.TradeNothing"}}{{/if}}</li>
+        {{/each}}
+      </ul>
+      <div class="sr-trade-sum">
+        <label>{{localize "SR5.TradeNuyen"}}</label>
+        {{#if canEdit}}
+        <input type="number" name="tradeNuyen" min="0" step="1" value="{{this.nuyen}}" data-side="{{key}}" />
+        {{else}}
+        <span>{{this.nuyen}}</span>
+        {{/if}}
+      </div>
+      {{#if canEdit}}
+      <footer class="sr-trade-actions">
+        {{#if accepted}}
+        <button type="button" data-action="unaccept" data-side="{{key}}"><i class="fas fa-rotate-left"></i> {{localize "SR5.TradeUnaccept"}}</button>
+        {{else}}
+        <button type="button" class="primary" data-action="accept" data-side="{{key}}" data-version="{{../version}}"><i class="fas fa-check"></i> {{localize "SR5.TradeAccept"}}</button>
+        {{/if}}
+      </footer>
+      {{/if}}
+    </div>
+    {{/each}}
+  </div>
+  <div class="sr-trade-foot">
+    <label class="sr-trade-cash">
+      <input type="checkbox" name="tradeCash" {{#if cash}}checked{{/if}} {{#unless canEditCash}}disabled{{/unless}} />
+      {{localize "SR5.TradeCash"}}
+    </label>
+    {{#if waitingGM}}<span class="sr-trade-wait"><i class="fas fa-hourglass-half"></i> {{localize "SR5.TradeWaitingGM"}}</span>{{/if}}
+    {{#if running}}<span class="sr-trade-wait"><i class="fas fa-spinner fa-spin"></i> {{localize "SR5.TradeRunning"}}</span>{{/if}}
+    <button type="button" class="sr-trade-cancel" data-action="cancelTrade"><i class="fas fa-xmark"></i> {{localize "SR5.TradeCancel"}}</button>
+  </div>
+</section>

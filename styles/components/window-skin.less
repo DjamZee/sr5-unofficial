@@ -6,7 +6,7 @@
 // the system's dialog style (dialog.less).
 @import "../commons/window-tokens.less";
 
-@srw-skinned: ~".sr-con, .sr-factions, .sr-shop-config, .sr-sell-dialog, .sr-drug-designer, .sr-negotiation-repair, .sr-presets-config, .sr-rule-locks-config, .sr-token-defaults-config, .sr-table-builder-window, .sr-compendium-browser, .sr-commcode, .sr-infobroker";
+@srw-skinned: ~".sr-con, .sr-factions, .sr-shop-config, .sr-sell-dialog, .sr-drug-designer, .sr-negotiation-repair, .sr-presets-config, .sr-rule-locks-config, .sr-token-defaults-config, .sr-table-builder-window, .sr-compendium-browser, .sr-commcode, .sr-infobroker, .sr-trade";
 // Lot 36b: the windows without the sr-application class take the theme's window dress (window.less, a long
 // :not() chain with !important): an id that no element carries (#srw-raise) lifts their selector above it, as :is()
 // counts its heaviest argument
@@ -143,6 +143,8 @@
   }
   .dialog-content { padding: 0 0 0.4rem; }
   .form-footer {
+    // Not the torn dark band of the sheets (window.less): it does not belong on the window's ground
+    background-image: none !important;
     gap: 0.4rem;
     padding-top: 0.5rem;
     button {

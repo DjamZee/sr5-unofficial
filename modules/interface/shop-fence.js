@@ -5,6 +5,9 @@ import {
   SR5Shop
 } from './shop.js'
 import {
+  SR5Credstick
+} from './credstick.js'
+import {
   SR5_SystemHelpers
 } from '../system/utilitySystem.js'
 import {
@@ -299,6 +302,13 @@ export class SR5ShopFence {
     for (const line of lines ?? []) {
       const item = actor.items.get(line.itemId)
       if (!item) continue
+      // A loaded credstick is money, not goods, as at a vendor's: emptied first, or its nuyens would vanish in the sale
+      if (SR5Credstick.is(item) && SR5Credstick.funds(item) > 0) {
+        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
+          name: item.name
+        }))
+        continue
+      }
       const owned = Math.max(1, Number(item.system?.quantity ?? 1))
       const quantity = Math.min(owned, Math.max(1, Math.floor(Number(line.quantity) || 1)))
       const listed = SR5ShopFence.listedPrice(item)
@@ -404,14 +414,24 @@ export class SR5ShopFence {
    */
   static async cash(message, actor) {
     if (!await SR5ShopFence.claim(message)) return false
+    const loaded = SR5ShopFence.#loadedLine(actor, message.flags.sr5fence)
     const sold = await SR5ShopFence.handOver(actor, message.flags.sr5fence)
+    const said = sold ? game.i18n.localize('SR5.ShopSaleDone') : loaded ? '' : game.i18n.localize('SR5.ShopSaleGone')
+    const refusal = loaded ? foundry.utils.escapeHTML(game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
+      name: loaded.name
+    })) : ''
     await message.update({
       content: message.content.replace(
         /<footer class="sr-shop-card-footer">[\s\S]*?<\/footer>/,
-        `<footer class="sr-shop-card-footer"><span class="sr-shop-cashed">${
-          game.i18n.localize(sold ? 'SR5.ShopSaleDone' : 'SR5.ShopSaleGone')}</span></footer>`),
+        `<footer class="sr-shop-card-footer"><span class="sr-shop-cashed">${[said, refusal].filter(Boolean).join(' ')}</span></footer>`),
     })
     return sold
+  }
+
+  /** A credstick of the card loaded since it was written: it does not leave the sheet (handOver). */
+  static #loadedLine(actor, data) {
+    return (data?.results ?? []).map(line => actor.items.get(line.itemId))
+      .find(item => SR5Credstick.is(item) && SR5Credstick.funds(item) > 0) ?? null
   }
 
   /**
@@ -515,6 +535,8 @@ export class SR5ShopFence {
       if (!line.total) continue
       const item = actor.items.get(line.itemId)
       if (!item) continue
+      // Loaded since the card was written: not sold, the same refusal as at pricing
+      if (SR5Credstick.is(item) && SR5Credstick.funds(item) > 0) continue
       // Read as the card priced it: an item without a quantity is one piece
       const owned = Math.max(1, Number(item.system?.quantity ?? 1))
       if (owned < line.quantity) continue
@@ -544,7 +566,10 @@ export class SR5ShopFence {
 
     const sold = lines.filter(line => handed.has(line.itemId))
     if (!sold.length) {
-      ui.notifications.warn(game.i18n.localize('SR5.WARN_ShopSaleGone'))
+      const loaded = SR5ShopFence.#loadedLine(actor, data)
+      ui.notifications.warn(loaded ? game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
+        name: loaded.name
+      }) : game.i18n.localize('SR5.WARN_ShopSaleGone'))
       return false
     }
     const total = sold.reduce((sum, line) => sum + line.total, 0)

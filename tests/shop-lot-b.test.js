@@ -139,6 +139,14 @@ describe('a row', () => {
     expect(SR5ShopCatalog.odds(9, 11)).toBe('poor')
     expect(SR5ShopCatalog.odds(9, 0)).toBeNull()
   })
+
+  it('names the dice by the plural of the language', () => {
+    expect(SR5ShopCatalog.oddsLabelKey(0, 'fr')).toBe('SR5.ShopOddsOne')
+    expect(SR5ShopCatalog.oddsLabelKey(1, 'fr')).toBe('SR5.ShopOddsOne')
+    expect(SR5ShopCatalog.oddsLabelKey(2, 'fr')).toBe('SR5.ShopOdds')
+    expect(SR5ShopCatalog.oddsLabelKey(0, 'en')).toBe('SR5.ShopOdds')
+    expect(SR5ShopCatalog.oddsLabelKey(1, 'en')).toBe('SR5.ShopOddsOne')
+  })
 })
 
 describe('filters run on the whole catalogue', () => {

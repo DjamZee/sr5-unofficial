@@ -1,6 +1,6 @@
 import {
   pickableItems, randomPick, concealmentOf, transferEnds, pickpocketOutcome, isTransferAllowed, perceptionDialogLocks,
-  PICKPOCKET_MAX_CONCEALMENT, pileSize, defaultTakeQuantity, splitPile,
+  PICKPOCKET_MAX_CONCEALMENT, pileSize, defaultTakeQuantity, splitPile, splitFunds,
   thiefHitsCap, boundThiefHits, shownQuantity, trustedChoice, answeredByGM
 } from "../rolls/roll-helpers/pickpocket-rules.js"
 import {
@@ -436,9 +436,15 @@ export class SR5Pickpocket {
     delete given._id
     if (given.system?.storedIn !== undefined) given.system.storedIn = ""
     if (given.system?.quantity !== undefined) given.system.quantity = split.quantity
+    //A credstick's money follows its tubes: a copy of the balance would make nuyens out of nothing
+    const funds = splitFunds(item, split.quantity)
+    if (funds) given.system.funds.value = funds.taken
     let moved = true
     if (split.leftOnGiver > 0) await item.update({
-      "system.quantity": split.leftOnGiver
+      "system.quantity": split.leftOnGiver, ...(funds ? {
+        "system.funds.value": funds.left
+      } : {
+      })
     })
     else moved = !!(await giver.deleteEmbeddedDocuments("Item", [item.id]))?.length
     if (moved) {

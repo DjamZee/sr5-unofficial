@@ -262,15 +262,25 @@ export class SR5Shop {
    */
   static async checkout(actor, lines, {
     equip = false, express = false, messageId = null, userId = game.user.id, cashToken = null, recipient = null, priceOn = null, assemble = false,
-    creation = false, availabilityOn = null
+    creation = false, availabilityOn = null, answers = null, ask = null, beforePay = null
   } = {
   }) {
+    // A card is cashed on the gamemaster's browser: what the till says goes to whoever clicked (as SR5ShopVendor.#notify)
+    const notify = (level, key, data = {
+    }) => {
+      if (userId === game.user.id) return ui.notifications[level](game.i18n.format(key, data))
+      return import('../socket.js').then(({
+        SR5_SocketHandler
+      }) => SR5_SocketHandler.emitForPlayer('shopVendorNotice', {
+        level, key, data
+      }, userId))
+    }
     if (!actor) {
-      ui.notifications.warn(game.i18n.localize('SR5.WARN_ShopNoBuyer'))
+      notify('warn', 'SR5.WARN_ShopNoBuyer')
       return false
     }
     if (!actor.isOwner || (recipient && !recipient.isOwner)) {
-      ui.notifications.warn(game.i18n.localize('SR5.WARN_ShopNotOwner'))
+      notify('warn', 'SR5.WARN_ShopNotOwner')
       return false
     }
     if (!lines?.length) return false
@@ -283,9 +293,9 @@ export class SR5Shop {
     // so a card cashed later or a call from a macro cannot spend for an actor outside it
     // (Élise's choice, 2026-10-05). Equip mode is the gamemaster's and skips it.
     if (!equip && !SR5ShopStock.isBuyer(actor, SR5ShopStock.buyerRule)) {
-      ui.notifications.warn(game.i18n.format('SR5.WARN_ShopNotABuyer', {
+      notify('warn', 'SR5.WARN_ShopNotABuyer', {
         name: actor.name
-      }))
+      })
       return false
     }
 
@@ -295,16 +305,16 @@ export class SR5Shop {
     for (const line of lines) {
       const source = await fromUuid(line.uuid)
       if (!source) {
-        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopItemGone', {
+        notify('warn', 'SR5.WARN_ShopItemGone', {
           name: line.name ?? line.uuid
-        }))
+        })
         continue
       }
       // The shelves only: an item an actor carries is not for sale here, whatever uuid a request names (R1)
       if (!equip && !SR5Shop.sellableSource(source)) {
-        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopNotForSale', {
+        notify('warn', 'SR5.WARN_ShopNotForSale', {
           name: source.name
-        }))
+        })
         continue
       }
       if (!SR5ShopStock.canSell({
@@ -313,9 +323,9 @@ export class SR5Shop {
       }, {
         equip
       })) {
-        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopNotForSale', {
+        notify('warn', 'SR5.WARN_ShopNotForSale', {
           name: source.name
-        }))
+        })
         continue
       }
       // A grade the shop does not offer here falls back to none, never to a free upgrade
@@ -339,10 +349,10 @@ export class SR5Shop {
       // Past the limits where the table allows it: bought, and marked for the creation summary (C3)
       const overLimit = creationLimits ? SR5ShopCatalog.overLimitMark(described, creationLimits) : null
       if (block) {
-        ui.notifications.warn(game.i18n.format(`SR5.WARN_ShopCreationLimit_${block}`, {
+        notify('warn', `SR5.WARN_ShopCreationLimit_${block}`, {
           name: SR5Shop.gradedName(source.name, grade), ...SR5Shop.creationLimits,
           source: game.i18n.localize(`SR5.ShopCreationSource_${SR5Shop.creationLimits.source}`),
-        }))
+        })
         continue
       }
       const quantity = assemble ? 1 : Math.max(1, Math.floor(Number(line.quantity) || 1))
@@ -355,16 +365,16 @@ export class SR5Shop {
           }
         }
       })) {
-        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopModOnVehicle', {
+        notify('warn', 'SR5.WARN_ShopModOnVehicle', {
           name: source.name
-        }))
+        })
         continue
       }
       // ...nor a weapon accessory priced on its weapon off a weapon: its Armory prices it (HT p. 180-181, SR5 p. 435)
       if (!equip && !priceOn && SR5ShopCatalog.pricedOnWeapon(source)) {
-        ui.notifications.warn(game.i18n.format('SR5.WARN_ShopAccessoryOnWeapon', {
+        notify('warn', 'SR5.WARN_ShopAccessoryOnWeapon', {
           name: source.name
-        }))
+        })
         continue
       }
       // The surcharge that bought dice on the card is paid (SR5 p. 420); the search time and the express
@@ -383,13 +393,18 @@ export class SR5Shop {
     // The dealership sells the build whole: a vehicle and its mods, never the mods without it nor part of them
     if (assemble && (resolved.length !== lines.length || resolved[0].source.type !== 'itemVehicle' ||
       resolved.slice(1).some(line => line.source.type !== 'itemVehicleMod'))) return false
-    const screened = await SR5Shop.screenLines(actor, resolved)
+    // Refused or asked as whoever clicked, not as the browser the till runs on (SR5 p. 54, as SR5ShopVendor.#sell)
+    const byGM = userId === game.user.id ? game.user.isGM : !!game.users.get(userId)?.isGM
+    const warn = (key, data) => notify('warn', key, data)
+    const screened = await SR5Shop.screenLines(actor, resolved, {
+      isGM: byGM, warn
+    })
     resolved.splice(0, resolved.length, ...screened.lines)
     if (!resolved.length) return false
     if (!(await SR5Shop.essenceAllows(actor, resolved.map(line => ({
       type: line.source.type, name: line.name, system: line.source.system, grade: line.grade, quantity: line.quantity,
     })), {
-      creation
+      creation, isGM: byGM, warn, ask, answered: answers?.essence === true
     }))) return false
 
     const free = equip || SR5Shop.creationMode
@@ -418,33 +433,42 @@ export class SR5Shop {
       }
     }
     if (!funds.allow) {
-      ui.notifications.warn(game.i18n.format('SR5.WARN_ShopNotEnoughNuyen', {
+      notify('warn', 'SR5.WARN_ShopNotEnoughNuyen', {
         name: actor.name,
         price: formatNumber(total),
         balance: formatNumber(balance),
-      }))
+      })
       return false
     }
-    // The module's warning, confirmed by the buyer before anything is paid (sr5.purchaseFunds)
-    if (!(await confirmFundsWarning(funds.warning))) return false
+    // The module's warning, confirmed by the buyer before anything is paid (sr5.purchaseFunds); on a card, the till
+    // stops here and whoever clicked is asked on their browser (`ask`, shop-retry.js)
+    if (funds.warning && ask) {
+      if (answers?.funds !== true) {
+        ask({
+          kind: 'funds', warning: funds.warning
+        })
+        return false
+      }
+    } else if (!(await confirmFundsWarning(funds.warning))) return false
 
     // Greyware on an Awakened character costs Magic (BTB p. 142): the buyer, or the gamemaster in
     // Equip mode, sees the penalty before anything is created and may cancel (DjamZ's ruling, 2026-10-05)
     const greyware = resolved
       .filter(line => line.grade === 'greyware')
       .reduce((sum, line) => sum + (SR5Shop._itemPayload(line.source, line.quantity, line.grade).length), 0)
-    if (greyware && SR5ShopGrades.isAwakened(actor)) {
-      const confirmed = await foundry.applications.api.DialogV2.confirm({
-        window: {
-          title: game.i18n.localize('SR5.ShopGreywareConfirmTitle')
-        },
-        content: `<p>${game.i18n.format('SR5.WARN_ShopGreywareAwakened', {
-          name: actor.name, count: greyware
-        })}</p>`,
-        rejectClose: false,
-      })
-      if (!confirmed) return false
+    if (greyware && SR5ShopGrades.isAwakened(actor) && ask) {
+      if (answers?.greyware !== true) {
+        ask({
+          kind: 'greyware', name: actor.name, count: greyware
+        })
+        return false
+      }
+    } else if (greyware && SR5ShopGrades.isAwakened(actor)) {
+      if (!(await SR5Shop.confirmGreyware(actor.name, greyware))) return false
     }
+
+    // Nothing more to ask: the money moves from here on (cashCard keeps a card from being paid twice)
+    await beforePay?.()
 
     const payload = [], orders = []
     const now = game.time.worldTime
@@ -592,17 +616,15 @@ export class SR5Shop {
       })
     }
 
-    ui.notifications.info(equip ?
-      game.i18n.format('SR5.ShopEquipDone', {
-        name: label, actor: actor.name
-      }) :
-      free ?
-        game.i18n.format('SR5.ShopCreationDone', {
-          name: label
-        }) :
-        game.i18n.format('SR5.ShopPurchaseDone', {
-          name: label, price: formatNumber(total)
-        }))
+    if (equip) notify('info', 'SR5.ShopEquipDone', {
+      name: label, actor: actor.name
+    })
+    else if (free) notify('info', 'SR5.ShopCreationDone', {
+      name: label
+    })
+    else notify('info', 'SR5.ShopPurchaseDone', {
+      name: label, price: formatNumber(total)
+    })
     return true
   }
 
@@ -666,7 +688,8 @@ export class SR5Shop {
    * @returns {Promise<boolean>}
    */
   static async essenceAllows(actor, lines, {
-    isGM = game.user.isGM, warn = (key, data) => ui.notifications.warn(game.i18n.format(key, data)), creation: forced = false
+    isGM = game.user.isGM, warn = (key, data) => ui.notifications.warn(game.i18n.format(key, data)), creation: forced = false,
+    ask = null, answered = false
   } = {
   }) {
     const current = actor?.system?.essence?.value
@@ -694,11 +717,41 @@ export class SR5Shop {
       warn('SR5.WARN_ShopEssenceTooLow', data)
       return false
     }
+    // On a card, the gamemaster who clicked is asked on his browser, with the till stopped (shop-retry.js)
+    if (ask) {
+      if (!answered) ask({
+        kind: 'essence', ...data
+      })
+      return answered
+    }
+    return SR5Shop.confirmEssence(data)
+  }
+
+  static async confirmEssence(data) {
     return await foundry.applications.api.DialogV2.confirm({
       window: {
         title: game.i18n.localize('SR5.ShopEssenceConfirmTitle')
       },
       content: `<p>${game.i18n.format('SR5.ShopEssenceConfirmText', data)}</p>`,
+      rejectClose: false,
+    }) === true
+  }
+
+  /** How many GreyWare pieces in these lines: chosen at the till, or on the item itself at a vendor's counter. */
+  static greywareCount(lines) {
+    return lines.filter(line => (line.grade ?? line.system?.grade) === 'greyware')
+      .reduce((sum, line) => sum + Math.max(1, Number(line.quantity) || 1), 0)
+  }
+
+  /** GreyWare on an Awakened costs Magic (BTB p. 142): the buyer sees the penalty and may cancel. */
+  static async confirmGreyware(name, count) {
+    return await foundry.applications.api.DialogV2.confirm({
+      window: {
+        title: game.i18n.localize('SR5.ShopGreywareConfirmTitle')
+      },
+      content: `<p>${game.i18n.format('SR5.WARN_ShopGreywareAwakened', {
+        name, count
+      })}</p>`,
       rejectClose: false,
     }) === true
   }

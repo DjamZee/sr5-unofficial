@@ -166,6 +166,15 @@ export class SR5_SystemHelpers {
       default: false
     })
 
+    // The old Elemental Attacks and the range of them all: once per world, after the pass above
+    game.settings.register("sr5", "migrationSpiritElementalAttacks", {
+      name: "SR5.TEXT_TBD",
+      scope: "world",
+      config: false,
+      type: Boolean,
+      default: false
+    })
+
     // Developper Extra Logging Toggle
     game.settings.register("sr5", "sr5Log.active", {
       name: "SR5.SETTINGS_DevLogActive_T",
@@ -206,6 +215,16 @@ export class SR5_SystemHelpers {
         "SR6": "SR5.SETTINGS.Sr6Style",
       },
       requiresReload: true
+    })
+
+    // The trade window: the gamemaster has a say before an exchange runs (interface/trade.js). Unticked, no click of his
+    game.settings.register("sr5", "sr5TradeGMApproval", {
+      name: "SR5.SETTINGS_TradeGMApproval_T",
+      hint: "SR5.SETTINGS_TradeGMApproval_D",
+      scope: "world",
+      config: true,
+      default: false,
+      type: Boolean,
     })
 
     // SR5 p. 422 leaves the object to the GM. A table can let the thief choose it himself,

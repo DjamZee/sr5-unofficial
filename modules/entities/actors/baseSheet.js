@@ -2,6 +2,12 @@ import {
   vintageWirelessRefused
 } from '../items/weaponTraits.js'
 import {
+  SR5ItemTransfer
+} from '../../interface/item-transfer.js'
+import {
+  canLoot
+} from '../../interface/storage-rules.js'
+import {
   livingPersonaModes
 } from './technomancer-streams.js'
 import {
@@ -187,6 +193,15 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
       // The shop window, this actor already chosen as the buyer (lot B)
       openShop: function () {
         game.sr5.shop.open({
+          actor: this.actor
+        })
+      },
+      // The trade window, this actor on one side: who with is asked (interface/trade-window.js)
+      openTrade: async function () {
+        const {
+          SR5TradeWindow
+        } = await import('../../interface/trade-window.js')
+        SR5TradeWindow.start({
           actor: this.actor
         })
       },
@@ -459,6 +474,17 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
       else header?.appendChild(configBtn)
     }
 
+    // Trading: anyone with hands and pockets, whether a token is on the scene or not
+    if (this.actor?.isOwner && canLoot(this.actor)) {
+      const tradeBtn = document.createElement("button")
+      tradeBtn.type = "button"
+      tradeBtn.classList.add("header-control", "icon", "fa-solid", "fa-right-left")
+      tradeBtn.dataset.action = "openTrade"
+      tradeBtn.dataset.tooltip = game.i18n.localize("SR5.TradeOpen")
+      if (closeButton) closeButton.before(tradeBtn)
+      else header?.appendChild(tradeBtn)
+    }
+
     // Play/Edit toggle button
     if (this.isEditable) {
       const toggleBtn = document.createElement("button")
@@ -590,6 +616,14 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
     //SR5 p. 422: an object hidden on oneself is marked for whoever plays the actor (and the GM)
     if (this.actor.isOwner) this._markConcealedItems(element)
 
+    // Item dragging (to the sidebar, chat or another sheet) — core ActorSheetV2 only binds `.draggable`. From a sheet one
+    // only sees as well: taking from a body or an NPC is asked of the gamemaster (item-transfer.js)
+    element.querySelectorAll("li.item[data-item-id]").forEach(li => {
+      if (!this.actor.items.has(li.dataset.itemId)) return
+      li.setAttribute("draggable", "true")
+      li.addEventListener("dragstart", this._onDragItemStart.bind(this))
+    })
+
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return
 
@@ -715,15 +749,6 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
     })
     // Custom drag start — AppV2 does not wire DragDrop.dragSelector, so we bind manually
     on(".draggableAttribute, [data-skill], [data-matrix], [data-resonance]", "dragstart", this._onDragStart.bind(this))
-    // Owned item dragging (to the sidebar, chat or another sheet) — core ActorSheetV2 only binds `.draggable`
-    if (this.actor.isOwner) {
-      element.querySelectorAll("li.item[data-item-id]").forEach(li => {
-        if (!this.actor.items.has(li.dataset.itemId)) return
-        li.setAttribute("draggable", "true")
-        li.addEventListener("dragstart", this._onDragItemStart.bind(this))
-      })
-    }
-
     // Hide or display some information by clicking on headers allowing it
     element.querySelectorAll(".hidden").forEach(el => el.style.display = "none")
     on(".filtre-skill", "click", (event) => {
@@ -971,6 +996,11 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
     event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()))
   }
 
+  // Core keeps drops to a sheet one may edit; an object can be given to a sheet one only sees (item-transfer.js)
+  _canDragDrop() {
+    return true
+  }
+
   async _onDrop(event) {
     event.preventDefault()
     event.stopPropagation()
@@ -984,6 +1014,8 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
       return super._onDrop(event)
     }
     SR5_SystemHelpers.srLog(3, `_onDrop: dropData=`, dropData)
+    // A sheet one only sees takes an object given to it, nothing else
+    if (!this.actor.isOwner && dropData.type !== "Item") return
     const dropZone = event.target.closest('[data-dropmatrixattribute]')
 
     if (dropData.valueFromCollection){
@@ -1040,17 +1072,45 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
    * below creates the item. A move within the same sheet stays Foundry's sort.
    */
   async _onDropItem(event, item) {
+    // A sort within the sheet. From another's sheet an object moves, and whoever drops it may not own either end: the
+    // gamemaster writes (item-transfer.js). From a compendium or the sidebar, and what is no object, stays a copy
+    if (this.actor.uuid === item.parent?.uuid) return this.actor.isOwner ? super._onDropItem(event, item) : null
+    if (SR5ItemTransfer.isMove(item, event)) return SR5ItemTransfer.drop(this, item)
+    // From a sheet one only sees, nothing is copied: an object goes through the gamemaster's question above, the rest
+    // stays where it is (a spell, a quality, a line of the accounts...). The gamemaster keeps his copies
+    if (SR5ItemTransfer.foreign(item)) {
+      ui.notifications.warn(game.i18n.format("SR5.WARN_Transfer_notYours", {
+        name: item.name
+      }))
+      return null
+    }
     if (!this.actor.isOwner) return null
-    if (this.actor.uuid === item.parent?.uuid) return super._onDropItem(event, item)
     // The id is kept unless the actor already has an item with it (Foundry's own rule)
     this._dropKeepId = !this.actor.items.has(item.id)
     try {
       // A sheet that refuses an item says so and returns its notification, or nothing: the drop created no item
-      const created = await this._onDropItemCreate(item.toObject())
+      const {
+        data, emptied
+      } = SR5Credstick.copyOf(item)
+      const created = await this._onDropItemCreate(data)
+      if (emptied && created?.documentName === "Item") ui.notifications.info(game.i18n.format("SR5.INFO_CredstickCopiedEmpty", {
+        name: item.name
+      }))
       return created?.documentName === "Item" ? created : null
     } finally {
       delete this._dropKeepId
     }
+  }
+
+  // An effect of a sheet one only sees is not copied either
+  async _onDropActiveEffect(event, effect) {
+    if (!game.user.isGM && effect?.parent && !effect.parent.pack && !effect.isOwner) {
+      ui.notifications.warn(game.i18n.format("SR5.WARN_Transfer_notYours", {
+        name: effect.name
+      }))
+      return null
+    }
+    return super._onDropActiveEffect(event, effect)
   }
 
   /**
@@ -1083,10 +1143,27 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
   }
 
   /**
+   * The sheet's rules for an object arriving by a move, without creating it: the data as it would arrive, null if
+   * this sheet refuses it (the sheet says why, on this browser). The sheet need not be open.
+   * @param {object} itemData  the item's data, changed by the rules
+   */
+  async dropRules(itemData) {
+    this._dropRulesOnly = true
+    try {
+      return (await this._onDropItemCreate(itemData))?.ruled ?? null
+    } finally {
+      delete this._dropRulesOnly
+    }
+  }
+
+  /**
    * Create a dropped item, once the sheet's rules have accepted it (the end of every sheet's _onDropItemCreate).
    * @param {object} itemData  the item's data, as the sheet left it
    */
   async _onDropItemCreate(itemData) {
+    if (this._dropRulesOnly) return {
+      documentName: "Item", ruled: itemData
+    }
     return (await Item.implementation.create(itemData, {
       parent: this.actor, keepId: this._dropKeepId ?? false
     })) ?? null
@@ -1240,7 +1317,12 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
     const li = event.currentTarget.closest(".item")
     const item = this.actor.items.get(li.dataset.itemId)
     if (item.type === "itemTradition") return ui.notifications.warn(game.i18n.localize('SR5.WARN_OnlyOneTradition'))
-    let newItem = item.toObject()
+    const {
+      data: newItem, emptied
+    } = SR5Credstick.copyOf(item)
+    if (emptied) ui.notifications.info(game.i18n.format("SR5.INFO_CredstickCopiedEmpty", {
+      name: item.name
+    }))
     if (newItem.system.accessory?.length) newItem.system.accessory = []
     SR5_SystemHelpers.srLog(2, `Creating a new clone of item '${item.name}'`, item)
     return this.actor.createEmbeddedDocuments("Item", [newItem])

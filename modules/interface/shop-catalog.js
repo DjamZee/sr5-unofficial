@@ -9,6 +9,15 @@ import {
 } from '../system/drone-shelf.js'
 
 /**
+ * The reagents (Forbidden Arcana p. 181): plain gear to the compendiums, which flag them, and magic goods to a shop.
+ * Foci are all restricted (SR5 p. 465): without the reagents, a magic shelf at a legal shop holds nothing. A copy from
+ * before the flag stays on the gear shelf, where it was.
+ */
+export function isReagentEntry(entry) {
+  return entry?.type === 'itemGear' && entry.flags?.sr5?.reagent === true
+}
+
+/**
  * The shop window's catalogue: shelves, filters, creation limits and the
  * odds dot of a row. Pure functions over index entries, no DOM and no game
  * settings read here, so the tests call them as they are and the gamemaster's
@@ -24,7 +33,7 @@ export class SR5ShopCatalog {
    */
   static INDEX_FIELDS = [
     'system.category', 'system.type', 'system.price', 'system.availability', 'system.legality',
-    'system.essenceCost', 'system.grade', 'system.itemRating', 'system.deviceRating', 'flags.sr5.notForSale',
+    'system.essenceCost', 'system.grade', 'system.itemRating', 'system.deviceRating', 'flags.sr5.notForSale', 'flags.sr5.reagent',
     'system.weaponAccessory.priceMultiplier',
     // A drone mod is told by its book and page (drone-shelf.js, lot R6)
     'system.source', 'system.page',
@@ -60,7 +69,8 @@ export class SR5ShopCatalog {
       key: 'electronics', label: 'SR5.ShopShelfElectronics', icon: 'fa-laptop', types: ['itemDevice', 'itemProgram']
     },
     {
-      key: 'gear', label: 'SR5.ShopShelfGear', icon: 'fa-toolbox', types: ['itemGear']
+      key: 'gear', label: 'SR5.ShopShelfGear', icon: 'fa-toolbox', types: ['itemGear'],
+      match: entry => !isReagentEntry(entry),
     },
     {
       key: 'vehicles', label: 'SR5.ShopShelfVehicles', icon: 'fa-car', types: ['itemVehicle', 'itemVehicleMod'],
@@ -82,7 +92,8 @@ export class SR5ShopCatalog {
       key: 'drugs', label: 'SR5.ShopShelfDrugs', icon: 'fa-pills', types: ['itemDrug', 'itemToxin']
     },
     {
-      key: 'magic', label: 'SR5.ShopShelfMagic', icon: 'fa-hat-wizard', types: ['itemFocus']
+      key: 'magic', label: 'SR5.ShopShelfMagic', icon: 'fa-hat-wizard', types: ['itemFocus', 'itemGear'],
+      match: entry => entry.type === 'itemFocus' || isReagentEntry(entry),
     },
     {
       key: 'identities', label: 'SR5.ShopShelfIdentities', icon: 'fa-id-card', types: ['itemSin']
@@ -295,6 +306,16 @@ export class SR5ShopCatalog {
       essence,
       rating: SR5ShopCatalog.ratingOf(system),
     }
+  }
+
+  /**
+   * The label of that comparison, by the language's own plural: "0 dé" and "1 dé" in French, but "0 dice" and "1 die".
+   * @param {number} pool The searcher's dice
+   * @param {string} lang The language of the game
+   * @returns {string} The key of the label
+   */
+  static oddsLabelKey(pool, lang) {
+    return new Intl.PluralRules(lang).select(pool) === 'one' ? 'SR5.ShopOddsOne' : 'SR5.ShopOdds'
   }
 
   /**

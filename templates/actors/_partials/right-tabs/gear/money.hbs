@@ -27,9 +27,9 @@
 		</li>
 		{{#each actor.credsticks}}
 		<li class="item grid" data-item-id="{{_id}}">
-			<div class="col-5 deplie">{{name}}</div>
+			<div class="col-5 deplie">{{name}}{{#if (gt system.quantity 1)}} ×{{system.quantity}}{{/if}}</div>
 			<div class="col-3 SR-TextCenter">
-				{{nuyen system.funds.value}}{{#if system.funds.max}} / {{nuyen system.funds.max}}{{/if}}
+				{{nuyen system.funds.value}}{{#if system.funds.max}} / {{nuyen (credstickCapacity this)}}{{/if}}
 			</div>
 			<div class="col-4 SR-TextRight">
 				{{#if @root.owner}}
@@ -105,6 +105,7 @@
 			</div>
 			<div class="col-1 grid SR-TextRight">
 				{{#if ../owner}}
+				<span class="sr-line-grip fas fa-sm fa-grip-vertical" data-tooltip="{{localize 'SR5.LedgerLineGrip'}}"></span>
 				<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
 					<em class="fas fa-sm fa-edit item-management"></em>
 				</a>
@@ -146,6 +147,7 @@
 			</div>
 			<div class="col-1 grid SR-TextRight">
 				{{#if ../owner}}
+				<span class="sr-line-grip fas fa-sm fa-grip-vertical" data-tooltip="{{localize 'SR5.LedgerLineGrip'}}"></span>
 				<a data-helpTitle="{{localize 'SR5.HELP_ItemManagement' key=name}}" data-helpMessage="{{localize 'SR5.HELP_ItemManagementMsg'}}">
 					<em class="fas fa-sm fa-edit item-management"></em>
 				</a>

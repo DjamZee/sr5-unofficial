@@ -2,6 +2,9 @@ import {
   electronicAddedToVintage
 } from '../entities/items/weaponTraits.js'
 import {
+  ammoTypeDocumentSync
+} from '../system/ammo-types.js'
+import {
   GM_ONLY_ITEM_PATHS, stripGMOnlyChanges
 } from '../entities/items/spirit-bonds.js'
 import {
@@ -148,8 +151,12 @@ export function sr5HookPreUpdateItem(document, data, options, userId) {
     return
   }
 
-  const ammoType = fromUuidSync(newUuid)
-  if (!ammoType || ammoType.type !== 'itemAmmunitionType') return
+  const ammoType = ammoTypeDocumentSync(newUuid)
+  if (!ammoType) {
+    // Not in memory: the effects the writer sent stay as they are, and the document is read after the update
+    if (newUuid !== 'pending') options.sr5AmmoTypeToRead = newUuid
+    return
+  }
   data.system.effects = _copyAmmoTypeEffects(ammoType.system)
 
   // Auto-set the type field to a slug of the ammo type name (for weapon matching)
@@ -175,6 +182,16 @@ export async function sr5HookUpdateItem(document, data, options, userId) {
   if (document.type === "itemGear" && (data.system?.jammer || (SR5_Jammer.isJammer(document) &&
     ["deviceRating", "itemRating", "wirelessTurnedOn"].some(k => k in (data.system ?? {
     }))))) SR5_Jammer.refreshItem(document)
+
+  // A type that was not in memory at the choice (preUpdate cannot wait): read here, by the client that chose it
+  if (document.type === 'itemAmmunition' && options?.sr5AmmoTypeToRead && userId === game.user?.id) {
+    const ammoType = await fromUuid(options.sr5AmmoTypeToRead).catch(() => null)
+    if (ammoType?.type === 'itemAmmunitionType' && document.system.ammunitionTypeUuid === options.sr5AmmoTypeToRead) {
+      await document.update({
+        'system.effects': _copyAmmoTypeEffects(ammoType.system)
+      })
+    }
+  }
 
   // When an itemAmmunitionType is edited, re-sync all itemAmmunition items referencing it
   if (document.type === 'itemAmmunitionType' && data.system) {

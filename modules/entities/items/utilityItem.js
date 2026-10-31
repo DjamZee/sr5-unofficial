@@ -38,7 +38,7 @@ import {
   deathSowerAdeptDamage
 } from "./magic-masteries.js"
 import {
-  weaponRatingModifiers
+  elementalAttackRange, weaponRatingModifiers
 } from "./weapon-ratings.js"
 import {
   streamOf, streamFadingReduction, reducedFading
@@ -977,6 +977,11 @@ export class SR5_UtilityItem extends Actor {
             SR5_EntityHelpers.updateModifier(itemData.range.long, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value * 3)
             SR5_EntityHelpers.updateModifier(itemData.range.extreme, game.i18n.localize('SR5.Body'), "linkedAttribute", actor.system.attributes.body.augmented.value * 4)
           }
+        }
+        //Elemental Attack: a range increment of (Magic) metres (SR5 p. 397), the gamemaster's adjustment included
+        const elementalRange = elementalAttackRange(itemData, actor.system.specialAttributes?.magic?.augmented?.value ?? 0)
+        if (elementalRange) {
+          for (const [key, value] of Object.entries(elementalRange)) SR5_EntityHelpers.updateModifier(itemData.range[key], game.i18n.localize('SR5.Magic'), "linkedAttribute", value)
         }
       }
     } 

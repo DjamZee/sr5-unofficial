@@ -55,6 +55,14 @@ const orderCancel = async (message, senderId) => {
 }
 
 // A player asks for a new availability test after a failure (SR5 p. 420): the gamemaster checks and rolls
+// The till of a card asks whoever clicked, on their browser
+const cashQuestion = async (message, senderId) => {
+  const {
+    socketCashQuestion
+  } = await import("./interface/shop-retry.js")
+  return socketCashQuestion(message, senderId)
+}
+
 const availabilityRetry = async (message, senderId) => {
   const {
     socketRetry
@@ -113,12 +121,15 @@ export class SR5_SocketHandler {
       "grappleReverseHold": [SR5_GrappleHelpers._socketReverseHold],
       "sharedVisionSetViewer": [SR5SharedVision._socketSetViewer],
       "storageLockPick": [SR5StorageLock._socketPick],
+      //An object dropped from a sheet on another, and the trade window: the active GM reads it again and writes it
+      "itemTransfer": [async (message, senderId) => (await import("./interface/item-transfer.js")).SR5ItemTransfer._socket(message, senderId)],
       "shopVendorBuy": [vendor('_socketBuy')],
       "shopVendorNotice": [vendor('_socketNotice')],
       "shopVendorOffer": [vendor('_socketOffer')],
       "shopVendorAccept": [vendor('_socketAccept')],
       "shopVendorDecline": [vendor('_socketDecline')],
       "shopAvailabilityRetry": [availabilityRetry],
+      "shopCashQuestion": [cashQuestion],
       "shopOrderCancel": [orderCancel],
       "shopOrderLedger": [orderLedger],
       "claimChatButton": [async (message, senderId) => (await import("./rolls/roll-helpers/button-claim.js")).socketClaimChatButton(message, senderId)],

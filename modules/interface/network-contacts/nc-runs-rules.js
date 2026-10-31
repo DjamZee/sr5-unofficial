@@ -176,14 +176,32 @@ export const writeReactions = reactions => (reactions ?? [])
  * (factions-app.js): {id, factionId, actorId, reason, delta, pending, time, note}.
  */
 export function reputationLines({
-  movements = [], team = [], code = "", pending = true, time = 0, newId = () => ""
+  movements = [], team = [], code = "", pending = true, time = 0, newId = () => "", log = []
 }){
-  const out = []
+  // What this run already wrote (it was closed, reopened, closed again): only the difference goes
+  const written = new Map()
+  for (const e of log){
+    if (e.reason !== "custom" || !code || e.note !== code) continue
+    const key = `${e.factionId}|${e.actorId}`
+    written.set(key, (written.get(key) ?? 0) + (Number(e.delta) || 0))
+  }
+  const wanted = new Map()
+  for (const m of movements) if (m.factionId && m.delta) wanted.set(m.factionId, (wanted.get(m.factionId) ?? 0) + m.delta)
+  const out = [], settled = new Set()
+  const line = (factionId, actorId, delta) => ({
+    id: newId(), factionId, actorId, reason: "custom", delta, pending, time, note: code
+  })
   for (const m of movements){
     if (!m.factionId || !m.delta) continue
-    for (const actorId of team) out.push({
-      id: newId(), factionId: m.factionId, actorId, reason: "custom", delta: m.delta, pending, time, note: code
-    })
+    for (const actorId of team){
+      const key = `${m.factionId}|${actorId}`
+      if (!written.has(key)) out.push(line(m.factionId, actorId, m.delta))
+      else if (!settled.has(key)){
+        settled.add(key)
+        const rest = wanted.get(m.factionId) - written.get(key)
+        if (rest) out.push(line(m.factionId, actorId, rest))
+      }
+    }
   }
   return out
 }

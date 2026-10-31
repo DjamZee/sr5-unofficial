@@ -62,6 +62,18 @@ export function ammoTypeItems(){
   return result
 }
 
+// The real document of a type, read without waiting (an update hook cannot). fromUuidSync gives only the index entry of a
+// compendium item out of the pack's cache (system: {source}, or no system at all), never its effects: the types read at
+// load stand in for it. null: not known yet, the caller must not write effects from it
+export function ammoTypeDocumentSync(uuid){
+  if (!uuid) return null
+  const found = globalThis.fromUuidSync?.(uuid, {
+    strict: false
+  })
+  if (found instanceof globalThis.foundry.abstract.Document) return found.type === "itemAmmunitionType" ? found : null
+  return compendiumTypes.find(i => i.uuid === uuid) ?? null
+}
+
 export function findAmmoTypeBySlug(slug){
   if (!slug) return undefined
   return ammoTypeItems().find(i => ammoTypeSlug(i.name) === slug)

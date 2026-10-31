@@ -73,9 +73,10 @@ export const VENDOR_TEMPLATES = [
   t('btlDealer', 'drugs', 'Dealer-de-BTL', ['drugs', 'electronics'], [R, F], 20, 12),
   t('drugDealer', 'drugs', 'Dealer-de-Drogues', ['drugs'], [L, R, F], 10, 12),
   t('nightclubDealer', 'drugs', 'Dealer-de-nightclub', ['drugs'], [L, R], 30, 8),
-  // Magic: the shelf holds the foci, the only magic goods the compendiums sell as items
+  // Magic: the shelf holds the foci, all restricted (SR5 p. 465), and the reagents, some of them legal: a legal shop
+  // sells reagents only, which is the reagent dealer's trade and not a talismonger's
   t('alleyTalismonger', 'magic', 'Talismonger de ruelle', ['magic'], [L, R], 10, 12),
-  t('traditionalTalismonger', 'magic', 'Échoppe de talismonger traditionnelle', ['magic'], [L], 0, 8),
+  t('traditionalTalismonger', 'magic', 'Échoppe de talismonger traditionnelle', ['magic'], [L, R], 0, 8),
   t('enchanterLodge', 'magic', "Atelier d'enchantement - loge magique", ['magic'], [L, R], 20, 16),
   t('reagentDealer', 'magic', 'Marchand de réactifs et télesma', ['magic'], [L], 0, 8),
   t('formulaeShop', 'magic', 'Boutique de formules et grimoires', ['magic'], [L, R], 10, 12),

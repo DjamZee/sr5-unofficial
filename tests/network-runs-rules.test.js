@@ -235,4 +235,48 @@ describe('the board', () => {
       }], team: ["a", "b"], code: "J"
     })).toHaveLength(2)
   })
+
+  // Hermine#5127 (A2): a run without pay, closed, reopened, closed again wrote its reputation twice
+  describe("a run closed again", () => {
+    const close = (log, movements = [{
+      factionId: "f", delta: 2
+    }], team = ["a"]) => reputationLines({
+      movements, team, code: "J", pending: true, time: 1, log
+    })
+    const first = close([])
+
+    it("writes nothing more for the same movement", () => {
+      expect(first).toHaveLength(1)
+      expect(close(first)).toEqual([])
+    })
+
+    it("writes only the difference of a changed movement, and the whole of a new member's", () => {
+      expect(close(first, [{
+        factionId: "f", delta: 3
+      }]).map(l => l.delta)).toEqual([1])
+      expect(close(first, [{
+        factionId: "f", delta: 2
+      }], ["a", "b"]).map(l => [l.actorId, l.delta])).toEqual([["b", 2]])
+    })
+
+    it("does not count the lines of another run, nor a spending", () => {
+      expect(close([{
+        ...first[0], note: "K"
+      }])).toHaveLength(1)
+      expect(close([{
+        ...first[0], reason: "spend:x"
+      }])).toHaveLength(1)
+    })
+
+    it("counts a movement given twice on one faction as its sum", () => {
+      const two = [{
+        factionId: "f", delta: 2
+      }, {
+        factionId: "f", delta: 1
+      }]
+      const lines = close([], two)
+      expect(lines).toHaveLength(2)
+      expect(close(lines, two)).toEqual([])
+    })
+  })
 })

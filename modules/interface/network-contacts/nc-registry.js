@@ -8,6 +8,12 @@ import {
 import {
   updateLedger
 } from "../../system/gm-ledger.js"
+import {
+  MATRIX_HOOKS
+} from "../../system/matrix-hooks.js"
+import {
+  SR5_EntityHelpers
+} from "../../entities/helpers.js"
 
 // Network and Contacts (taken out of landing-metroplexes-sr5 1.8.0, DjamZ's request of 28/10). This file is the only
 // one loaded at start: the world settings, the registers' reads and writes (the active GM's, through gm-ledger.js),
@@ -186,6 +192,7 @@ export async function writeRun(run, {
 
 /** "Interested": the active GM writes it, the others send it to him. */
 export async function sendRunInterest(data){
+  if (!ncEnabled()) return ui.notifications.warn(L("SR5.NC_Disabled"))
   if (game.user.isActiveGM) return recordInterest(data, game.user.id)
   if (!game.users.activeGM) return ui.notifications.warn(L("SR5.NC_R_MjAbsent"))
   const {
@@ -195,7 +202,7 @@ export async function sendRunInterest(data){
 }
 
 export async function _socketRunInterest(message, senderId){
-  if (!game.user.isActiveGM) return
+  if (!game.user.isActiveGM || !ncEnabled()) return
   await recordInterest(message.data ?? {
   }, senderId)
 }
@@ -340,6 +347,7 @@ function notifyIntroductions(list){
 
 /** The active GM writes the requests; the others send them to him. */
 export async function sendIntroduction(data){
+  if (!ncEnabled()) return ui.notifications.warn(L("SR5.NC_Disabled"))
   if (game.user.isActiveGM) return handleIntroduction(data, game.user.id)
   if (!game.users.activeGM) return ui.notifications.warn(L("SR5.NC_C_PasDeMj"))
   const {
@@ -349,7 +357,7 @@ export async function sendIntroduction(data){
 }
 
 export async function _socketIntroduction(message, senderId){
-  if (!game.user.isActiveGM) return
+  if (!game.user.isActiveGM || !ncEnabled()) return
   await handleIntroduction(message.data ?? {
   }, senderId)
 }
@@ -440,7 +448,7 @@ async function report(pc, host){
 }
 
 export async function _socketAccessFound(message, senderId){
-  if (!game.user.isActiveGM) return
+  if (!game.user.isActiveGM || !ncEnabled()) return
   await recordDiscovery(message.data ?? {
   }, senderId)
 }
@@ -485,6 +493,15 @@ function dateNewClients(item, changes){
 
 const openWindow = mode => import("./nc-window.js").then(m => m.SR5NetworkContactsWindow.open(mode))
 
+// The setting off: a module that mounts a view gets the window's answer, and an empty view to unmount
+const mounted = async mount => {
+  if (ncEnabled()) return mount()
+  ui.notifications.warn(L("SR5.NC_Disabled"))
+  return {
+    redraw(){}, unmount(){}
+  }
+}
+
 /**
  * game.sr5.networkContacts, for the modules (landing-metroplexes-sr5 mounts the views in its deck pages). The views
  * are imported on first use; mountX() resolves to {redraw(), unmount()}, to be unmounted by whoever mounted it.
@@ -496,17 +513,17 @@ export function networkContactsApi(){
     },
     openNetwork: () => openWindow("network"),
     openContacts: () => openWindow("contacts"),
-    mountNetwork: async ({
+    mountNetwork: ({
       main, side
-    }) => (await import("./nc-network.js")).mountNetwork({
+    }) => mounted(async () => (await import("./nc-network.js")).mountNetwork({
       main, side
-    }),
-    mountContacts: async ({
+    })),
+    mountContacts: ({
       main, side
-    }) => (await import("./nc-contacts.js")).mountContacts({
+    }) => mounted(async () => (await import("./nc-contacts.js")).mountContacts({
       main, side
-    }),
-    mountFactions: async side => (await import("./nc-contacts.js")).mountFactions(side),
+    })),
+    mountFactions: side => mounted(async () => (await import("./nc-contacts.js")).mountFactions(side)),
     registerNetworkExtension,
     accesses: () => foundry.utils.deepClone(listAccesses()),
     writeAccess,
@@ -537,12 +554,13 @@ export function addNetworkContactsTools(controls){
 
 export function registerNetworkContactsHooks(){
   Hooks.on("getSceneControlButtons", addNetworkContactsTools)
-  // sr5.matrixActionResolved: marks won on a host. A card rolled again (Second Chance) is told again: a known access
-  // does not change
-  Hooks.on("sr5.matrixActionResolved", payload => {
-    if (!((Number(payload?.marksPlaced) || 0) > 0)) return
-    const target = isHost(payload?.target) ? payload.target : resolve(payload?.itemUuid)?.parent
-    if (isHost(target)) report(pcOf(payload.actor), target)
+  // A mark really put on a host, however it was put (the card's button, the API, a module), and not the defense that
+  // only offers it (DjamZ, 30/10). A mark added again: a known access does not change
+  Hooks.on(MATRIX_HOOKS.marksChanged, (target, ownerId, value, previous) => {
+    if (!(value > previous)) return
+    const host = isHost(target) ? target : target?.parent
+    // An unlinked token marks under its token id, as markItem reads it, whatever scene this client shows
+    if (isHost(host)) report(pcOf(SR5_EntityHelpers.getRealActorFromID(ownerId)), host)
   })
   // sr5.matrixHostChanged: entering a host needs a mark, or the gamemaster putting her there
   Hooks.on("sr5.matrixHostChanged", (actor, hostUuid, previous, reason) => {

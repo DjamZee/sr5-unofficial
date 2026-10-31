@@ -230,6 +230,13 @@ Hooks.on('renderChatInput', sr5PlaceChatJumpToBottom)
 
 Hooks.on('hotbarDrop', sr5HookHotbarDrop)
 Hooks.on('renderPlayers', sr5HookRenderPlayers)
+//The trade window (interface/trade.js): a button in the players' list, and what was left open or waiting when a page reloaded
+Hooks.on('renderPlayers', () => import('./interface/trade-window.js').then(m => m.SR5TradeWindow.decoratePlayers()))
+Hooks.on('renderChatMessageHTML', (message, html) => {
+  if (html.querySelector?.('.sr-transfer-restore')) import('./interface/item-transfer.js').then(m => m.SR5ItemTransfer.onRenderChatMessage(message, html))
+})
+Hooks.once('ready', () => import('./interface/trade.js').then(m => m.SR5Trade.ready()).catch(e => console.error("SR5 | trade", e)))
+Hooks.on('userConnected', user => import('./interface/trade.js').then(m => m.SR5Trade.onUserConnected(user)).catch(e => console.error("SR5 | trade", e)))
 Hooks.on('renderChatMessageHTML', sr5HookRenderChatMessageHTML)
 Hooks.on('chatMessage', sr5HookChatMessage)
 Hooks.on('renderFolderConfig', sr5HookRenderFolderConfig)

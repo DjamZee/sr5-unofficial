@@ -156,10 +156,14 @@ export const SETTINGS_CATALOG = {
   sr5StorageDropOnDeathShare: ["gear", "house"],
   // A backpack, a locker and a credstick for each new player character (relecture djamz.13, R8)
   sr5StarterKit: ["gear"],
+  // The trade window: the gamemaster has a say before an exchange runs
+  sr5TradeGMApproval: ["gear"],
   // Shop
   sr5ShopMarketOpen: ["shop"],
   // Network and Contacts (taken out of landing-metroplexes-sr5, 28/10): the switch, and the shops the network shows
   ncEnabled: ["interface"],
+  // Offered only when the Boss Bar module is active (bossbar-compat.js)
+  sr5BossBar: ["interface"],
   ncShopsOpen: ["shop"],
   ncRunAdvance: ["gm"],
   sr5ShopCreationLevel: ["shop"],

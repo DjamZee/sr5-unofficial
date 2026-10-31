@@ -133,7 +133,7 @@
 						{{/if}}
 					</div>
 					{{/if}}
-					{{#if (eq item.type 'itemDrug')}}
+					{{#if (or (eq item.type 'itemDrug') system.isCredstick)}}
 					{{else}}
 					{{#if (gte system.conditionMonitors.matrix.actual.value system.conditionMonitors.matrix.value)}}
 					<div class="col-6 SR-TextCenter"

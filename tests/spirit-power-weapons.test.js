@@ -1,5 +1,5 @@
 import {
-  describe, it, expect, vi, beforeEach
+  describe, it, expect, vi, beforeEach, afterEach
 } from "vitest"
 import {
   readFileSync
@@ -35,7 +35,7 @@ import {
   SR5_CompendiumUtility
 } from "../modules/entities/actors/utilityCompendium.js"
 import {
-  weaponRatingModifiers, powerAttackAction, magicPowerMigration
+  weaponRatingModifiers, powerAttackAction, magicPowerMigration, isLegacyElementalAttack, elementalAttackMigration, elementalAttackRange
 } from "../modules/entities/items/weapon-ratings.js"
 
 const {
@@ -110,7 +110,7 @@ describe("the weapon of a spirit power", () => {
       base: 0, linkedAttribute: "magic"
     })
     expect(given.system.damageType).toBe("physical")
-    expect([given.system.range.short.base, given.system.range.extreme.base]).toEqual([4, 16])
+    expect([given.system.range.short.base, given.system.range.extreme.base]).toEqual([0, 0])
   })
 
   it("fire for a spirit of fire, without asking", async () => {
@@ -290,6 +290,7 @@ describe("the action of a power's ranged attack", () => {
         }
       }
     })?.type).toBe("complex")
+    // An old Elemental Attack is Complex once the migration, or its handing over, gave it the power's key
     expect(powerAttackAction(system([["baseOwnItem", "fire"]]))).toBeNull()
     expect(powerAttackAction({
     })).toBeNull()
@@ -304,6 +305,114 @@ describe("the action of a power's ranged attack", () => {
   it("a weapon on the Physical limit shows it on the card", () => {
     const prepare = readFileSync(resolve(__dirname, "../modules/rolls/roll-prepare-case/rollData-Weapon.js"), "utf8")
     expect(prepare).toMatch(/rollData\.limit\.type = itemData\.accuracy\.isPhysicalLimitBased \? "physicalLimit" : "accuracy"/)
+  })
+})
+
+describe("a power without a weapon in the compendium (Hermine#5127)", () => {
+  const savedUi = globalThis.ui, savedUser = globalThis.game.user
+  afterEach(() => {
+    globalThis.ui = savedUi
+    globalThis.game.user = savedUser
+    SR5_CompendiumUtility._warnedPowerWeapons.clear()
+  })
+
+  it("tells the gamemaster once per power, and nobody else", () => {
+    const warn = vi.fn()
+    globalThis.ui = {
+      notifications: {
+        warn
+      }
+    }
+    globalThis.game.user = {
+      isGM: false
+    }
+    SR5_CompendiumUtility.warnPowerWithoutWeapon("elementalAttack", "Attaque élémentaire")
+    expect(warn).not.toHaveBeenCalled()
+    globalThis.game.user = {
+      isGM: true
+    }
+    SR5_CompendiumUtility.warnPowerWithoutWeapon("elementalAttack", "Attaque élémentaire")
+    SR5_CompendiumUtility.warnPowerWithoutWeapon("elementalAttack", "Attaque élémentaire")
+    expect(warn).toHaveBeenCalledTimes(1)
+    SR5_CompendiumUtility.warnPowerWithoutWeapon("corrosiveSpit", "Salive corrosive")
+    expect(warn).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("an Elemental Attack of a compendium without the power's key (Hermine#5127, A3)", () => {
+  const old = (name, base, ap, range = 0, keys = [["baseOwnItem", "fire"]]) => ({
+    name, type: "itemWeapon", system: {
+      systemEffects: effects(keys), damageElement: "fire",
+      damageValue: {
+        base
+      },
+      armorPenetration: {
+        base: ap
+      },
+      range: {
+        short: {
+          base: range
+        }, medium: {
+          base: range * 2
+        }, long: {
+          base: range * 3
+        }, extreme: {
+          base: range * 4
+        }
+      },
+    },
+  })
+  const name = "Attaque élémentaire (feu)"
+
+  it("is recognized by its name and element, not any weapon of the same element", () => {
+    expect(isLegacyElementalAttack(old(name, 8, -4))).toBe(true)
+    expect(isLegacyElementalAttack(old("Lance-flammes du MJ", 8, -4))).toBe(false)
+    expect(isLegacyElementalAttack(old(name, 0, 0, 0, [["spiritPower", "elementalAttack"]]))).toBe(false)
+  })
+
+  it("written from the Force, moves onto the Magic, its key and range included: a Complex action", () => {
+    const changes = elementalAttackMigration(old(name, 8, -4, 4), 4)
+    expect(changes).toMatchObject({
+      "system.damageValue.base": 0, "system.damageValue.magicMultiplier": 2, "system.armorPenetration.linkedAttribute": "magic",
+      "system.range.short.base": 0, "system.range.extreme.base": 0,
+    })
+    expect(powerAttackAction({
+      systemEffects: changes["system.systemEffects"]
+    })?.type).toBe("complex")
+  })
+
+  it("dropped by hand, its zeros move too; a weapon the gamemaster changed stays", () => {
+    expect(elementalAttackMigration(old(name, 0, 0), 4)).toMatchObject({
+      "system.damageValue.magicMultiplier": 2
+    })
+    expect(elementalAttackMigration(old(name, 10, -2, 4), 4)).toBeNull()
+    expect(elementalAttackMigration(old("Lance-flammes du MJ", 8, -4, 4), 4)).toBeNull()
+  })
+
+  it("an attack with the key only gives up a range written from the Force, not the gamemaster's", () => {
+    const keyed = [["spiritPower", "elementalAttack"]]
+    expect(elementalAttackMigration(old(name, 0, 0, 4, keyed), 4)).toEqual({
+      "system.range.short.base": 0, "system.range.medium.base": 0, "system.range.long.base": 0, "system.range.extreme.base": 0,
+    })
+    expect(elementalAttackMigration(old(name, 0, 0, 7, keyed), 4)).toBeNull()
+    expect(elementalAttackMigration(old(name, 0, 0, 0, keyed), 4)).toBeNull()
+  })
+
+  it("the range increment is the Magic, unless a range is written (SR5 p. 397)", () => {
+    const keyed = [["spiritPower", "elementalAttack"]]
+    expect(elementalAttackRange(old(name, 0, 0, 0, keyed).system, 3)).toEqual({
+      short: 3, medium: 6, long: 9, extreme: 12
+    })
+    expect(elementalAttackRange(old(name, 0, 0, 7, keyed).system, 3)).toBeNull()
+    expect(elementalAttackRange(old(name, 0, 0).system, 3)).toBeNull()
+  })
+
+  it("handed over by an old compendium, it gets the key and follows the Magic", async () => {
+    const [given] = await SR5_CompendiumUtility.modifyBaseSpiritWeapon([old(name, 0, 0)], 4)
+    expect(given.system.damageValue).toMatchObject({
+      base: 0, magicMultiplier: 2
+    })
+    expect(powerAttackAction(given.system)?.type).toBe("complex")
   })
 })
 

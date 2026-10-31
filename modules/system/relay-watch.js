@@ -7,6 +7,12 @@
 const pending = new Map()
 let counter = 0
 
+// A list of writes the GM's journal finishes when a GM comes back (interface/item-transfer.js): clicking again is not
+// what the player has to do, and the move may well be done
+const LOST_MESSAGES = {
+  itemTransfer: "SR5.WARN_TransferRelayLost",
+}
+
 // What the player is told the request was about
 const KINDS = {
   takeDamage: "SR5.RelayKindDamage",
@@ -36,7 +42,7 @@ export function onUserConnected(user, connected) {
     if (request.gmId !== user.id) continue
     pending.delete(relayId)
     lost++
-    ui.notifications.warn(game.i18n.format("SR5.WARN_RelayLost", {
+    ui.notifications.warn(game.i18n.format(LOST_MESSAGES[request.type] ?? "SR5.WARN_RelayLost", {
       gm: user.name ?? "", kind: game.i18n.localize(KINDS[request.type] ?? "SR5.RelayKindAction")
     }), {
       permanent: true

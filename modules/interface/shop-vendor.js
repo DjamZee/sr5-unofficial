@@ -41,6 +41,9 @@ import {
   isStoredAway
 } from './storage-rules.js'
 import {
+  SR5ShopGrades
+} from './shop-grades.js'
+import {
   isShopStorage, shopSettings, stockOf, itemFigures, figureMismatches, piecesOf, counterSystem, fitsRestock, restockPicks, splitTakings,
   checkStockLines
 } from './shop-vendor-rules.js'
@@ -878,7 +881,7 @@ export class SR5ShopVendor {
       type: (line.item ?? line.source).type, name: line.name, system: (line.item ?? line.source).system,
       grade: line.grade ?? null, quantity: line.quantity,
     })), {
-      isGM: byGM, warn: warnRequester
+      isGM: byGM, warn: warnRequester, ask: request.ask, answered: request.answers?.essence === true
     }))) return false
     const total = resolved.reduce((sum, line) => sum + line.total + (line.extra ?? 0), 0)
 
@@ -910,7 +913,24 @@ export class SR5ShopVendor {
         })
         return false
       }
+      // Bought from the window, the buyer confirmed before the request left; a card's till asks whoever clicked (shop-retry.js)
+      if (verdict.warning && request.ask && request.answers?.funds !== true) {
+        request.ask({
+          kind: 'funds', warning: verdict.warning
+        })
+        return false
+      }
       fundsFlags = verdict.flags
+    }
+    // GreyWare on an Awakened costs Magic (BTB p. 142): a card's till asks whoever clicked; the window asked before the request left
+    const greyware = SR5Shop.greywareCount(resolved.map(line => ({
+      grade: line.grade, system: (line.item ?? line.source).system, quantity: line.quantity
+    })))
+    if (greyware && SR5ShopGrades.isAwakened(buyer) && request.ask && request.answers?.greyware !== true) {
+      request.ask({
+        kind: 'greyware', name: buyer.name, count: greyware
+      })
+      return false
     }
     const cashbox = SR5ShopVendor.cashboxOf(actor, storage)
     if (!free && !cashbox) {
@@ -957,6 +977,9 @@ export class SR5ShopVendor {
         return false
       }
     }
+
+    // Nothing more to ask: the money moves from here on (cashCard keeps a card from being paid twice)
+    await request.beforePay?.()
 
     // The goods leave the counter first, then reach the buyer
     const toDelete = [], toUpdate = [], payload = [], orders = []
@@ -1494,6 +1517,16 @@ export class SR5ShopVendor {
         })
         return null
       }
+      // Loaded since the offer: refused as at the offer (R1), and the gamemaster who reviews it hears why as well
+      if (SR5Credstick.is(item) && SR5Credstick.funds(item) > 0) {
+        SR5ShopVendor.#notify(requester, 'warn', 'SR5.WARN_ShopVendorLoadedStick', {
+          name: item.name
+        })
+        if (requester.id !== game.user.id) ui.notifications.warn(game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
+          name: item.name
+        }))
+        return null
+      }
       const corrected = units?.[index]
       const unit = Number.isFinite(corrected) && corrected >= 0 ? Math.floor(corrected) : line.unit
       lines.push({
@@ -1829,6 +1862,8 @@ export class SR5ShopVendorSource {
         flags: {
           sr5: {
             notForSale: item.flags?.sr5?.notForSale === true,
+            // What puts a reagent on the magic shelf (isReagentEntry)
+            reagent: item.flags?.sr5?.reagent === true,
             nameVO: SR5ShopCatalog.nameVO(item)
           }
         },

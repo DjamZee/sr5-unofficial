@@ -57,6 +57,32 @@ const COMPLEX_RANGED_POWERS = ["elementalAttack", "corrosiveSpit", "noxiousBreat
 const powerKeys = itemData => Object.values(itemData?.systemEffects ?? {
 }).filter(e => e?.category === "spiritPower").map(e => e.value)
 
+const RANGE_STEPS = [["short", 1], ["medium", 2], ["long", 3], ["extreme", 4]]
+
+/**
+ * An Elemental Attack from a compendium older than the power's key (Mégapack up to 2.0.27, sr5-compendiums): recognized
+ * by its name and its element, as it carries no key of a power. A weapon of the gamemaster's bears another name.
+ * @param {object} item The weapon's data
+ * @returns {boolean}
+ */
+export function isLegacyElementalAttack(item) {
+  return item?.type === "itemWeapon" && !powerKeys(item.system).length && !!item.system?.damageElement &&
+    /^(attaque élémentaire|elemental attack)/i.test(item.name ?? "")
+}
+
+/**
+ * The range increment of an Elemental Attack, (Magic) metres (SR5 p. 397). A range written on the weapon by the
+ * gamemaster stays.
+ * @param {object} itemData The weapon's system data
+ * @param {number} magic The bearer's Magic
+ * @returns {object|null} The four ranges, or null when the weapon does not follow the Magic
+ */
+export function elementalAttackRange(itemData, magic) {
+  if (!powerKeys(itemData).includes("elementalAttack")) return null
+  if (RANGE_STEPS.some(([key]) => itemData.range?.[key]?.base)) return null
+  return Object.fromEntries(RANGE_STEPS.map(([key, step]) => [key, magic * step]))
+}
+
 /**
  * The action of a ranged attack made with a creature power, or null for any other weapon.
  * @param {object} itemData The weapon's system data
@@ -85,4 +111,39 @@ export function magicPowerMigration(item, force) {
     "system.damageValue.base": 0, "system.damageValue.magicMultiplier": 2,
     "system.armorPenetration.base": 0, "system.armorPenetration.linkedAttribute": "magic",
   }
+}
+
+/**
+ * The second pass over a spirit's weapons: an old Elemental Attack, its values untouched (written from the Force, or the
+ * zeros of a weapon dropped by hand), follows the Magic and gets the power's key, so a Complex action; a range written
+ * from the Force gives way to the Magic. What the gamemaster changed is left alone.
+ * @param {object} item The weapon's data
+ * @param {number} force The spirit's Force
+ * @returns {object|null} The changes to apply, or null
+ */
+export function elementalAttackMigration(item, force) {
+  const system = item?.system
+  if (item?.type !== "itemWeapon" || !system || !force) return null
+  const legacy = isLegacyElementalAttack(item)
+  if (!legacy && !powerKeys(system).includes("elementalAttack")) return null
+  const changes = {
+  }
+  const bases = RANGE_STEPS.map(([key]) => system.range?.[key]?.base)
+  if (RANGE_STEPS.every(([, step], i) => bases[i] === force * step)) {
+    for (const [key] of RANGE_STEPS) changes[`system.range.${key}.base`] = 0
+  }
+  if (legacy) {
+    const dv = system.damageValue?.base, ap = system.armorPenetration?.base
+    const written = (dv === force * 2 && ap === -force) || (!dv && !ap)
+    if (!written || system.damageValue?.magicMultiplier) return null
+    Object.assign(changes, {
+      "system.damageValue.base": 0, "system.damageValue.magicMultiplier": 2,
+      "system.armorPenetration.base": 0, "system.armorPenetration.linkedAttribute": "magic",
+      "system.systemEffects": [...Object.values(system.systemEffects ?? {
+      }), {
+        category: "spiritPower", value: "elementalAttack"
+      }],
+    })
+  }
+  return Object.keys(changes).length ? changes : null
 }

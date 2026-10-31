@@ -35,6 +35,12 @@ import {
   registerRetryLedger
 } from "../interface/shop-retry.js"
 import {
+  SR5ItemTransfer
+} from "../interface/item-transfer.js"
+import {
+  SR5Trade
+} from "../interface/trade.js"
+import {
   registerAegisLedger
 } from "../system/aegis.js"
 import {
@@ -407,6 +413,9 @@ export async function sr5HookInit() {
   registerOrderLedger()
   //A new availability test after a failure (SR5 p. 420): the GM's ledger of failed cards
   registerRetryLedger()
+  //The transfers between sheets and the trade window: the active GM's journal, the offers, "Le MJ valide les échanges"
+  SR5ItemTransfer.register()
+  SR5Trade.register()
   //Aegis (Kill Code p. 112): the shield boxes, kept by the active GM
   registerAegisLedger()
   //The information broker (Cutting Aces p. 148-149): the requests, kept by the active GM

@@ -17,6 +17,9 @@ import {
   formatNumber, formatNuyen
 } from "./helpers/number-format.js"
 import {
+  SR5Credstick
+} from "./interface/credstick.js"
+import {
   drugTakesDoseInCrash
 } from "./entities/items/drug-damage.js"
 import {
@@ -106,6 +109,9 @@ export const registerHandlebarsHelpers = function () {
   Handlebars.registerHelper("missing", function () {
     return !reduceOp(arguments, (a, b) => a && b)
   })
+
+  // The most a credstick or a pile of them can hold
+  Handlebars.registerHelper("credstickCapacity", item => SR5Credstick.capacity(item))
 
   // Display amount of nuyens, as the game's language writes them (« 1 000 ¥ » / « 1,000 ¥ »)
   Handlebars.registerHelper("nuyen", function (amount) {

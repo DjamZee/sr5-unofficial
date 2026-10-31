@@ -119,7 +119,8 @@ export function sameButQuantity(a, b) {
  * units taken, merged into an identical pile of his (same type and name, not
  * put away, and the same data but for the quantity) when he has one
  * (arbitrage de DjamZ, 2026-10-05). A namesake that differs (a credstick
- * holding another balance) stays a separate object.
+ * holding another balance) stays a separate object, and so does a loaded
+ * credstick: merging would add its tubes without its balance.
  * @param {Object} item - the object taken
  * @param {Number|null} asked - the quantity the GM chose, null for the default
  * @param {Array} receiverItems - what the receiver holds
@@ -129,10 +130,25 @@ export function splitPile(item, asked, receiverItems = []) {
   const size = pileSize(item)
   const wanted = Math.floor(Number(asked))
   const quantity = Math.min(size, Math.max(1, Number.isFinite(wanted) && asked !== null && asked !== "" ? wanted : defaultTakeQuantity(item)))
-  const mergeInto = Array.from(receiverItems).find(i => i !== item && i.type === item.type && i.name === item.name &&
+  const loaded = item?.system?.isCredstick && Number(item.system.funds?.value) > 0
+  const mergeInto = loaded ? null : Array.from(receiverItems).find(i => i !== item && i.type === item.type && i.name === item.name &&
     !i.system?.storedIn && i.system?.quantity !== undefined && sameButQuantity(i, item)) ?? null
   return {
     quantity, leftOnGiver: size - quantity, mergeInto
+  }
+}
+
+/**
+ * The balance of a pile of credsticks, shared when some of its tubes leave: `quantity` tubes take their share,
+ * rounded down, the pile keeps the rest. No nuyen is made or lost, and neither side goes over its capacity.
+ * @returns {{taken: number, left: number}|null} null for anything but a credstick
+ */
+export function splitFunds(item, quantity) {
+  if (!item?.system?.isCredstick) return null
+  const funds = Number(item.system.funds?.value) || 0
+  const taken = Math.floor(funds * quantity / pileSize(item))
+  return {
+    taken, left: funds - taken
   }
 }
 

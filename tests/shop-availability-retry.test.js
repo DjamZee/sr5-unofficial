@@ -11,6 +11,12 @@ import {
 // SR5 p. 420: "En cas d'échec, il est possible de réessayer après avoir attendu le double du délai de
 // recherche indiqué dans la table." The wait, the outcome and the test are the gamemaster's, never the card's.
 const retry = () => import("../modules/interface/shop-retry.js")
+// The whole system behind the socket takes seconds to load, more than a test's delay under load (npm run check)
+vi.mock("../modules/socket.js", () => ({
+  SR5_SocketHandler: {
+    emitForPlayer: vi.fn(), emitForGM: vi.fn()
+  }
+}))
 const HOUR = 3600
 
 let settings, testLines
@@ -68,6 +74,9 @@ beforeEach(() => {
       get: (s, k) => settings[k], set: async (s, k, v) => {
         settings[k] = v
       }
+    },
+    socket: {
+      emit: vi.fn()
     },
     time: {
       worldTime: 0
@@ -269,7 +278,7 @@ describe("a new availability test after a failure (SR5 p. 420)", () => {
 })
 
 describe("a card the GM rolled is cashed once, by the GM", () => {
-  it("two requests at the same time: one checkout, the card marked cashed before it", async () => {
+  it("two requests at the same time: one checkout, then the card marked cashed", async () => {
     const {
       cashCard, RETRY_LEDGER
     } = await retry()
@@ -278,7 +287,7 @@ describe("a card the GM rolled is cashed once, by the GM", () => {
     } = await import("../modules/interface/shop.js")
     const seen = []
     const checkout = vi.spyOn(SR5Shop, "checkout").mockImplementation(async () => {
-      seen.push(settings[RETRY_LEDGER]?.msg1?.cashed)
+      seen.push(settings[RETRY_LEDGER]?.msg1?.cashed ?? false)
       return true
     })
     game._card = card([{
@@ -294,7 +303,8 @@ describe("a card the GM rolled is cashed once, by the GM", () => {
       messageId: "msg1"
     }, "pl")).toBe(false)
     expect(checkout).toHaveBeenCalledTimes(1)
-    expect(seen).toEqual([true])
+    expect(seen).toEqual([false])
+    expect(settings[RETRY_LEDGER].msg1.cashed).toBe(true)
     expect(checkout).toHaveBeenCalledWith(buyer, [expect.objectContaining({
       uuid: "Item.gun"
     })], expect.objectContaining({

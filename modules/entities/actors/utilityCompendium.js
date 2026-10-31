@@ -1,5 +1,5 @@
 import {
-  followMagic
+  followMagic, isLegacyElementalAttack
 } from "../items/weapon-ratings.js"
 import {
   SR5_SystemHelpers 
@@ -29,6 +29,7 @@ export class SR5_CompendiumUtility extends Actor {
   static _warnedEmptyBaseItems = new Set()
 
   static _warnedMissingCompendiums = new Set()
+  static _warnedPowerWeapons = new Set()
   static _compendiumCache = new Map()
   static _compendiumChoices = {
   }
@@ -325,6 +326,16 @@ export class SR5_CompendiumUtility extends Actor {
     })
   }
 
+  /** Tell the game master, once per power, that the compendium has no weapon for it. */
+  static warnPowerWithoutWeapon(key, power) {
+    if (!game.user?.isGM) return
+    if (SR5_CompendiumUtility._warnedPowerWeapons.has(key)) return
+    SR5_CompendiumUtility._warnedPowerWeapons.add(key)
+    ui.notifications.warn(game.i18n.format("SR5.WARN_PowerWithoutWeapon", {
+      power
+    }))
+  }
+
   /** Tell the game master, once per actor sub type, that nothing was found. */
   static warnEmptyBaseItems(actorType, actorSubType) {
     if (!game.user?.isGM) return
@@ -390,14 +401,14 @@ export class SR5_CompendiumUtility extends Actor {
 
   // The weapons whose values the book gives from the spirit's ratings. Elemental Attack: DV (Magic x 2)P, AP -(Magic),
   // range increment (Magic) (SR5 p. 397), read on the Magic at every preparation (weapon-ratings.js), the gamemaster's
-  // adjustment included; the range is written from the Force. Engulf, DV (Magic x 2), AP -(Magic) (SR5 p. 399), and
+  // adjustment included. Engulf, DV (Magic x 2), AP -(Magic) (SR5 p. 399), and
   // Corrosive Spit, DV (Magic x 2)P, AP -(Magic) (SR5 p. 402), the same. Natural Weapon of a spirit of beasts: DV
   // (Force)P, AP - (SR5 p. 307)
   static SHAPED_WEAPONS = {
-    elementalAttack: (system, force) => {
+    elementalAttack: system => {
       followMagic(system)
       system.damageType = "physical"
-      for (const [key, step] of [["short", 1], ["medium", 2], ["long", 3], ["extreme", 4]]) system.range[key].base = force * step
+      for (const key of ["short", "medium", "long", "extreme"]) system.range[key].base = 0
     },
     engulfAir: followMagic,
     engulfWater: followMagic,
@@ -427,7 +438,7 @@ export class SR5_CompendiumUtility extends Actor {
   static async powerWeapons(items, {
     force, spiritType, chooseElement = SR5_CompendiumUtility.chooseElement
   }) {
-    const held = new Set(items.filter(i => i.type === "itemWeapon").flatMap(i => SR5_CompendiumUtility.spiritPowerKeys(i)))
+    const held = new Set(items.filter(i => i.type === "itemWeapon").flatMap(i => isLegacyElementalAttack(i) ? ["elementalAttack"] : SR5_CompendiumUtility.spiritPowerKeys(i)))
     const wanted = [...new Set(items.filter(i => i.type === "itemPower").flatMap(i => SR5_CompendiumUtility.spiritPowerKeys(i)))]
       .filter(k => SR5_CompendiumUtility.POWER_WEAPON_KEYS.includes(k) && !held.has(k))
     if (!wanted.length) return []
@@ -435,6 +446,8 @@ export class SR5_CompendiumUtility extends Actor {
     const given = []
     for (const key of wanted) {
       let found = weapons.filter(w => SR5_CompendiumUtility.spiritPowerKeys(w).includes(key))
+      // A compendium older than the powers' keys (Mégapack up to 2.0.27): the power stays, without its weapon
+      if (!found.length) SR5_CompendiumUtility.warnPowerWithoutWeapon(key, items.find(i => i.type === "itemPower" && SR5_CompendiumUtility.spiritPowerKeys(i).includes(key))?.name ?? key)
       if (key === "elementalAttack" && found.length) {
         const elements = [...new Set(found.map(w => w.system.damageElement).filter(Boolean))]
         const baseType = SR5_SpiritTypes.baseType(spiritType) || spiritType
@@ -468,6 +481,11 @@ export class SR5_CompendiumUtility extends Actor {
   //Modify weapons based on Force for Spirit; the bare hands keep a damage that follows the spirit's Strength
   static async modifyBaseSpiritWeapon(baseItems, force) {
     for (let i of baseItems) {
+      //An Elemental Attack of an old compendium gets its key: it is then the weapon of the power in everything
+      if (isLegacyElementalAttack(i)) i.system.systemEffects = [...Object.values(i.system.systemEffects ?? {
+      }), {
+        category: "spiritPower", value: "elementalAttack"
+      }]
       const shaped = i.type === "itemWeapon" && SR5_CompendiumUtility.spiritPowerKeys(i).find(k => k in SR5_CompendiumUtility.SHAPED_WEAPONS)
       if (shaped) SR5_CompendiumUtility.SHAPED_WEAPONS[shaped](i.system, Number(force) || 0)
       else if (i.type === "itemWeapon" && !i.system.damageValue?.isStrengthBased) {

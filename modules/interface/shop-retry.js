@@ -32,6 +32,9 @@ import {
   updateLedger
 } from '../system/gm-ledger.js'
 import {
+  confirmFundsWarning
+} from '../system/house-rule-hooks.js'
+import {
   isActiveGM as isWriter
 } from "../system/card-helpers.js"
 
@@ -409,39 +412,130 @@ export async function rollRetry({
 /* -------------------------------------------- */
 
 /** The checkout button of a card written by the gamemaster: the gamemaster cashes it. */
-export async function requestCash(message, express) {
+export async function requestCash(message, express, answers) {
+  if (!game.user.isGM && !game.users.activeGM) {
+    ui.notifications.warn(game.i18n.localize('SR5.WARN_NoActiveGM'))
+    return false
+  }
   const payload = {
-    cash: true, messageId: message.id, express: !!express
+    cash: true, messageId: message.id, express: !!express, answers
   }
   if (isWriter()) return cashCard(payload, game.user.id)
   await toActiveGM(payload)
   return false
 }
 
+/**
+ * What the till asks before it takes the money (a module's warning on the funds, GreyWare on an Awakened, Essence to
+ * 0 for a gamemaster) is asked of whoever clicked, on their browser. The till has stopped by then and holds nothing: a
+ * yes is a new request, with the answer in it, and a no, or nobody answering, leaves the card as it was.
+ */
+async function answerCashQuestion(card, {
+  express, answers, question
+}) {
+  const {
+    SR5Shop
+  } = await import('./shop.js')
+  const asks = {
+    funds: () => confirmFundsWarning(question.warning),
+    greyware: () => SR5Shop.confirmGreyware(question.name, question.count),
+    essence: () => SR5Shop.confirmEssence(question),
+    resume: () => foundry.applications.api.DialogV2.confirm({
+      window: {
+        title: game.i18n.localize('SR5.ShopCashResumeTitle')
+      },
+      content: `<p>${game.i18n.format('SR5.ShopCashResumeText', {
+        name: question.name
+      })}</p>`,
+      rejectClose: false,
+    }),
+  }
+  const agreed = await asks[question.kind]?.()
+  if (agreed !== true) return false
+  return requestCash(card, express, {
+    ...answers, [question.kind]: true
+  })
+}
+
+/** The gamemaster's browser asks this one the question of the till. */
+export async function socketCashQuestion(message, senderId) {
+  if (!game.users.get(senderId)?.isGM) return
+  const data = message?.data ?? {
+  }
+  const card = game.messages.get(data.messageId)
+  if (card && data.question) await answerCashQuestion(card, data)
+}
+
+async function askWhoClicked(senderId, data) {
+  if (senderId === game.user.id) return answerCashQuestion(game.messages.get(data.messageId), data)
+  const {
+    SR5_SocketHandler
+  } = await import('../socket.js')
+  return SR5_SocketHandler.emitForPlayer('shopCashQuestion', data, senderId)
+}
+
 // Two clicks reach the gamemaster before the ledger is written: the first one holds the card
 const cashing = new Set()
 
 export async function cashCard({
-  messageId, express
+  messageId, express, answers
 }, senderId) {
-  if (!isWriter() || cashing.has(messageId)) return false
+  if (!isWriter()) return false
+  // The gamemaster is reading a question of the till (a vendor's approval): whoever clicks hears it
+  if (cashing.has(messageId)) {
+    if (senderId === game.user.id) ui.notifications.warn(game.i18n.localize('SR5.ShopCashBusy'))
+    else {
+      const {
+        SR5_SocketHandler
+      } = await import('../socket.js')
+      await SR5_SocketHandler.emitForPlayer('shopVendorNotice', {
+        level: 'warn', key: 'SR5.ShopCashBusy'
+      }, senderId)
+    }
+    return false
+  }
   cashing.add(messageId)
+  let question = null
+  const ask = asked => {
+    question = asked
+  }
   try {
     const requester = game.users.get(senderId)
     const message = game.messages.get(messageId)
     const data = message?.flags?.sr5shop
-    const buyer = data ? game.actors.get(data.buyerId) : null
-    if (!requester || !message?.author?.isGM || !buyer || !(requester.isGM || buyer.testUserPermission(requester, 'OWNER'))) return false
-    const entry = retryLedger()[messageId] ?? cardEntry(data, game.time.worldTime)
+    if (!requester || !message?.author?.isGM || !data) return false
+    const buyer = game.actors.get(data.buyerId)
+    if (!buyer) {
+      await refuse(requester.id, 'SR5.WARN_ShopCardBuyerGone', {
+        name: data.buyerName ?? '?'
+      })
+      return false
+    }
+    if (!requester.isGM && !buyer.testUserPermission(requester, 'OWNER')) {
+      await refuse(requester.id, 'SR5.WARN_ShopNotOwner')
+      return false
+    }
+    const {
+      paying, ...entry
+    } = retryLedger()[messageId] ?? cardEntry(data, game.time.worldTime)
     if (entry.cashed) {
       await refuse(requester.id, 'SR5.ShopAlreadyCashed')
       return false
     }
-    // Written before any money moves: a second request finds the card cashed
-    await writeLedger(messageId, {
-      ...entry, cashed: true
+    // A till cut off while the money was moving (the gamemaster's page reloaded): only someone who can look decides
+    if (paying && answers?.resume !== true) {
+      if (requester.isGM) ask({
+        kind: 'resume', name: buyer.name
+      })
+      else await refuse(requester.id, 'SR5.ShopCashInterrupted')
+      return false
+    }
+    // Written once every question is answered, just before any money moves, and "cashed" only when the sale is done:
+    // a page reloaded on a question leaves the card as it was; one reloaded on the sale is not paid again unasked
+    const beforePay = () => writeLedger(messageId, {
+      ...entry, paying: true
     })
-    // Its own checkout still reads the card it just marked cashed; any other request no longer does (R2)
+    // Its own checkout reads the card; any other request no longer does (R2)
     const cashToken = openCashing(messageId)
     // What was obtained is the ledger's, frozen when the card appeared; the card only lends its names
     const names = new Map(data.results.map(r => [r.uuid, r.name]))
@@ -455,22 +549,30 @@ export async function cashCard({
       } = await import('./shop-vendor.js')
       bought = await SR5ShopVendor.sell({
         vendorUuid: data.vendor.uuid, storageId: data.vendor.storageId, buyerId: buyer.id, lines, express: !!express, messageId, cashToken,
+        answers, ask, beforePay,
       }, senderId)
     } else {
       const {
         SR5Shop
       } = await import('./shop.js')
       bought = await SR5Shop.checkout(buyer, lines, {
-        express: !!express, messageId, userId: senderId, cashToken
+        express: !!express, messageId, userId: senderId, cashToken, answers, ask, beforePay
       })
     }
     if (!bought) {
-      // Nothing was sold (no money, a line gone): the card may be cashed again
+      // Nothing was sold (no money, a line gone): the card may be cashed again. A till resumed after a cut stays
+      // interrupted: the first one may have taken the money, and only a gamemaster may run it again
       await writeLedger(messageId, {
-        ...entry, cashed: false
+        ...entry, cashed: false, ...(paying ? {
+          paying: true
+        } : {
+        })
       })
       return false
     }
+    await writeLedger(messageId, {
+      ...entry, cashed: true
+    })
     await message.update({
       content: message.content.replace(
         /<footer class="sr-shop-card-footer">[\s\S]*?<\/footer>/,
@@ -481,5 +583,9 @@ export async function cashCard({
   } finally {
     cashing.delete(messageId)
     closeCashing(messageId)
+    // Once the card is released: an unanswered question holds nothing
+    if (question) void askWhoClicked(senderId, {
+      messageId, express, answers, question
+    })
   }
 }

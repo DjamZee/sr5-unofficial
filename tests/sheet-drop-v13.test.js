@@ -1,5 +1,5 @@
 import {
-  describe, it, expect, vi, beforeEach
+  describe, it, expect, vi, beforeEach, afterEach
 } from 'vitest'
 
 // The V13 migration lost the sheets' drop rules: ActorSheetV2._onDropItem creates a dropped item itself and never
@@ -137,6 +137,46 @@ describe('the base sheet', () => {
     })
     expect(foundryDrops).toHaveLength(1)
     expect(created).toEqual([])
+  })
+
+  describe('from a sheet one only sees', () => {
+    const seen = type => ({
+      ...dropped(type), parent: {
+        uuid: 'Actor.b', isOwner: false
+      }
+    })
+    const as = isGM => {
+      globalThis.game.user = {
+        isGM
+      }
+      globalThis.game.i18n.format = key => key
+    }
+    afterEach(() => {
+      delete globalThis.game.user
+    })
+
+    for (const type of ['itemSpell', 'itemQuality', 'itemProgram', 'itemSin', 'itemEffect', 'itemNuyen']) {
+      it(`a player gets no copy of a ${type}, nor creates anything`, async () => {
+        as(false)
+        expect(await drop(sheetOf(SR5ActorSheet), seen(type))).toBeNull()
+        expect(created).toEqual([])
+        expect(warn).toHaveBeenCalledWith('SR5.WARN_Transfer_notYours')
+      })
+    }
+
+    it('the gamemaster keeps his copies', async () => {
+      as(true)
+      expect((await drop(sheetOf(SR5ActorSheet), seen('itemSpell')))?.type).toBe('itemSpell')
+    })
+
+    it('from her own sheet, what is no object stays a copy', async () => {
+      as(false)
+      expect((await drop(sheetOf(SR5ActorSheet), {
+        ...dropped('itemSpell'), parent: {
+          uuid: 'Actor.b', isOwner: true
+        }
+      }))?.type).toBe('itemSpell')
+    })
   })
 })
 

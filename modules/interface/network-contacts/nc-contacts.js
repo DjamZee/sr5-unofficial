@@ -563,12 +563,10 @@ async function call(c){
   await commcode().directory?.add?.(pc, {
     name: c.name, commcode: code
   })
+  // The gamemaster answers: a refusal warns by itself, a call shows in the device's window
   await commcode().call({
     deviceUuid: device.uuid, to: code, text
   })
-  ui.notifications.info(L("C_AppelParti", {
-    nom: c.name
-  }))
   commcode().openDevice?.(device.uuid)
 }
 

@@ -270,7 +270,9 @@ describe('settings registered by the system', () => {
 
   it('lists in the catalog only settings that are registered and visible', () => {
     for (const key of Object.keys(SETTINGS_CATALOG)) {
-      expect(registered.settings.get(`sr5.${key}`)?.config, key).toBe(true)
+      // The Boss Bar's is shown at "ready", when its module is active (bossbar-compat.js)
+      if (key === 'sr5BossBar') expect(registered.settings.has(`sr5.${key}`)).toBe(true)
+      else expect(registered.settings.get(`sr5.${key}`)?.config, key).toBe(true)
     }
     for (const key of Object.keys(MENU_CATALOG)) expect(registered.menus.has(`sr5.${key}`), key).toBe(true)
   })

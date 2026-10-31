@@ -1,5 +1,5 @@
 import {
-  describe, it, expect, vi, afterEach
+  describe, it, expect, vi, beforeEach, afterEach
 } from 'vitest'
 import {
   SR5ShopWindow
@@ -23,7 +23,21 @@ describe('the Pay button of a vendor', () => {
     }],
   })
 
-  afterEach(() => vi.restoreAllMocks())
+  beforeEach(() => {
+    vi.stubGlobal('game', {
+      actors: {
+        get: () => null
+      }
+    })
+    vi.stubGlobal('fromUuid', async () => ({
+      system: {
+      }
+    }))
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
   it('sends the cart to the till once, however many clicks reach it before the answer', async () => {
     let answer
@@ -39,6 +53,7 @@ describe('the Pay button of a vendor', () => {
     const second = checkout.call(window, {
     }, button)
     expect(button.disabled).toBe(true)
+    await vi.waitFor(() => expect(answer).toBeDefined())
     answer(true)
     await Promise.all([first, second])
     expect(purchase).toHaveBeenCalledOnce()

@@ -618,11 +618,12 @@ async function closeRun(r, d){
       code: r.code, etape: L("R_Etape_balance")
     }))
   }
-  // 1. The system's factions registry (the reputation is never counted twice: the news item carries none)
+  // 1. The system's factions registry. A run closed again writes only what its earlier closure did not: the log keeps
+  // its code on each line, and the news item carries no reputation
   const registry = game.sr5?.factionRegistry
   const lines = reputationLines({
     movements: d.movements, team: d.team, code: r.code, pending: d.pending,
-    time: game.time.worldTime, newId: () => foundry.utils.randomID(),
+    time: game.time.worldTime, newId: () => foundry.utils.randomID(), log: registry?.data?.log ?? [],
   })
   if (lines.length){
     if (!registry?.update) return ui.notifications.error(L("R_RegistreAbsent"))
