@@ -1,4 +1,7 @@
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   SR5ShopAvailability
 } from './shop-availability.js'
 import {
@@ -16,6 +19,9 @@ import {
 import {
   formatNumber
 } from '../helpers/number-format.js'
+import {
+  SR5ItemTransfer
+} from './item-transfer.js'
 
 /**
  * Fencing gear, SR5 p. 421 (Fourguer du matériel).
@@ -412,9 +418,15 @@ export class SR5ShopFence {
    * Cash a sale card: claim it, hand the goods over, then close the card.
    * @returns {Promise<boolean>} whether anything was sold
    */
-  static async cash(message, actor) {
+  static async cash(message, actor, requesterId = null) {
+    if (SR5ShopFence.isCashed(message)) return false
+    // Before the claim, nothing awaited between: a stick loaded since the card was written leaves everything as it
+    // is, the money on the stick, the goods on the sheet, the card still to cash once the stick is empty
+    const blocking = SR5ShopFence.loadedLine(actor, message.flags.sr5fence)
+    if (blocking) return SR5ShopFence.#refuseLoaded(message, blocking, requesterId)
     if (!await SR5ShopFence.claim(message)) return false
-    const loaded = SR5ShopFence.#loadedLine(actor, message.flags.sr5fence)
+    // Loaded while the claim was on its way: handOver leaves that stick on the sheet and does not pay for it
+    const loaded = SR5ShopFence.loadedLine(actor, message.flags.sr5fence)
     const sold = await SR5ShopFence.handOver(actor, message.flags.sr5fence)
     const said = sold ? game.i18n.localize('SR5.ShopSaleDone') : loaded ? '' : game.i18n.localize('SR5.ShopSaleGone')
     const refusal = loaded ? foundry.utils.escapeHTML(game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
@@ -428,10 +440,26 @@ export class SR5ShopFence {
     return sold
   }
 
-  /** A credstick of the card loaded since it was written: it does not leave the sheet (handOver). */
-  static #loadedLine(actor, data) {
-    return (data?.results ?? []).map(line => actor.items.get(line.itemId))
+  /** A credstick the card pays for, loaded since it was written: it does not leave the sheet (handOver). */
+  static loadedLine(actor, data) {
+    return (data?.results ?? []).filter(line => line.total).map(line => actor.items.get(line.itemId))
       .find(item => SR5Credstick.is(item) && SR5Credstick.funds(item) > 0) ?? null
+  }
+
+  /** A card that stays to cash: whoever clicked is told, and its foot says why beside the button. */
+  static async #refuseLoaded(message, stick, requesterId) {
+    await SR5ItemTransfer.notify(requesterId ?? game.user.id, 'warn', 'SR5.WARN_ShopVendorLoadedStick', {
+      name: stick.name
+    })
+    const note = `<span class="sr-shop-card-note sr-shop-fence-kept">${foundry.utils.escapeHTML(game.i18n.format('SR5.ShopSaleKept', {
+      name: stick.name
+    }))}</span>`
+    const content = message.content.replace(/<span class="sr-shop-card-note sr-shop-fence-kept">[\s\S]*?<\/span>/, '')
+      .replace('</footer>', `${note}</footer>`)
+    if (content !== message.content) await message.update({
+      content
+    })
+    return false
   }
 
   /**
@@ -489,7 +517,7 @@ export class SR5ShopFence {
     if (!message || !actor || !requester) return
     if (message.flags?.sr5fence?.buyerId !== actor.id) return
     if (!actor.testUserPermission(requester, 'OWNER')) return
-    await SR5ShopFence.cash(message, actor)
+    await SR5ShopFence.cash(message, actor, requester.id)
   }
 
   /**
@@ -515,6 +543,8 @@ export class SR5ShopFence {
         }
         el.disabled = true
         await SR5ShopFence.requestCash(message, actor)
+        // Refused for a loaded stick: the card has not changed the second time, nothing would draw the button again
+        if (!SR5ShopFence.isCashed(message) && SR5ShopFence.loadedLine(actor, data)) el.disabled = false
       })
     })
   }
@@ -566,7 +596,7 @@ export class SR5ShopFence {
 
     const sold = lines.filter(line => handed.has(line.itemId))
     if (!sold.length) {
-      const loaded = SR5ShopFence.#loadedLine(actor, data)
+      const loaded = SR5ShopFence.loadedLine(actor, data)
       ui.notifications.warn(loaded ? game.i18n.format('SR5.WARN_ShopVendorLoadedStick', {
         name: loaded.name
       }) : game.i18n.localize('SR5.WARN_ShopSaleGone'))
@@ -589,7 +619,7 @@ export class SR5ShopFence {
       system: {
         amount: total,
         type: 'gain',
-        date: new Date().toISOString().slice(0, 10),
+        date: gameDate(),
         description: game.i18n.format('SR5.ShopSaleDescription', {
           name: sold.map(line => SR5Shop.lineLabel(line.name, line.quantity)).join(', '),
           price: formatNumber(total),

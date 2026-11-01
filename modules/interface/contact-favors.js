@@ -8,6 +8,9 @@ import {
 import {
   addPending
 } from "../system/social-pending.js"
+import {
+  gameDate
+} from "../system/calendar.js"
 
 const L = (key, data) => data ? game.i18n.format(key, data) : game.i18n.localize(key)
 
@@ -45,7 +48,7 @@ async function write(item, chips, entry, extra = {
   await item.update({
     "system.favors.chips": chips,
     "system.favors.log": pushLog(f.log, {
-      ...entry, delta, after: chips, user: game.user.name, time: game.time?.worldTime ?? 0, date: new Date().toISOString().slice(0, 10)
+      ...entry, delta, after: chips, user: game.user.name, time: game.time?.worldTime ?? 0, date: gameDate()
     }),
     ...extra,
   })

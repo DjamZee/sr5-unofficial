@@ -10,6 +10,9 @@
 // character the way the sheet itself holds it.
 
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   sr5StackPayload, sr5LineLabel
 } from "./item-payload.js"
 import {
@@ -219,7 +222,7 @@ export async function sr5HandOverNuyen(message, actors, shown) {
   if (!await sr5ClaimPayout(message, "nuyen")) return
 
   const shares = sr5SplitNuyen(amount, actors.length)
-  const date = new Date().toISOString().slice(0, 10)
+  const date = gameDate()
   const from = message.getFlag("sr5", "tableName") ?? ""
   const name = game.i18n.format("SR5.TableNuyenEntry", {
     name: from

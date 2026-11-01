@@ -1,4 +1,7 @@
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   SR5
 } from '../config.js'
 import {
@@ -362,6 +365,9 @@ export class SR5ShopVendor {
   static async bannerFiles() {
     const folder = SR5ShopVendor.bannerFolder
     if (!folder) return []
+    // Browsing is a right of its own, off for a player by default: no call the server would refuse, the banner is
+    // then read under its usual name (vendorBanner)
+    if (!game.user?.can('FILES_BROWSE')) return []
     SR5ShopVendor._bannerCache ??= new Map()
     if (!SR5ShopVendor._bannerCache.has(folder)) {
       const picker = foundry.applications.apps.FilePicker.implementation
@@ -1129,7 +1135,7 @@ export class SR5ShopVendor {
       type: 'itemNuyen',
       img: 'systems/sr5/assets/img/items/itemNuyen.svg',
       system: {
-        amount, type, date: new Date().toISOString().slice(0, 10), description,
+        amount, type, date: gameDate(), description,
       },
     }
   }

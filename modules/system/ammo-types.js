@@ -10,6 +10,30 @@ export function ammoTypeSlug(name){
 let compendiumTypes = []
 let loading = null
 
+// The names of the built-in types in every language of the system: a pack keeps its one language (the Mégapack's copies
+// read "Normales" for an English client too), so the client's own would let them through as custom types
+async function builtInTypeNames(){
+  const SR5 = globalThis.CONFIG?.SR5 ?? {
+  }
+  const keys = Object.values({
+    ...SR5.allAmmunitionTypes, ...SR5.grenadeTypes
+  })
+  const names = new Set(keys.map(key => globalThis.game.i18n.localize(key).toLowerCase()))
+  for (const {
+    path
+  } of globalThis.game?.system?.languages ?? []){
+    try {
+      const file = path.startsWith("systems/") ? path : `systems/sr5/${path}`
+      const strings = await (await fetch(globalThis.foundry.utils.getRoute(file))).json()
+      for (const key of keys) if (typeof strings[key] === "string") names.add(strings[key].toLowerCase())
+    } catch (e) {
+      //That language's copies may then show as custom types, nothing worse
+      console.warn(`SR5 | Ammunition names of ${path} not read`, e)
+    }
+  }
+  return names
+}
+
 export async function loadCompendiumAmmoTypes(){
   if (loading) return loading
   loading = (async () => {
@@ -29,11 +53,7 @@ export async function loadCompendiumAmmoTypes(){
     }
     //The Mégapack, the Lite and sr5-compendiums also hold a copy of each type built in the system ("Normales", "APDS"):
     //the menus offer it already under that name, so only the types the system lacks (Argent, HaDeS…) are kept
-    const SR5 = globalThis.CONFIG?.SR5 ?? {
-    }
-    const builtIn = new Set(Object.values({
-      ...SR5.allAmmunitionTypes, ...SR5.grenadeTypes
-    }).map(key => globalThis.game.i18n.localize(key).toLowerCase()))
+    const builtIn = await builtInTypeNames()
     compendiumTypes = found.filter(item => !builtIn.has(String(item.name).toLowerCase()))
   })()
   try {

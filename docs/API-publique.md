@@ -42,6 +42,7 @@ Filled once, in the `init` hook (`modules/hooks/init.js`, `game.sr5 = {…}`). U
 | `game.sr5.compendiumBrowser` | interface/compendium-browser.js | `open(initialType = null)`: the compendium browser. | anyone | compendium-browser tests |
 | `game.sr5.shop` | interface/shop-window.js | `open({actor, source, shelf, sub, creation})`: the world's shop window. | anyone (the shop's own rights) | shop tests |
 | `game.sr5.primaryLifestyle` | system/lifestyle-primary.js | `(actor) → item or null`: the main lifestyle (SR5 p. 97): the one marked, or the only one; `null` when several and none marked, or no actor. | anyone | lifestyle-primary.test.js |
+| `game.sr5.gameDate` | system/calendar.js | `() → "2075-04-01"`: the date of the game for a ledger line (`itemNuyen`, `itemKarma`), the clock's; `""` when a calendar module gives no such date. | anyone | calendar-clock.test.js |
 | `game.sr5.creationOverLimitItems` | system/creation-actor.js | `(actor) → [{id, name, reason, value, limit}]`: items bought past the creation limits where the table allows it. | anyone | shop-creation-over-limit.test.js |
 | `game.sr5.dealership` | interface/dealership-window.js | `open({actor, vehicle})`: build and buy a vehicle or a drone. | anyone | — |
 | `game.sr5.factions` | interface/factions-app.js | `open()`: the factions window (Cutting Aces p. 156-160). | anyone (GM writes) | factions tests |

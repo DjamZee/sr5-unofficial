@@ -2,8 +2,83 @@ import {
   describe, it, expect
 } from "vitest"
 import {
-  acceptRefusal, accountRefusal, bothAccepted, changed, cleanQuantity, cleanSum, fundsMismatch, newTrade, tradeCardHtml, offerLine
+  acceptRefusal, accountRefusal, bothAccepted, changed, cleanQuantity, cleanSum, fundsMismatch, newTrade, partnerEntries, partyName, tradeCardHtml, offerLine
 } from "../modules/interface/trade-rules.js"
+
+describe("who the list \"With\" proposes", () => {
+  const actor = (id, name) => ({
+    id, name, uuid: `Actor.${id}`
+  })
+  const unlinked = (base, tokenId, name = base.name) => ({
+    actorId: base.id, actorLink: false, name, actor: {
+      id: base.id, name: base.name, uuid: `Scene.s.Token.${tokenId}.Actor.${base.id}`
+    }
+  })
+  const list = p => partnerEntries({
+    characters: [], tokens: [], actors: [], canTrade: () => true, ...p
+  })
+  const guard = actor("g", "Garde"), wren = actor("w", "Wren")
+
+  it("gives an unlinked token once: its body, not also the actor it was made from", () => {
+    const token = unlinked(guard, "t1")
+    expect(list({
+      tokens: [token], actors: [guard]
+    })).toEqual([{
+      uuid: token.actor.uuid, name: "Garde"
+    }])
+  })
+
+  it("keeps the base actor when no token shown stands for it", () => {
+    expect(list({
+      actors: [guard]
+    })).toEqual([{
+      uuid: "Actor.g", name: "Garde"
+    }])
+  })
+
+  it("tells apart two bodies of one name", () => {
+    expect(list({
+      tokens: [unlinked(guard, "t1"), unlinked(guard, "t2")], actors: [guard]
+    }).map(e => e.name)).toEqual(["Garde (1)", "Garde (2)"])
+  })
+
+  it("keeps a player's character itself, even with an unlinked token", () => {
+    expect(list({
+      characters: [wren], tokens: [unlinked(wren, "t1")], actors: [wren]
+    })).toEqual([{
+      uuid: "Actor.w", name: "Wren"
+    }])
+  })
+
+  it("does not fall back on the base actor when its only token is the one trading", () => {
+    const token = unlinked(guard, "t1")
+    expect(list({
+      tokens: [token], actors: [guard], exclude: token.actor
+    })).toEqual([])
+  })
+
+  it("does not reveal the base actor of a token hidden from this browser", () => {
+    expect(list({
+      tokens: [unlinked(guard, "t1")], actors: [guard], canSee: () => false
+    })).toEqual([])
+  })
+
+  it("keeps the number on the window, and nothing else a client would write", () => {
+    expect(partyName("Garde", "Garde (2)")).toBe("Garde (2)")
+    expect(partyName("Garde", undefined)).toBe("Garde")
+    expect(partyName("Garde", "Autre (2)")).toBe("Garde")
+    expect(partyName("Garde", "Garde (2) le voleur")).toBe("Garde")
+  })
+
+  it("leaves out the one trading, and what cannot trade", () => {
+    expect(list({
+      characters: [wren], actors: [wren, guard], exclude: wren, canTrade: a => a.id !== "nope"
+    }).map(e => e.uuid)).toEqual(["Actor.g"])
+    expect(list({
+      actors: [guard], canTrade: () => false
+    })).toEqual([])
+  })
+})
 
 const trade = () => newTrade({
   id: "t", now: 1, a: {

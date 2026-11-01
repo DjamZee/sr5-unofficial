@@ -6,13 +6,13 @@ import {
   SR5Trade
 } from "./trade.js"
 import {
-  SIDES
+  SIDES, partnerEntries
 } from "./trade-rules.js"
 import {
   canLoot
 } from "./storage-rules.js"
 import {
-  bundleFunds, bundleOf, isPhysical
+  bundleFunds, bundleOf, tradeRefusal
 } from "./item-transfer-rules.js"
 import {
   escape
@@ -160,7 +160,9 @@ export class SR5TradeWindow extends foundry.applications.api.HandlebarsApplicati
         actor: trade[side].name
       }))
     }
-    if (!isPhysical(item)) return ui.notifications.warn(game.i18n.format("SR5.WARN_Transfer_notAnObject", {
+    // Before the question on the money it holds: an object that cannot be offered asks nothing
+    const refusal = tradeRefusal(item, item.parent.items)
+    if (refusal) return ui.notifications.warn(game.i18n.format(`SR5.WARN_Transfer_${refusal}`, {
       name: item.name
     }))
     const funds = bundleFunds(bundleOf(item, item.parent.items))
@@ -225,17 +227,12 @@ export class SR5TradeWindow extends foundry.applications.api.HandlebarsApplicati
 
   /** Everyone this browser may trade with: the characters of the players, what it can see, what stands on the scene. */
   static partners(exclude) {
-    const found = new Map()
-    const add = (actor, label) => {
-      if (!actor || !canLoot(actor) || actor.uuid === exclude?.uuid || found.has(actor.uuid)) return
-      found.set(actor.uuid, {
-        uuid: actor.uuid, name: label ?? actor.name
-      })
-    }
-    for (const user of game.users) add(user.character)
-    for (const token of canvas?.scene?.tokens ?? []) if (game.user.isGM || !token.hidden) add(token.actor, token.name)
-    for (const actor of game.actors) if (actor.visible) add(actor)
-    return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
+    return partnerEntries({
+      characters: game.users.map(user => user.character),
+      tokens: [...(canvas?.scene?.tokens ?? [])],
+      actors: game.actors.filter(actor => actor.visible),
+      canTrade: canLoot, canSee: token => game.user.isGM || !token.hidden, exclude,
+    })
   }
 
   /** What this browser plays: to answer "who gives" when the players' list opens the window. */
@@ -278,11 +275,22 @@ export class SR5TradeWindow extends foundry.applications.api.HandlebarsApplicati
         })
       },
       rejectClose: false,
+      // "As" and "With" on one form: whoever is chosen as oneself leaves the other list
+      render: (event, dialog) => {
+        const asWho = dialog.element.querySelector("[name=mine]"), withWho = dialog.element.querySelector("[name=other]")
+        if (!asWho || !withWho) return
+        const sync = () => {
+          for (const option of withWho.options) option.hidden = option.disabled = option.value === asWho.value
+          if (withWho.selectedOptions[0]?.disabled) withWho.value = [...withWho.options].find(option => !option.disabled)?.value ?? ""
+        }
+        asWho.addEventListener("change", sync)
+        sync()
+      },
     })
     if (!chosen) return
     const giver = actor ?? fromUuidSync(chosen.mine)
     const partner = other ?? fromUuidSync(chosen.other)
-    if (giver && partner) return SR5Trade.open(giver, partner)
+    if (giver && partner && giver.uuid !== partner.uuid) return SR5Trade.open(giver, partner, partners.find(p => p.uuid === partner.uuid)?.name)
   }
 
   /** The players' list: a button beside each other player, whose character is the partner; beside oneself, the question. */

@@ -717,8 +717,11 @@ export class SR5Item extends Item {
         break
       case "itemKarma":
       case "itemNuyen": {
-        const locateDate = new Date(itemData.date).toLocaleDateString(game.i18n.localize(`SR5.LocateDate`))
-        tags.push(game.i18n.localize("SR5.Date") + game.i18n.localize(`SR5.Colons`) + ` ${locateDate}`)
+        //A line with no date (a calendar module's, a line written without one): no "Invalid Date"
+        const locateDate = itemData.date ? new Date(itemData.date) : null
+        if (locateDate && !Number.isNaN(locateDate.getTime())) {
+          tags.push(game.i18n.localize("SR5.Date") + game.i18n.localize(`SR5.Colons`) + ` ${locateDate.toLocaleDateString(game.i18n.localize(`SR5.LocateDate`))}`)
+        }
         itemData.gameEffect = enrichedDescription
         break
       }

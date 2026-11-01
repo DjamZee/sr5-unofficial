@@ -8,6 +8,9 @@
 // Selling works the other way: the character offers one of her files, the gamemaster bids, she accepts, the
 // gamemaster's browser credits her. Whether the data are sound stays in the register, for the gamemaster only.
 import {
+  gameDate
+} from "../system/calendar.js"
+import {
   updateLedger
 } from "../system/gm-ledger.js"
 import {
@@ -70,7 +73,7 @@ function transaction(type, amount, name){
     type: "itemNuyen",
     img: "systems/sr5/assets/img/items/itemNuyen.svg",
     system: {
-      amount, type, date: new Date().toISOString().slice(0, 10), description: ""
+      amount, type, date: gameDate(), description: ""
     },
   }
 }
@@ -141,7 +144,7 @@ async function gmRegister(data, {
     id, ...clean, fileLabel, status: clean.kind === "sell" ? "offered" : "asked",
     actorUuid, actorName: actor.name, vendorUuid: vendorUuid ?? "", vendorName: vendor?.name ?? "", userId,
     price: clean.kind === "sell" ? 0 : startingQuote(infoType(clean.type)), reliability: "sound", content: "", gmNote: "",
-    time: game.time?.worldTime ?? 0, date: new Date().toISOString().slice(0, 10),
+    time: game.time?.worldTime ?? 0, date: gameDate(),
   }))
   ui.notifications.info(L(clean.kind === "sell" ? "SR5.INFOBROKER_GmNewSale" : "SR5.INFOBROKER_GmNewRequest", {
     actor: actor.name, type: typeLabel(clean.type)
@@ -188,7 +191,7 @@ async function gmDeliver(entry){
     system: {
       content: entry.content || `<p>${foundry.utils.escapeHTML(L("SR5.INFOBROKER_NoContent"))}</p>`,
       description: `<p>${foundry.utils.escapeHTML(L("SR5.INFOBROKER_FileFrom", {
-        vendor: entry.vendorName || L("SR5.INFOBROKER_Title"), date: entry.date
+        vendor: entry.vendorName || L("SR5.INFOBROKER_Title"), date: entry.date || "?"
       }))}</p>`,
     },
     flags: {

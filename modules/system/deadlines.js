@@ -2,7 +2,7 @@
 // the months of rent paid in advance (SR5 p. 377). When the clock passes one, the GM gets one card listing them,
 // with the action to take as a button. Nothing is rolled or debited without that click.
 import {
-  calendarStartYear, addCalendarMonths
+  calendarStartYear, addCalendarMonths, gameDate
 } from "./calendar.js"
 import {
   SR5_SystemHelpers
@@ -312,8 +312,7 @@ async function payRent(row){
   const item = actor?.items.get(row.dataset.itemId)
   if (!item) return false
   const price = Number(item.system.price?.value) || 0
-  const c = game.time.components
-  const date = `${String(c.year).padStart(4, "0")}-${String(c.month + 1).padStart(2, "0")}-${String(c.dayOfMonth + 1).padStart(2, "0")}`
+  const date = gameDate()
   await actor.createEmbeddedDocuments("Item", [{
     name: game.i18n.format("SR5.CALENDAR_RentTransaction", {
       name: item.name

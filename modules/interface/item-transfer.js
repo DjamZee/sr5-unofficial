@@ -8,6 +8,9 @@
  * nothing moves twice (item-transfer-rules.js). A write refused halfway undoes the list.
  */
 import {
+  gameDate
+} from "../system/calendar.js"
+import {
   bundleFunds, bundleOf, bundleRefusal, hasMark, isPhysical, LEDGER_TYPES, movesRatherThanCopies, orderSteps, strandLineKey, planObject, runSteps, withMark
 } from "./item-transfer-rules.js"
 import {
@@ -332,7 +335,7 @@ export class SR5ItemTransfer {
             _id: item.lineId, name: game.i18n.localize("SR5.TransferRestoredLine"), type: "itemNuyen",
             img: "systems/sr5/assets/img/items/itemNuyen.svg",
             system: {
-              amount: item.amount, type: "gain", date: new Date().toISOString().slice(0, 10),
+              amount: item.amount, type: "gain", date: gameDate(),
             },
           })
         }

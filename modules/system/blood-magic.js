@@ -20,6 +20,9 @@ import {
 import {
   SR5
 } from "../config.js"
+import {
+  gameDate
+} from "./calendar.js"
 
 export const BLOOD_FLAG = "bloodMagic"
 
@@ -191,7 +194,7 @@ export async function cannibalize(actor){
   await actor.createEmbeddedDocuments("Item", [effect])
   if (result.karma) await actor.createEmbeddedDocuments("Item", [{
     name: game.i18n.localize("SR5.MetamagicCannibalize"), type: "itemKarma", system: {
-      type: "loss", amount: raised
+      type: "loss", amount: raised, date: gameDate()
     }
   }])
   await ChatMessage.create({

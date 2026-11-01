@@ -1,4 +1,7 @@
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   SR5_EntityHelpers
 } from '../entities/helpers.js'
 import {
@@ -202,7 +205,7 @@ export class SR5Credstick {
       system: {
         amount,
         type,
-        date: new Date().toISOString().slice(0, 10),
+        date: gameDate(),
       },
     }
   }

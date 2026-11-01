@@ -20,7 +20,7 @@ import {
   registerIndirectEffectSetting
 } from "../system/indirect-effects.js"
 import {
-  registerCalendarSettings
+  registerCalendarSettings, gameDate
 } from "../system/calendar.js"
 import {
   registerCalendarClockSettings
@@ -470,6 +470,8 @@ export async function sr5HookInit() {
     shop: SR5ShopWindow,
     // The main lifestyle of an actor, the one the starting nuyen are rolled for (SR5 p. 97): read by the Concepteur
     primaryLifestyle: actor => primaryLifestyle(actor?.items),
+    // The date of the game on a ledger line, the clock's: read by the Concepteur's lines
+    gameDate: () => gameDate(),
     // The items bought past the creation limits where the table allows it: read by the Concepteur's summary (C3)
     creationOverLimitItems,
     // The dealership (lot R9): build a vehicle or a drone and buy it

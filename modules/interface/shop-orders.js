@@ -10,6 +10,9 @@
  * gamemaster confirms, as with a buy-back.
  */
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   updateLedger
 } from '../system/gm-ledger.js'
 import {
@@ -213,7 +216,7 @@ function transaction(type, amount, name, description = '') {
     type: 'itemNuyen',
     img: 'systems/sr5/assets/img/items/itemNuyen.svg',
     system: {
-      amount, type, date: new Date().toISOString().slice(0, 10), description,
+      amount, type, date: gameDate(), description,
     },
   }
 }

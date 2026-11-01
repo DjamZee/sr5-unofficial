@@ -76,8 +76,10 @@ export function bundleRefusal(item, items = []) {
 /** Why this object cannot be offered in a trade, or null: what a bag holds has to show on the offer. */
 export function tradeRefusal(item, items = []) {
   if (!isPhysical(item)) return "notAnObject"
-  if (item.type === "itemStorage" && Array.from(items).some(i => i.system?.storedIn === item.id)) return "bagNotEmpty"
-  return transferRefusal(item)
+  // What stops the object itself comes first: a counter emptied on request would only meet this refusal then
+  const own = transferRefusal(item)
+  if (own) return own
+  return item.type === "itemStorage" && Array.from(items).some(i => i.system?.storedIn === item.id) ? "bagNotEmpty" : null
 }
 
 const asList = value => Array.isArray(value) ? value : Object.values(value ?? {

@@ -5,7 +5,7 @@ import {
   formatClock, parseDateTimeInput, dateTimeInputValue, CLOCK_STEPS, createClockAdvancer
 } from "../modules/interface/calendar-clock.js"
 import {
-  worldTimeToComponents
+  worldTimeToComponents, gameDate
 } from "../modules/system/calendar.js"
 
 const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
@@ -56,5 +56,27 @@ describe("Sixth World clock", () => {
   it("fills \"go to\" with the current date, and reads it back unchanged", () => {
     const c = worldTimeToComponents(123456789, 2070)
     expect(parseDateTimeInput(dateTimeInputValue(c), 2070)).toBe(123456789)
+  })
+
+  // DjamZ, 01/11: a run's payment carries the date of the game, in the format of the sheet's date field
+  it("gives the date of the clock for a date field, and none when the calendar gives no such date", () => {
+    expect(gameDate(worldTimeToComponents(7847014, 2070))).toBe("2070-04-01")
+    expect(gameDate(worldTimeToComponents(0, 2081))).toBe("2081-01-01")
+    expect(gameDate(null)).toBe("")
+    expect(gameDate({
+      year: 2081, month: 12, dayOfMonth: 3
+    })).toBe("")
+    expect(gameDate({
+      year: 2081, dayOfMonth: 3
+    })).toBe("")
+    // Without an argument: the clock of the game
+    globalThis.game = {
+      time: {
+        components: worldTimeToComponents(86400, 2075)
+      }
+    }
+    expect(gameDate()).toBe("2075-01-02")
+    delete globalThis.game
+    expect(gameDate()).toBe("")
   })
 })

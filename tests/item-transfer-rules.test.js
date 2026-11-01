@@ -188,6 +188,23 @@ describe("what moves", () => {
     })).toBe("notAnObject")
   })
 
+  it("says a stocked counter or garage does not move, not that it should be emptied first", () => {
+    for (const type of ["shop", "garage"]) {
+      const fixture = {
+        id: "f", type: "itemStorage", system: {
+          type
+        }
+      }
+      const held = {
+        id: "k", type: "itemGear", system: {
+          storedIn: "f"
+        }
+      }
+      expect(tradeRefusal(fixture, [fixture, held])).toBe("fixture")
+      expect(tradeRefusal(fixture, [fixture])).toBe("fixture")
+    }
+  })
+
   it("takes along what a host carries and what a bag holds", () => {
     const scope = {
       id: "s", type: "itemGear", system: {

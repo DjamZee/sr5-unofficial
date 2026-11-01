@@ -1,5 +1,5 @@
 import {
-  describe, it, expect
+  describe, it, expect, vi, beforeEach, afterEach
 } from 'vitest'
 import {
   SR5Credstick
@@ -7,6 +7,9 @@ import {
 import {
   SR5ShopFence
 } from '../modules/interface/shop-fence.js'
+import {
+  SR5ItemTransfer
+} from '../modules/interface/item-transfer.js'
 import {
   splitFunds, splitPile
 } from '../modules/rolls/roll-helpers/pickpocket-rules.js'
@@ -158,35 +161,159 @@ describe('a fence and a loaded credstick', () => {
     })
     expect(actor.paid).toEqual([])
   })
-  it('its card then says why, not that the object is gone', async () => {
-    const stick = {
-      id: 'stick', ...pile(2, 300)
+  describe('its card stays to cash (Prune#3390: it was consumed, the money and the stick left on the sheet)', () => {
+    const card = () => {
+      const message = {
+        id: `card${Math.random()}`,
+        content: '<footer class="sr-shop-card-footer"><button></button></footer>',
+        flags: {
+          sr5fence: {
+            buyerId: 'sellerId', results: [line]
+          }
+        },
+        getFlag: (scope, key) => message.flags[scope]?.[key],
+        update: vi.fn(async changes => {
+          for (const [key, value] of Object.entries(changes)) {
+            if (key === 'content') message.content = value
+            else foundry.utils.setProperty(message, key, value)
+          }
+        }),
+      }
+      return message
     }
-    const actor = seller(stick)
-    const message = {
-      content: '<footer class="sr-shop-card-footer"><button></button></footer>',
-      flags: {
-        sr5fence: {
-          buyerId: 'sellerId', results: [line]
+    const saved = {
+    }
+    beforeEach(() => {
+      foundry.utils.escapeHTML ??= text => text
+      saved.user = game.user
+      game.user = {
+        id: 'gm'
+      }
+      saved.notify = vi.spyOn(SR5ItemTransfer, 'notify').mockResolvedValue()
+    })
+    afterEach(() => {
+      game.user = saved.user
+      vi.restoreAllMocks()
+    })
+
+    it('the sale waits, the button stays, the foot says why, whoever clicked is told', async () => {
+      const actor = seller({
+        id: 'stick', ...pile(2, 300)
+      })
+      const message = card()
+      expect(await SR5ShopFence.cash(message, actor, 'player')).toBe(false)
+      expect(SR5ShopFence.isCashed(message)).toBe(false)
+      expect(message.flags.sr5?.fenceCashed).toBeUndefined()
+      expect(message.content).toContain('<button></button>')
+      expect(message.content).toContain('SR5.ShopSaleKept')
+      expect(saved.notify).toHaveBeenCalledWith('player', 'warn', 'SR5.WARN_ShopVendorLoadedStick', {
+        name: 'Créditube (Standard)'
+      })
+      expect(actor.items.get('stick').system).toMatchObject({
+        quantity: 2, funds: {
+          value: 300
         }
-      },
-      getFlag: (scope, key) => message.flags[scope]?.[key],
-      update: async changes => {
-        Object.assign(message, changes)
-      },
-    }
-    foundry.utils.escapeHTML ??= text => text
-    const user = game.user
-    game.user = {
-      id: 'gm'
-    }
-    try {
-      expect(await SR5ShopFence.cash(message, actor)).toBe(false)
-    } finally {
-      game.user = user
-    }
-    expect(message.content).toContain('SR5.WARN_ShopVendorLoadedStick')
-    expect(message.content).not.toContain('SR5.ShopSaleGone')
+      })
+      expect(actor.paid).toEqual([])
+    })
+
+    it('a second click refused writes nothing more on the card', async () => {
+      const actor = seller({
+        id: 'stick', ...pile(2, 300)
+      })
+      const message = card()
+      await Promise.all([SR5ShopFence.cash(message, actor), SR5ShopFence.cash(message, actor)])
+      await SR5ShopFence.cash(message, actor)
+      expect(message.content.match(/SR5\.ShopSaleKept/g)).toHaveLength(1)
+      expect(actor.paid).toEqual([])
+    })
+
+    it('the stick emptied, the card pays once and closes', async () => {
+      const stick = {
+        id: 'stick', ...pile(2, 300)
+      }
+      const actor = seller(stick)
+      const message = card()
+      await SR5ShopFence.cash(message, actor)
+      stick.system.funds.value = 0
+      await Promise.all([SR5ShopFence.cash(message, actor), SR5ShopFence.cash(message, actor)])
+      expect(actor.paid).toEqual([10])
+      expect(actor.items.get('stick').system.quantity).toBe(1)
+      expect(SR5ShopFence.isCashed(message)).toBe(true)
+      expect(message.content).not.toContain('SR5.ShopSaleKept')
+      expect(message.content).not.toContain('<button')
+    })
+
+    it('a player asks the gamemaster: the refusal goes to that player, not to the gamemaster', async () => {
+      const actor = {
+        ...seller({
+          id: 'stick', ...pile(2, 300)
+        }), id: 'sellerId', testUserPermission: () => true
+      }
+      const message = card()
+      game.user.isGM = true
+      const saves = {
+        messages: game.messages, actors: game.actors, users: game.users
+      }
+      game.messages = new Map([[message.id, message]])
+      game.actors = new Map([['sellerId', actor]])
+      game.users = new Map([['player', {
+        id: 'player'
+      }]])
+      try {
+        await SR5ShopFence.socketCash({
+          data: {
+            messageId: message.id, actorId: 'sellerId'
+          }
+        }, 'player')
+      } finally {
+        Object.assign(game, saves)
+      }
+      expect(saved.notify.mock.calls[0][0]).toBe('player')
+      expect(message.flags.sr5?.fenceCashed).toBeUndefined()
+    })
+
+    it('the button comes back after a refusal, stays off once cashed', async () => {
+      const stick = {
+        id: 'stick', ...pile(2, 300)
+      }
+      const actor = {
+        ...seller(stick), isOwner: true
+      }
+      const message = card()
+      const button = {
+        disabled: false, listeners: [], addEventListener(_type, fn) {
+          this.listeners.push(fn)
+        }
+      }
+      const saves = {
+        actors: game.actors, users: game.users
+      }
+      game.actors = {
+        get: () => actor
+      }
+      game.users = {
+        activeGM: {
+          isSelf: true
+        }
+      }
+      try {
+        SR5ShopFence.chatListeners({
+          querySelectorAll: () => [button]
+        }, message)
+        const click = () => button.listeners[0]({
+          preventDefault: () => {}
+        })
+        await click()
+        expect(button.disabled).toBe(false)
+        stick.system.funds.value = 0
+        await click()
+        expect(button.disabled).toBe(true)
+        expect(actor.paid).toEqual([10])
+      } finally {
+        Object.assign(game, saves)
+      }
+    })
   })
   it('an empty stick is sold like any object', async () => {
     const stick = {

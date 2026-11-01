@@ -121,7 +121,7 @@ import {
   sr5HookDeleteActiveEffect, sr5HookCreateActiveEffect 
 } from './hooks/active-effect.js'
 import {
-  sr5HookCanvasReady, sr5HookCanvasReadyAreaEffects, sr5HookCanvasReadyVisionRanges, sr5HookDrawMeasuredTemplate, sr5HookDeleteMeasuredTemplate, sr5HookUpdateMeasuredTemplate, sr5HookCreateMeasuredTemplate, sr5HookUpdateScene 
+  sr5HookCanvasReady, sr5HookCanvasReadyAreaEffects, sr5HookCanvasReadyVisionRanges, sr5HookDrawMeasuredTemplate, sr5HookDeleteMeasuredTemplate, sr5HookUpdateMeasuredTemplate, sr5HookCreateMeasuredTemplate, sr5HookUpdateScene, sr5HookUpdateSceneLeavingCanvas, sr5HookDeleteScene 
 } from './hooks/canvas.js'
 import {
   sr5HookRenderCompendium, sr5HookRenderCompendiumDirectory, sr5HookCompendiumDocumentChanged
@@ -133,8 +133,11 @@ import {
   localizeSystemMegapackLabels
 } from './system/megapack.js'
 import {
-  renderSceneIndicators, sr5HookUpdateSceneIndicators
+  renderSceneIndicators, sr5HookUpdateSceneIndicators, sr5HookTokenSceneIndicators, sr5HookUserSceneIndicators
 } from './interface/scene-indicators.js'
+import {
+  noteSceneLeavingCanvas
+} from './system/scene-noise.js'
 import {
   sr5HookExpireManaShifts
 } from './system/mana-shift.js'
@@ -331,8 +334,15 @@ Hooks.on('drawMeasuredTemplate', sr5HookDrawMeasuredTemplate)
 Hooks.on('deleteMeasuredTemplate', sr5HookDeleteMeasuredTemplate)
 Hooks.on('createMeasuredTemplate', sr5HookCreateMeasuredTemplate)
 Hooks.on('updateMeasuredTemplate', sr5HookUpdateMeasuredTemplate)
+//First: the two after it read the scenes without the one Foundry is removing from the canvas
+Hooks.on('updateScene', sr5HookUpdateSceneLeavingCanvas)
 Hooks.on('updateScene', sr5HookUpdateScene)
 Hooks.on('updateScene', sr5HookUpdateSceneIndicators)
+Hooks.on('deleteScene', sr5HookDeleteScene)
+Hooks.on('deleteScene', () => renderSceneIndicators())
+Hooks.on('canvasInit', () => noteSceneLeavingCanvas(null))
+for (const hook of ['createToken', 'deleteToken']) Hooks.on(hook, sr5HookTokenSceneIndicators)
+Hooks.on('updateUser', sr5HookUserSceneIndicators)
 Hooks.on('updateWorldTime', sr5HookExpireManaShifts)
 Hooks.on('canvasReady', renderSceneIndicators)
 Hooks.on('canvasReady', sr5HookCanvasReadyAreaEffects)

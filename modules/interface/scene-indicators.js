@@ -8,7 +8,7 @@ import {
   effectiveSceneBackgroundCount, activeManaShifts
 } from "../system/background-count.js"
 import {
-  clampSceneNoise
+  clampSceneNoise, indicatorScene
 } from "../system/scene-noise.js"
 
 // Players panel layout: players list (expand button on the own player row), then scene noise / background count, then latency / FPS
@@ -23,7 +23,7 @@ export function arrangePlayersPanel() {
   renderSceneIndicators()
 }
 
-// Matrix noise and background count of the viewed scene, displayed above the players latency / FPS
+// Matrix noise and background count of the scene the rolls read (indicatorScene), displayed above the players latency / FPS
 export function renderSceneIndicators() {
   const playersActive = document.getElementById("players-active")
   if (!playersActive) return
@@ -38,8 +38,11 @@ export function renderSceneIndicators() {
     else playersActive.append(indicators)
   }
 
-  const flags = canvas.scene?.flags?.sr5 ?? {
+  const scene = indicatorScene()
+  const flags = scene?.flags?.sr5 ?? {
   }
+  // Which scene it speaks of: maybe not the one on screen
+  const where = scene ? ` — ${scene.navName || scene.name}` : ""
   const noise = clampSceneNoise(flags.matrixNoise)
   //Shadow Spells p. 25: the count with its running Mana Flux / Ebb
   const now = game.time?.worldTime ?? 0
@@ -58,10 +61,12 @@ export function renderSceneIndicators() {
     backgroundCountTooltip += ` — ${s.name} (${Math.ceil((s.expires - now) / 3600)} h)`
   }
 
+  backgroundCountTooltip += where
+
   // Not card-helpers' escape (N2): null and undefined show here as "null" and "undefined", not as an empty text
   const escape = foundry.utils.escapeHTML
   indicators.innerHTML = `
-    <div id="sr5-scene-noise" class="${noise ? "active" : ""}" data-tooltip="${escape(game.i18n.localize("SR5.SceneNoiseRating"))}">
+    <div id="sr5-scene-noise" class="${noise ? "active" : ""}" data-tooltip="${escape(game.i18n.localize("SR5.SceneNoiseRating") + where)}">
       <label>${escape(game.i18n.localize("SR5.Noise"))}</label>
       <span class="value">${noise}</span>
     </div>
@@ -72,6 +77,24 @@ export function renderSceneIndicators() {
   `
 }
 
-export function sr5HookUpdateSceneIndicators(scene) {
-  if (scene?.id === canvas.scene?.id) renderSceneIndicators()
+// Which scene is active decides the one shown, and the scene just left is no longer the one shown: redraw without asking
+export function sr5HookUpdateSceneIndicators(scene, changes) {
+  if ((changes && "active" in changes) || scene?.id === indicatorScene()?.id) renderSceneIndicators()
+}
+
+// A token comes or goes on the viewed or the active scene, the only ones read: the scene the indicator shows may
+// change, and a linked actor's background count follows its token (actorRollScene)
+export function sr5HookTokenSceneIndicators(token) {
+  const scene = token.parent
+  if (scene?.id !== canvas?.scene?.id && !scene?.active) return
+  renderSceneIndicators()
+  const actor = token.actorLink ? game.actors.get(token.actorId) : null
+  if (!actor?.isOwner) return
+  actor.prepareData()
+  if (actor.sheet?.rendered) actor.sheet.render()
+}
+
+// Another character for this user: the indicator follows
+export function sr5HookUserSceneIndicators(user, changes) {
+  if (user.isSelf && "character" in changes) renderSceneIndicators()
 }

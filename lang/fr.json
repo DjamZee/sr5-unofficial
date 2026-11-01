@@ -770,6 +770,7 @@
 	"SR5.ShopSaleDescription": "Vendu depuis la boutique : {name}, pour {price}¥.",
 	"SR5.ShopSaleDone": "Vente encaissée.",
 	"SR5.ShopSaleGone": "Rien de vendu : l'objet n'était plus là.",
+	"SR5.ShopSaleKept": "{name} : à vider, carte conservée.",
 	"SR5.ShopSaleOf": "Vente : {name}",
 	"SR5.ShopSearch": "Rechercher un nom (VF ou VO)…",
 	"SR5.ShopNameVO": "VO : {name}",

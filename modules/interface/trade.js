@@ -8,8 +8,11 @@
  * default: no click of the gamemaster, but one has to be connected to write on another's sheet.
  */
 import {
+  gameDate
+} from "../system/calendar.js"
+import {
   accountRefusal, acceptRefusal, bothAccepted, changed, cleanQuantity, cleanSum, fundsMismatch, newTrade, offerLine,
-  otherSide, SIDES, tradeCardHtml
+  otherSide, partyName, SIDES, tradeCardHtml
 } from "./trade-rules.js"
 import {
   mergeStickWrites, planCash, planObject, tradeRefusal
@@ -89,9 +92,9 @@ export class SR5Trade {
   /* -------------------------------------------- */
 
   /** Open a trade from a sheet or the players' list. No gamemaster connected: no window. */
-  static async open(actor, other) {
+  static async open(actor, other, otherLabel = null) {
     return SR5ItemTransfer.toActiveGM("tradeOpen", {
-      from: actor.uuid, to: other.uuid
+      from: actor.uuid, to: other.uuid, toLabel: otherLabel
     })
   }
 
@@ -183,12 +186,12 @@ export class SR5Trade {
       same[side].users = [...(same[side].users ?? []), requester.id]
       return SR5Trade.#write(foundry.utils.deepClone(same))
     }
-    const party = (actor, users) => ({
-      actor: actor.uuid, name: actor.token?.name ?? actor.name, img: actor.img, users
+    const party = (actor, users, label) => ({
+      actor: actor.uuid, name: partyName(actor.token?.name ?? actor.name, label), img: actor.img, users
     })
     const responders = SR5Trade.respondersOf(to)
     const trade = newTrade({
-      id: newId(), now: Date.now(), a: party(from, [requester.id]), b: party(to, responders)
+      id: newId(), now: Date.now(), a: party(from, [requester.id]), b: party(to, responders, data.toLabel)
     })
     await SR5Trade.#write(trade)
     await Promise.all(responders.filter(id => id !== requester.id).map(id => SR5ItemTransfer.notify(id, "info", "SR5.TradeIncoming", {
@@ -511,7 +514,7 @@ export class SR5Trade {
             type: "itemNuyen",
             img: "systems/sr5/assets/img/items/itemNuyen.svg",
             system: {
-              amount: nuyen, type, date: new Date().toISOString().slice(0, 10),
+              amount: nuyen, type, date: gameDate(),
             },
           },
         })

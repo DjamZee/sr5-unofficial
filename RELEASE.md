@@ -19,6 +19,7 @@ Ce document décrit comment sort une version de **Shadowrun 5 (unofficial)** sur
 | 1.1.3 | `13.2.3` | `v13.2.3` |
 | 1.1.4 | `13.2.4` | `v13.2.4` |
 | 1.1.5 | `13.2.5` | `v13.2.5` |
+| 1.1.6 | `13.2.6` | `v13.2.6` |
 
 Le premier nombre de la version technique suit la version majeure de Foundry visée (13 pour Foundry V13). Une
 version corrective (1.0.x) fait monter le dernier nombre ; une version qui ajoute des fonctionnalités (1.x) fait
@@ -72,7 +73,7 @@ How a version of **Shadowrun 5 (unofficial)** is released on
 
 Displayed 1.0 = technical version `13.1.0` (`system.json`, `package.json`) = Git tag `v13.1.0`; 1.0.1 = `13.1.1` =
 `v13.1.1`; 1.0.2 = `13.1.2` = `v13.1.2`; 1.0.3 = `13.1.3` = `v13.1.3`; 1.1 = `13.2.0` = `v13.2.0`; 1.1.1 = `13.2.1` =
-`v13.2.1`; 1.1.2 = `13.2.2` = `v13.2.2`; 1.1.3 = `13.2.3` = `v13.2.3`; 1.1.4 = `13.2.4` = `v13.2.4`; 1.1.5 = `13.2.5` = `v13.2.5`. The first number
+`v13.2.1`; 1.1.2 = `13.2.2` = `v13.2.2`; 1.1.3 = `13.2.3` = `v13.2.3`; 1.1.4 = `13.2.4` = `v13.2.4`; 1.1.5 = `13.2.5` = `v13.2.5`; 1.1.6 = `13.2.6` = `v13.2.6`. The first number
 follows the Foundry major
 version (13). A fix release bumps the last number, a feature release the middle one.
 

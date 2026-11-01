@@ -12,7 +12,7 @@ import {
   backgroundCountFor
 } from "./background-count.js"
 import {
-  clampSceneNoise
+  clampSceneNoise, viewedScene
 } from "./scene-noise.js"
 import {
   noiseSpellKind, noiseSpellValue, noiseGridThreshold
@@ -79,7 +79,13 @@ export class SR5_EffectArea {
     if (SR5_EffectArea.isOrphanEnvironmentEffect(item)) return true
     if (!Object.values(item?.system?.customEffects ?? {
     }).some(e => SR5_EffectArea.AREA_EFFECT_PREPARED_TARGETS.includes(e.target))) return false
-    let sceneId = actor?.isToken ? actor.token?.parent?.id : globalThis.canvas?.scene?.id
+    let sceneId = actor?.isToken ? actor.token?.parent?.id : viewedScene()?.id
+    //No scene on the canvas: the template of a scene deleted or left inactive has no one standing on it (Edmond, 01/11)
+    if (!sceneId && !actor?.isToken){
+      const templateScene = templateSceneId(item)
+      const scenes = globalThis.game?.scenes
+      if (templateScene && scenes && !scenes.get(templateScene)?.active) return true
+    }
     return SR5_EffectArea.isAreaEffectOffScene(item, sceneId)
   }
 

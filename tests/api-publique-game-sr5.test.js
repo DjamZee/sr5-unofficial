@@ -48,7 +48,7 @@ function moduleSources(dir = new URL('../modules/', import.meta.url)) {
 // The public API of 13.1.0: a key added or taken away is a change for the modules, and for the page that lists it
 // (networkContacts: Network, Contacts and runs taken out of landing-metroplexes-sr5, 28/10)
 const API = ['config', 'entities', 'migration', 'macros', 'rollItemMacro', 'rollMacro', 'compendiumBrowser', 'shop',
-  'primaryLifestyle', 'creationOverLimitItems', 'dealership', 'factions', 'factionRegistry', 'shopAudit', 'subActorFolder',
+  'primaryLifestyle', 'gameDate', 'creationOverLimitItems', 'dealership', 'factions', 'factionRegistry', 'shopAudit', 'subActorFolder',
   'convertMentorQualities', 'revertMentorConversion', 'activateAutomaticPowers', 'panCrown', 'combat', 'matrix',
   'tokenDefaults', 'vendors', 'spriteTypes', 'commcode', 'contacts', 'infoBroker', 'networkContacts']
 

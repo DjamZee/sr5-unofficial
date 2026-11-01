@@ -1,4 +1,7 @@
 import {
+  gameDate
+} from '../system/calendar.js'
+import {
   SR5_EntityHelpers 
 } from '../entities/helpers.js'
 import {
@@ -560,7 +563,7 @@ export class SR5Shop {
       system: {
         amount: total,
         type: 'loss',
-        date: new Date().toISOString().slice(0, 10),
+        date: gameDate(),
         description: game.i18n.format('SR5.ShopPurchaseDescription', {
           name: labels.join(', '), price: formatNumber(total)
         }),

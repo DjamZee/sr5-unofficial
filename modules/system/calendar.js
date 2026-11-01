@@ -12,6 +12,15 @@ export const DEFAULT_START_YEAR = 2070
 // "A Combat Turn is approximately three seconds" (SR5 p. 51)
 export const COMBAT_ROUND_SECONDS = 3
 
+// The date of the game on a ledger line (itemNuyen, itemKarma), as an <input type="date"> holds it: the clock's, "" when
+// the calendar in use, maybe a module's, gives no such date (Élise and DjamZ, 01/11)
+export function gameDate(components = globalThis.game?.time?.components){
+  const c = components
+  if (![c?.year, c?.month, c?.dayOfMonth].every(Number.isInteger) || c.month > 11 || c.dayOfMonth > 30) return ""
+  const pad = (n, size = 2) => String(n).padStart(size, "0")
+  return `${pad(c.year, 4)}-${pad(c.month + 1)}-${pad(c.dayOfMonth + 1)}`
+}
+
 // Calendar modules that bring their own calendar: when one is active, the system leaves CONFIG.time alone
 export const THIRD_PARTY_CALENDAR_MODULES = [
   "foundryvtt-simple-calendar",

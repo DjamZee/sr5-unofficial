@@ -5,6 +5,9 @@ import {
 import {
   listAccesses, listRuns, writeRun, runAdvanceDefault, myCharacters, sendRunInterest, networkExtensions
 } from "./nc-registry.js"
+import {
+  gameDate
+} from "../../system/calendar.js"
 
 // The runs board of the Network (landing-metroplexes-sr5 1.4.0 to 1.8.0; in the system since DjamZ's request of
 // 28/10): two tabs of the network, the board and the archives. The register is the active GM's (nc-registry.js); a
@@ -439,7 +442,8 @@ export async function pay(runId, step, lines){
       code: run.code, titre: run.title, etape: L(`R_EtapeNom_${step}`)
     })
     const entries = paymentEntries({
-      lines: clean, run, step, name, day: new Date().toISOString().slice(0, 10)
+      // The date of the game, the one of the clock (DjamZ, 01/11)
+      lines: clean, run, step, name, day: gameDate()
     })
     const done = []
     for (const e of entries){

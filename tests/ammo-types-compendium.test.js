@@ -1,5 +1,5 @@
 import {
-  describe, it, expect, afterEach
+  describe, it, expect, vi, afterEach
 } from "vitest"
 import {
   ammoTypeSlug, ammoTypeItems, ammoTypeDocumentSync, findAmmoTypeBySlug, setCompendiumAmmoTypes, loadCompendiumAmmoTypes
@@ -135,5 +135,68 @@ describe("custom ammunition types", () => {
       _id__in: ["a"]
     })
     expect(ammoTypeItems().map(i => i.name)).toEqual(["Sylvestrine"])
+  })
+
+  it("a client in English does not take the French copies of the built-in types for custom ones (Edmond)", async () => {
+    const types = ["Normales", "Pointe creuse", "Argent"].map((name, i) => ({
+      _id: `t${i}`, name, type: "itemAmmunitionType"
+    }))
+    const saved = {
+      game: globalThis.game, CONFIG: globalThis.CONFIG, foundry: globalThis.foundry, fetch: globalThis.fetch
+    }
+    globalThis.CONFIG = {
+      SR5: {
+        allAmmunitionTypes: {
+          regular: "SR5.Regular", hollow: "SR5.Hollow"
+        }
+      }
+    }
+    globalThis.game = {
+      packs: [{
+        collection: "m.items", documentName: "Item", index: types, getDocuments: async () => types
+      }],
+      i18n: {
+        localize: key => ({
+          "SR5.Regular": "Regular", "SR5.Hollow": "Hollow point"
+        })[key] ?? key
+      },
+      system: {
+        languages: [{
+          path: "lang/en.json"
+        }, {
+          path: "lang/fr.json"
+        }, {
+          path: "lang/absent.json"
+        }]
+      },
+    }
+    globalThis.foundry = {
+      ...saved.foundry, utils: {
+        ...saved.foundry?.utils, getRoute: path => path
+      }
+    }
+    const files = {
+      "systems/sr5/lang/en.json": {
+        "SR5.Regular": "Regular", "SR5.Hollow": "Hollow point"
+      },
+      "systems/sr5/lang/fr.json": {
+        "SR5.Regular": "Normales", "SR5.Hollow": "Pointe creuse"
+      },
+    }
+    globalThis.fetch = async path => {
+      if (!files[path]) throw new Error("absent")
+      return {
+        json: async () => files[path]
+      }
+    }
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await loadCompendiumAmmoTypes()
+      expect(ammoTypeItems().map(i => i.name)).toEqual(["Argent"])
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      warn.mockRestore()
+      Object.assign(globalThis, saved)
+    }
   })
 })

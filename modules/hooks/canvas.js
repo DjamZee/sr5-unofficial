@@ -10,6 +10,9 @@ import {
 import {
   noteRemovedAreaTemplate
 } from "../system/areaEffectScene.js"
+import {
+  noteSceneLeavingCanvas
+} from "../system/scene-noise.js"
 
 //A linked actor reads the background count of the viewed scene when it has a token there (actorRollScene): on each
 //scene change, prepare again those of the new scene and of the one left, the count being 0 or not
@@ -75,11 +78,38 @@ export function sr5HookCreateMeasuredTemplate(templateDocument) {
   if (templateDocument.flags?.sr5?.jammerUuid) SR5_Jammer.refreshScene(templateDocument.parent)
 }
 
-export async function sr5HookUpdateScene(data) {
+export async function sr5HookUpdateScene(data, changes) {
   //relaunch prepare Data of all actor when a scene is modified, so background count and other effect are correctly applied without needing to manualy refresh an actor
-  if (!game.user.isGM) return
+  //A player, locally and for their own actors: only the count of the scene, or which scene is active, reaches them
+  if (!game.user.isGM && !changes?.flags?.sr5 && !(changes && "active" in changes)) return
+  const prepared = new Set()
   for (let token of data.tokens){
-    token.actor.prepareData()
-    if (token.actor.sheet.rendered) token.actor.sheet.render()
+    const actor = token.actor
+    if (!actor || !(game.user.isGM || actor.isOwner) || prepared.has(actor)) continue
+    prepared.add(actor)
+    actor.prepareData()
+    if (actor.sheet?.rendered) actor.sheet.render()
   }
+}
+
+//Foundry empties the canvas when the scene on it is deleted, or deactivated with no other to take over, and no
+//canvasReady follows: the actors would keep the count of that scene until the next prepare (Edmond, 01/11). Each client
+//prepares its own again, locally: nothing is written
+export function sr5HookUpdateSceneLeavingCanvas(scene, changes) {
+  if (changes?.active !== false || game.scenes?.active || canvas?.scene?.id !== scene.id) return
+  noteSceneLeavingCanvas(scene.id)
+  sr5HookCanvasReadyAreaEffects()
+}
+
+export function sr5HookDeleteScene(scene) {
+  if (canvas?.scene?.id === scene.id) noteSceneLeavingCanvas(scene.id)
+  const prepared = new Set()
+  for (let token of scene.tokens){
+    const actor = token.actorLink ? game.actors.get(token.actorId) : null
+    if (!actor?.isOwner || prepared.has(actor.id)) continue
+    prepared.add(actor.id)
+    actor.prepareData()
+    if (actor.sheet?.rendered) actor.sheet.render()
+  }
+  sr5HookCanvasReadyAreaEffects()
 }

@@ -89,6 +89,58 @@ export function accountRefusal({
   return nuyen > balance ? "accountShort" : null
 }
 
+/**
+ * Who a browser may trade with, once each. An unlinked token is a body of its own on the scene: the actor it was made
+ * from is no one to trade with while such a token stands for it, except a player's character, which stays itself.
+ * Those left with the same name are told apart by a number.
+ * @param {object} p
+ * @param {Actor[]} p.characters the characters of the players
+ * @param {TokenDocument[]} p.tokens the tokens of the scene, seen or not
+ * @param {Actor[]} p.actors the world's actors this browser sees
+ * @param {function(Actor): boolean} p.canTrade
+ * @param {function(TokenDocument): boolean} [p.canSee] whether this browser sees a token
+ * @param {Actor} [p.exclude] the one trading
+ * @returns {{uuid: string, name: string}[]} sorted by name
+ */
+export function partnerEntries({
+  characters, tokens, actors, canTrade, canSee = () => true, exclude
+}) {
+  const found = new Map()
+  const add = (actor, label) => {
+    if (!actor || !canTrade(actor) || actor.uuid === exclude?.uuid || found.has(actor.uuid)) return false
+    found.set(actor.uuid, {
+      uuid: actor.uuid, name: label ?? actor.name
+    })
+    return true
+  }
+  const characterIds = new Set()
+  for (const character of characters) {
+    if (!character) continue
+    characterIds.add(character.id)
+    add(character)
+  }
+  // Even the one trading or a hidden one stands for its actor: that actor is not proposed in its place
+  const standing = new Set()
+  for (const token of tokens) {
+    if (token.actorLink || !characterIds.has(token.actorId)) {
+      if (!token.actorLink) standing.add(token.actorId)
+      if (canSee(token)) add(token.actor, token.name)
+    }
+  }
+  for (const actor of actors) if (!standing.has(actor.id)) add(actor)
+  const entries = [...found.values()]
+  for (const name of new Set(entries.map(entry => entry.name))) {
+    const same = entries.filter(entry => entry.name === name)
+    if (same.length > 1) same.forEach((entry, index) => entry.name = `${name} (${index + 1})`)
+  }
+  return entries.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** The name a side shows: the label the list gave it when that is only its name and a number, else its name. */
+export function partyName(name, label) {
+  return typeof label === "string" && label.startsWith(`${name} (`) && /^ \(\d+\)$/.test(label.slice(name.length)) ? label : name
+}
+
 /** The offered sticks' money must be what the offer shows: a stick loaded or spent since is refused, never carried. */
 export function fundsMismatch(line, currentShare) {
   return line.isStick && line.funds !== currentShare

@@ -770,6 +770,7 @@
 	"SR5.ShopSaleDescription": "Sold from the shop: {name}, for {price}¥.",
 	"SR5.ShopSaleDone": "Sale cashed.",
 	"SR5.ShopSaleGone": "Nothing sold: the goods were no longer there.",
+	"SR5.ShopSaleKept": "{name}: to be emptied, card kept.",
 	"SR5.ShopSaleOf": "Sale: {name}",
 	"SR5.ShopSearch": "Search a name (French or English)…",
 	"SR5.ShopNameVO": "English: {name}",
