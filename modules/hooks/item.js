@@ -35,6 +35,9 @@ import {
   SR5_Jammer
 } from "../system/jammer.js"
 import {
+  vehicleStatusToRemove
+} from "../system/vehicle-parts.js"
+import {
   SR5_CharacterUtility
 } from "../entities/actors/utilityActor.js"
 import {
@@ -254,6 +257,13 @@ export async function sr5HookDeleteItem(item, _options, userId) {
       if (item.system.hasEffectOnItem && item.parent){
         if (item.parent.isToken) await SR5_ActorHelper.deleteItemEffectFromItem(item.parent.token.id, item.system.ownerItem)
         else await SR5_ActorHelper.deleteItemEffectFromItem(item.parent.id, item.system.ownerItem)
+      }
+      //A vehicle location repaired (Run & Gun p. 129, SR5 p. 206): its status goes with the last effect of its type, by
+      //the user who deleted it, so no two clients delete the same status
+      const status = vehicleStatusToRemove(item, actor?.items)
+      if (status && userId === game.user?.id && actor?.documentName === "Actor"){
+        const effect = actor.effects.find(e => e.origin === status || e.statuses?.has?.(status))
+        if (effect) await actor.deleteEmbeddedDocuments("ActiveEffect", [effect.id])
       }
     }
 

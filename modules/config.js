@@ -1563,7 +1563,10 @@ SR5.calledShotsSpecifics = {
   axle                      : "SR5.CS_ST_Axle",
   antenna                   : "SR5.CS_ST_Antenna",
   doorLock                  : "SR5.CS_ST_DoorLock",
-  windowMotor               : "SR5.CS_ST_WindowMotor",  
+  windowMotor               : "SR5.CS_ST_WindowMotor",
+  tire                      : "SR5.CS_ST_Tire",
+  sensor                    : "SR5.CS_ST_Sensor",
+  window                    : "SR5.CS_ST_Window",
   bellringer                : "SR5.CS_AS_Bellringer",
   bullsEye                  : "SR5.CS_AS_BullsEye",
   downTheGullet             : "SR5.CS_AS_DownTheGullet",
@@ -1607,8 +1610,11 @@ SR5.calledShotsEffects = {
   windowMotor              : "SR5.STATUSES_WindowMotor",
   doorLock                 : "SR5.STATUSES_DoorLock",
   axle                     : "SR5.STATUSES_Axle",
-  fuelTankBattery          : "SR5.STATUSES_FuelTankBattery",  
-  flared                   : "SR5.STATUSES_Flared",  
+  fuelTankBattery          : "SR5.STATUSES_FuelTankBattery",
+  tire                     : "SR5.STATUSES_Tire",
+  sensor                   : "SR5.STATUSES_Sensor",
+  window                   : "SR5.STATUSES_Window",
+  flared                   : "SR5.STATUSES_Flared",
   shaked                   : "SR5.STATUSES_Shaked",
   onPinsAndNeedles         : "SR5.STATUSES_OnPinsAndNeedles",
   feint                    : "SR5.STATUSES_Feint",
@@ -2348,6 +2354,9 @@ SR5.calledShotsItems = {
   engineBlock           : "SR5.CS_ST_EngineBlock",
   fuelTankBattery       : "SR5.CS_ST_FuelTankBattery",
   windowMotor           : "SR5.CS_ST_WindowMotor",
+  tire                  : "SR5.CS_ST_Tire",
+  sensor                : "SR5.CS_ST_Sensor",
+  window                : "SR5.CS_ST_Window",
 }
 
 //-----------------------------------//
@@ -3848,6 +3857,7 @@ SR5.customEffectsTypes = {
   netHitsReplace            : "SR5.NetHitsReplace",
   boolean                  : "SR5.Boolean",
   divide                    : "SR5.Divide",
+  multiply                  : "SR5.Multiply",
 }
 
 SR5.effectTypes = {
@@ -3901,6 +3911,9 @@ SR5.effectTypes = {
   doorLock                  : "SR5.STATUSES_DoorLock",
   axle                      : "SR5.STATUSES_Axle",
   fuelTankBattery           : "SR5.STATUSES_FuelTankBattery",
+  tire                      : "SR5.STATUSES_Tire",
+  sensor                    : "SR5.STATUSES_Sensor",
+  window                    : "SR5.STATUSES_Window",
   flared                    : "SR5.STATUSES_Flared",
   shaked                    : "SR5.STATUSES_Shaked",
   calledShot                : "SR5.CS_CalledShot",
@@ -4346,6 +4359,7 @@ SR5.modifiersTypes = {
   augmentations 			  : "SR5.Augmentations",
   augmentationGrade		  : "SR5.AugmentationGrade",
   augmentationCap		  : "SR5.SETTINGS_AugmentationCap_T",
+  attributeLock		  : "SR5.AttributeLock",
   areaEffect 				  : "SR5.AreaEffect",
   armorEncumbrance		  : "SR5.ArmorEncumbrance",
   armorMain 				  : "SR5.Armor",

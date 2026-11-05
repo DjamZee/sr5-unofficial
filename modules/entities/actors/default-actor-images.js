@@ -12,7 +12,8 @@ import {
  * - a sprite gets those of its type (one picture per type, whatever its Level);
  * - a contact brought to life from its item gets one of the contact pictures, picked by metatype, gender and job (the
  *   item's free "type" text) when they match, at random otherwise; the draw is seeded by the item's id, so the same
- *   contact gets the same face each time it is called, and the round token made for that face. A named character (a fixer of DjamZ's…) only comes on a job match.
+ *   contact gets the same face each time it is called as long as the bank does not change (new pictures can shift the
+ *   draw), and the round token made for that face. A named character (a fixer of DjamZ's…) only comes on a job match.
  * A picture the gamemaster chose is never overwritten: only an actor whose portrait AND token are still a default
  * (Foundry's, the system's icon, or one set here) is given new ones. Each family has its world setting, on by default.
  * For a contact, a portrait from the bank contacts/ is the gamemaster's choice unless it is the very one drawn for this
@@ -67,21 +68,59 @@ export function seededRandom(seed) {
   return (h >>> 0) / 4294967296
 }
 
+// Small words that carry no job, and the names DjamZ's pictures give a job the pack writes otherwise
+const JOB_STOP_WORDS = new Set(["a", "au", "aux", "d", "de", "des", "du", "en", "et", "l", "la", "le", "les", "un", "une"])
+const JOB_WORD_ALIASES = {
+  m: "mr", mecanicien: "mecano"
+}
+
+/** A word cut to what its masculine, feminine, singular and plural forms share: "chasseuse"/"chasseurs" → "chasseur". */
+function jobStem(word) {
+  let w = word.length > 3 ? word.replace(/[sx]$/, "") : word
+  w = w.replace(/euse$/, "eur").replace(/trice$/, "teur").replace(/ienne$/, "ien").replace(/ere$/, "er")
+  if (w.length > 3) w = w.replace(/e$/, "")
+  return JOB_WORD_ALIASES[w] ?? w
+}
+
+/** The words of a job, accents, case, punctuation and small words aside: "Garde-frontière" → ["gard", "frontier"]. */
+export function jobWords(text) {
+  return norm(text).replace("doc des rues", "street doc").split(/[^a-z0-9]+/)
+    .filter((w) => w && !JOB_STOP_WORDS.has(w)).map(jobStem)
+}
+
+const sameJobWord = (a, b) => a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)))
+const allFound = (words, among) => words.every((w) => among.some((x) => sameJobWord(w, x)))
+
+/**
+ * Whether a contact's job (its free text) is the job of a picture: every word of the picture's job is in the contact's
+ * ("Street doc de Redmond" → "street doc"), or every word of the contact's is in the picture's ("Flic" → "flic des
+ * rues", "Marchande" → "marchand de talisman"). A job of fewer than three letters finds nothing.
+ */
+export function jobMatches(contactJob, pictureJob) {
+  const mine = jobWords(contactJob), theirs = jobWords(pictureJob)
+  if (mine.join("").length < 3 || !theirs.length) return false
+  return allFound(theirs, mine) || allFound(mine, theirs)
+}
+
 /**
  * The contact pictures that suit a contact best: metatype counts most, then the job, then the gender. A named
- * character is only a candidate when the job matches.
+ * character is only a candidate when the job matches. The job does not count for a picture of the opposite gender,
+ * and a named character of the opposite gender is no candidate; such a picture can still come when no other suits.
  * @param {{job?: string, metatype?: string, gender?: string}} contact
  */
 export function contactImageCandidates({
   job, metatype, gender
 }, list = CONTACT_IMAGES) {
-  const j = norm(job)
+  // the book's "Doc des rues" wears DjamZ's "street doc" pictures, the feminine forms the masculine job's (jobWords)
+  const opposite = {
+    male: "female", female: "male"
+  }[gender]
   let best = -1, out = []
   for (const e of list) {
-    // "Flic" finds "flic des rues", "Street doc de Redmond" finds "street doc"; a word too short finds nothing
-    const jobMatch = j.length >= 3 && !!e.job && (j.includes(e.job) || e.job.startsWith(j))
-    if (e.named && !jobMatch) continue
-    const score = (metatype && e.metatype === metatype ? 4 : 0) + (jobMatch ? 3 : 0) + (gender && e.gender === gender ? 2 : 0)
+    const jobMatch = !!e.job && jobMatches(job, e.job)
+    const jobCounts = jobMatch && e.gender !== opposite
+    if (e.named && !jobCounts) continue
+    const score = (metatype && e.metatype === metatype ? 4 : 0) + (jobCounts ? 3 : 0) + (gender && e.gender === gender ? 2 : 0)
     if (score > best) { best = score; out = [] }
     if (score === best) out.push(e)
   }

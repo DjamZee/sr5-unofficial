@@ -12,6 +12,8 @@
  * Les entités de Howling Shadows (anarch…) sont rangées avec les PNJ : ...\PNJ\PORTRAITS\12.Entités extraplanaires\
  * <Nom> <N>.png et ...\PNJ\TOKENS\12.Entités extraplanaires\<Nom> <N>.png ; seules celles d'ENTITES y sont lues, avec
  * autant de paliers que DjamZ a fait d'images (SPIRIT_IMAGE_TIERS ; Eudoxie#6075, 22/10).
+ * Les esprits à une seule image (UNIQUES : castes d'insectes, shédims, veilleur, homoncule ; Solène#4182, 01/11) n'ont
+ * que le palier 1 : portrait-1.webp et token-1.webp, à refaire seuls avec --familles "Images uniques".
  *
  *   node tools/spirits-images.mjs [--racine <dossier Esprits>]
  *
@@ -32,10 +34,23 @@ const RACINE = arg("--racine") ?? "F:/FoundryVTT/Ressources Graphiques/Visuels/E
 // --familles "Esprits Toxiques,Esprits de l'Ombre" : ne refaire que celles-là. Les esprits nécrotiques (cadavre, carcasse,
 // détritus, feu pâle, pourriture) et l'esprit des os n'ont pas de type dans le système : leur dossier n'est pas lu.
 const ENTITES_PNJ = "12.Entités extraplanaires"
-const FAMILLES = arg("--familles")?.split(",") ?? [".Esprits Naturels", "Esprits Toxiques", "Esprits de l'Ombre", ENTITES_PNJ]
+const IMAGES_UNIQUES = "Images uniques"
+const FAMILLES = arg("--familles")?.split(",") ?? [".Esprits Naturels", "Esprits Toxiques", "Esprits de l'Ombre", ENTITES_PNJ, IMAGES_UNIQUES]
 // le dossier des entités porte aussi des esprits libres sans type d'acteur (blackjack, Alquitat « Homme Vert »…) : on n'y
 // lit que ces mots-clés, sans passer par TYPES (« homme » y donnerait l'esprit de l'homme)
 const ENTITES = [["anarch", "anarch"]]
+// nom du fichier source → system.type ; insectes et shédims ont leurs dossiers à part, jetons dans le dossier du cadre
+const INSECTES_PORTRAITS = join(RACINE, "..", "Esprits Insectes & Shedims", "PORTRAITS", "PNG")
+const INSECTES_JETONS = join(RACINE, "..", "..", "01.Tokenizer Frame", "Tokens Esprits Insectes et Shédims", "Tokens Esprit", "WEBP")
+const SERVITEURS = "Veilleur & Homoncule"
+const insecte = (nom, type) => [join(INSECTES_PORTRAITS, `${nom}.png`), join(INSECTES_JETONS, `${nom}.webp`), type]
+const serviteur = (nom, type) => [join(RACINE, "PORTRAITS", "PNG", SERVITEURS, `${nom}.png`), join(RACINE, "TOKENS", "PNG", SERVITEURS, `${nom}.png`), type]
+const UNIQUES = [
+  insecte("insecte-eclaireur", "insectScout"), insecte("insecte-nourrice", "insectCaretaker"), insecte("insecte-nymphe", "insectNymph"),
+  insecte("insecte-ouvrier", "insectWorker"), insecte("insecte-reine", "insectQueen"), insecte("insecte-soldat", "insectSoldier"),
+  insecte("shedim", "shedim"), insecte("maitre-shedim", "shedimMaster"),
+  serviteur("Homoncule", "homunculus"), serviteur("veilleur", "watcher"),
+]
 const CIBLE = "assets/img/spirits"
 const PORTRAIT = {
   taille: 400, qualite: 72 
@@ -69,7 +84,24 @@ im.save(dst, "WEBP", quality=q, method=6)`
 
 let total = 0, n = 0
 const manque = []
-for (const famille of FAMILLES) {
+function convertir(src, dest, reglage) {
+  const r = spawnSync("python", ["-c", PY, src, dest, String(reglage.taille), String(reglage.qualite)], {
+    encoding: "utf8"
+  })
+  if (r.status !== 0) throw new Error(`${src} : conversion échouée\n${r.stderr}`)
+  total += statSync(dest).size
+  n++
+}
+if (FAMILLES.includes(IMAGES_UNIQUES)) {
+  for (const [portrait, jeton, type] of UNIQUES) {
+    mkdirSync(join(CIBLE, type), {
+      recursive: true
+    })
+    convertir(portrait, join(CIBLE, type, "portrait-1.webp"), PORTRAIT)
+    convertir(jeton, join(CIBLE, type, "token-1.webp"), JETON)
+  }
+}
+for (const famille of FAMILLES.filter((f) => f !== IMAGES_UNIQUES)) {
   for (const [genre, dossier, reglage] of [["portrait", "PORTRAITS", PORTRAIT], ["token", "TOKENS", JETON]]) {
     const pnj = famille === ENTITES_PNJ
     const src = pnj ? join(RACINE, "..", "PNJ", dossier, famille) : join(RACINE, dossier, "PNG", famille)
@@ -80,13 +112,7 @@ for (const famille of FAMILLES) {
       mkdirSync(join(CIBLE, type), {
         recursive: true 
       })
-      const dest = join(CIBLE, type, `${genre}-${palier}.webp`)
-      const r = spawnSync("python", ["-c", PY, join(src, f), dest, String(reglage.taille), String(reglage.qualite)], {
-        encoding: "utf8" 
-      })
-      if (r.status !== 0) throw new Error(`${f} : conversion échouée\n${r.stderr}`)
-      total += statSync(dest).size
-      n++
+      convertir(join(src, f), join(CIBLE, type, `${genre}-${palier}.webp`), reglage)
     }
   }
 }

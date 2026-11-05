@@ -8,19 +8,23 @@
  * Tiers are DjamZ's postulate, the book does not tie size to Force: Small 1-3, Medium 4-6, Large 7-9, Colossal 10+.
  * A picture the gamemaster chose is never overwritten: only a spirit whose portrait AND token are still a default
  * (Foundry's, the system's icon, or one set here) is given new ones. A custom type (itemSpiritType) takes the pictures
- * of the official type it is based on. A type without pictures yet (insect spirits, shedim, watcher…) keeps its own.
- * Toxic, shadow and blood spirits added on 21/10 (Rémi#2846), the anarch on 22/10.
+ * of the official type it is based on. A type without pictures keeps its own.
+ * Toxic, shadow and blood spirits added on 21/10 (Rémi#2846), the anarch on 22/10, insect castes, shedim, master shedim,
+ * watcher and homunculus on 01/11 (one picture each, Solène#4182).
  */
 export const SPIRIT_IMAGE_DIR = "systems/sr5/assets/img/spirits"
 
 /** Official types that have pictures; another family = its folder and its key here. */
 export const SPIRIT_IMAGE_TYPES = new Set(["air", "beasts", "earth", "fire", "guardian", "guidance", "man", "plant", "task", "water",
   "abomination", "barren", "noxious", "nuclear", "plague", "sludge",
-  "shadowMuse", "shadowNightmare", "shadowShade", "shadowSuccubus", "shadowWraith", "blood", "anarch"])
+  "shadowMuse", "shadowNightmare", "shadowShade", "shadowSuccubus", "shadowWraith", "blood", "anarch",
+  "insectCaretaker", "insectNymph", "insectQueen", "insectScout", "insectSoldier", "insectWorker",
+  "shedim", "shedimMaster", "watcher", "homunculus"])
 
 /** Types with fewer than four tiers of pictures: the last one serves above (anarch: two, Eudoxie#6075, 22/10). */
 export const SPIRIT_IMAGE_TIERS = {
-  anarch: 2
+  anarch: 2, insectCaretaker: 1, insectNymph: 1, insectQueen: 1, insectScout: 1, insectSoldier: 1, insectWorker: 1,
+  shedim: 1, shedimMaster: 1, watcher: 1, homunculus: 1
 }
 
 const DEFAULT_IMAGES = new Set([

@@ -56,14 +56,22 @@ describe('spiritImageType', () => {
     expect(spiritImageType('fire', baseOf)).toBe('fire')
     expect(spiritImageType('salamandre', baseOf)).toBe('fire')
     expect(spiritImageType('vide', baseOf)).toBeNull()
-    expect(spiritImageType('insectWorker', baseOf)).toBeNull()
+    expect(spiritImageType('insectWorker', baseOf)).toBe('insectWorker')
     expect(spiritImageType('', baseOf)).toBeNull()
   })
   it('donne les chemins du palier', () => {
     expect(defaultSpiritImages('fire', 8, baseOf)).toEqual({
       portrait: `${dir('fire')}/portrait-3.webp`, token: `${dir('fire')}/token-3.webp`,
     })
-    expect(defaultSpiritImages('shedim', 8, baseOf)).toBeNull()
+    expect(defaultSpiritImages('vide', 8, baseOf)).toBeNull()
+  })
+  it('castes, shédims, veilleur et homoncule : une seule image, à toute Puissance', () => {
+    for (const type of ['insectCaretaker', 'insectNymph', 'insectQueen', 'insectScout', 'insectSoldier', 'insectWorker',
+      'shedim', 'shedimMaster', 'watcher', 'homunculus']) for (const force of [1, 6, 12]) {
+      expect(defaultSpiritImages(type, force, baseOf)).toEqual({
+        portrait: `${dir(type)}/portrait-1.webp`, token: `${dir(type)}/token-1.webp`,
+      })
+    }
   })
   it("l'anarch n'a que deux paliers : le second sert au-delà", () => {
     expect(defaultSpiritImages('anarch', 2, baseOf).portrait).toBe(`${dir('anarch')}/portrait-1.webp`)
@@ -100,7 +108,7 @@ describe('spiritImageChanges : ne jamais écraser', () => {
       img: `${dir('fire')}/portrait-3.webp`, token: `${dir('fire')}/token-3.webp`, type: 'fire', force: 8 
     }, baseOf)).toBeNull()
     expect(spiritImageChanges({
-      img: ICON, token: ICON, type: 'insectQueen', force: 8 
+      img: ICON, token: ICON, type: 'vide', force: 8
     }, baseOf)).toBeNull()
   })
 })

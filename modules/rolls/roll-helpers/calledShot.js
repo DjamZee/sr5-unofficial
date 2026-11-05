@@ -14,6 +14,9 @@ import {
 import {
   SR5_ConverterHelpers
 } from "./converter.js"
+import {
+  FLAT_TIRE_PENALTY, VEHICLE_PART_CALLED_SHOT_MOD
+} from "../../system/vehicle-parts.js"
 
 export class SR5_CalledShotHelpers {
 
@@ -861,6 +864,32 @@ export class SR5_CalledShotHelpers {
           itemEffects.push(effect)
         }
         break
+      //SR5 p. 206: each flat tire is its own effect, so a second tire adds its -2 to the piloting tests
+      //(read by applyFlatTires, utilityActor-rigging.js)
+      case "tire":
+        effect = foundry.utils.mergeObject(effect, {
+          "system.target": game.i18n.localize("SR5.VehicleTest"),
+          "system.value": FLAT_TIRE_PENALTY,
+          "system.duration": "",
+          "system.durationType": "permanent",
+          "system.gameEffect": game.i18n.localize("SR5.STATUSES_Tire_GE"),
+        })
+        itemEffects.push(effect)
+        break
+      //SR5 p. 206: the part is destroyed, the gamemaster sets the exact effect from the DV dealt
+      case "sensor":
+      case "window":
+        if (!hasEffect){
+          effect = foundry.utils.mergeObject(effect, {
+            "system.target": game.i18n.localize(calledShotsType === "sensor" ? "SR5.CS_ST_Sensor" : "SR5.CS_ST_Window"),
+            "system.value": "",
+            "system.duration": "",
+            "system.durationType": "permanent",
+            "system.gameEffect": game.i18n.localize(calledShotsType === "sensor" ? "SR5.STATUSES_Sensor_GE" : "SR5.STATUSES_Window_GE"),
+          })
+          itemEffects.push(effect)
+        }
+        break
       default:
     }
     return itemEffects
@@ -926,6 +955,11 @@ export class SR5_CalledShotHelpers {
       case "genitals":
       case "sternum":
         return -10
+      //SR5 p. 206: the normal called shot rules (p. 196), no DV limit
+      case "tire":
+      case "sensor":
+      case "window":
+        return VEHICLE_PART_CALLED_SHOT_MOD
       case "flameOn":
         switch(ammoType) {
           case "flare":
@@ -1048,6 +1082,9 @@ export class SR5_CalledShotHelpers {
       case "engineBlock":
       case "fuelTankBattery":
       case "windowMotor":
+      case "tire":
+      case "sensor":
+      case "window":
       case "onPinsAndNeedles":
       case "trickShot":
       case "feint":

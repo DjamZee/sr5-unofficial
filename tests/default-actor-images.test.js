@@ -5,7 +5,7 @@ import {
   isDefaultActorImage, defaultIceImages, defaultSpriteImages, contactImageCandidates, defaultContactImages,
   seededRandom,
   imageChanges, defaultImageOnCreate, defaultImageOnUpdate, ICE_IMAGE_DIR, SPRITE_IMAGE_DIR, CONTACT_IMAGE_DIR,
-  isDefaultContactPortrait, contactItemOf
+  isDefaultContactPortrait, contactItemOf, jobMatches
 } from '../modules/entities/actors/default-actor-images.js'
 import {
   CONTACT_IMAGES
@@ -76,7 +76,7 @@ describe('images livrées', () => {
   })
   it('chaque jeton rond annoncé existe et va avec son portrait', () => {
     const avecJeton = CONTACT_IMAGES.filter((e) => e.token)
-    // 82 jetons ronds de DjamZ pour 83 portraits : seule Haley Soprano (nommée) n'en a pas
+    // 88 jetons ronds de DjamZ pour 89 portraits : seule Haley Soprano (nommée) n'en a pas
     expect(CONTACT_IMAGES.filter((e) => !e.token).map((e) => e.file)).toEqual(['haley-soprano-fixer.webp'])
     for (const e of avecJeton) {
       expect(existsSync(file(`${CONTACT_IMAGE_DIR}/${e.token}`)), e.token).toBe(true)
@@ -123,6 +123,111 @@ describe('contacts', () => {
     expect(contactImageCandidates({
       job: 'Street doc', metatype: 'ork', gender: 'female'
     }, LIST).map((e) => e.file)).toEqual(['barman-ork-femme.webp'])
+  })
+  it("le « Doc des rues » du livre prend les images « street doc » ; la banque a ses naines et ses trolles", () => {
+    expect(contactImageCandidates({
+      job: 'Doc des rues', metatype: 'dwarf', gender: 'female'
+    }).map((e) => e.file)).toEqual(['street-doc-nain-femme.webp'])
+    for (const [job, metatype, file] of [
+      ['Armurier', 'dwarf', 'armurier-nain-femme.webp'],
+      ['Codeuse folle boutonneuse', 'dwarf', 'codeuse-folle-boutonneuse-nain-femme.webp'],
+      ['Marchand de talismans', 'troll', 'marchand-de-talisman-troll-femme.webp'],
+      ["Mécano d'atelier de désossage", 'troll', 'mecano-d-atelier-de-desossage-troll-femme.webp'],
+      ['Videuse', 'troll', 'videuse-de-bar-troll-femme.webp'],
+    ]) expect(contactImageCandidates({
+      job, metatype, gender: 'female'
+    }).map((e) => e.file)).toEqual([file])
+  })
+  it("les formes « Marchande de talismans » et « Mécanicienne » atteignent leur image", () => {
+    for (const [job, file] of [
+      ['Marchande de talismans', 'marchand-de-talisman-troll-femme.webp'],
+      ['Mécanicienne', 'mecano-d-atelier-de-desossage-troll-femme.webp'],
+    ]) expect(contactImageCandidates({
+      job, metatype: 'troll', gender: 'female'
+    }).map((e) => e.file)).toEqual([file])
+  })
+  it("le métier ne donne pas un visage de l'autre genre à un contact dont le genre est connu", () => {
+    for (const [job, metatype] of [
+      ['Doc des rues', 'dwarf'], ['Codeuse folle boutonneuse', 'dwarf'],
+      ['Marchand de talismans', 'troll'], ["Mécano d'atelier de désossage", 'troll'], ['Videuse', 'troll'],
+    ]) {
+      const candidates = contactImageCandidates({
+        job, metatype, gender: 'male'
+      })
+      expect(candidates.length, job).toBeGreaterThan(0)
+      for (const e of candidates) expect([e.metatype, e.gender], `${job} ${e.file}`).toEqual([metatype, 'male'])
+    }
+    // et dans l'autre sens : une trolle garde-frontière
+    for (const e of contactImageCandidates({
+      job: 'Garde-frontière', metatype: 'troll', gender: 'female'
+    })) expect(e.gender).toBe('female')
+  })
+  // Maud#2865 (01/11): the real texts of the Mégapack's contacts, against the jobs of the bank
+  it("les textes réels du pack atteignent l'image de leur métier (trait d'union, pluriel, féminin, « M. »)", () => {
+    for (const [job, metatype, gender, file] of [
+      ['Garde-frontière', 'troll', 'male', 'garde-frontiere-troll-homme.webp'],
+      ['M. Johnson', 'human', 'male', 'mr-johnson-humain-homme.webp'],
+      ["Propriétaire d'un magasin", 'elf', 'female', 'proprietaire-de-magasin-elfe-femme.webp'],
+      ['Chasseuse de primes', 'dwarf', 'female', 'chasseur-de-prime-nains-femme.webp'],
+      ['Activiste de TerraFirst!', 'human', 'female', 'activiste-de-terrafirst-humaine-femme.webp'],
+      ['Marchande', 'human', 'female', 'marchand-de-talisman-humain-femme.webp'],
+      ['Mécanicienne', 'human', 'female', 'mecano-d-atelier-de-desossage-humain-femme.webp'],
+    ]) expect(contactImageCandidates({
+      job, metatype, gender
+    }).map((e) => e.file), job).toEqual([file])
+    // « Mécanicien » sans genre connu : les deux mécanos de la banque
+    expect(contactImageCandidates({
+      job: 'Mécanicien'
+    }).map((e) => e.job)).toEqual(["mecano d'atelier de desossage", "mecano d'atelier de desossage"])
+  })
+  it("le trait d'union compte comme un espace : le métier départage deux trolls", () => {
+    const trolls = [
+      {
+        file: 'recycleur-troll.webp', job: 'recycleur', metatype: 'troll', gender: 'male'
+      },
+      {
+        file: 'garde-troll.webp', job: 'garde frontiere', metatype: 'troll', gender: 'male'
+      },
+    ]
+    expect(contactImageCandidates({
+      job: 'Garde-frontière', metatype: 'troll', gender: 'male'
+    }, trolls).map((e) => e.file)).toEqual(['garde-troll.webp'])
+  })
+  it("un mot trop court ou sans rapport ne trouve rien", () => {
+    expect(jobMatches('Ab', 'abeille')).toBe(false)
+    expect(jobMatches('Agent de sécurité', 'agent du gouvernement')).toBe(false)
+    expect(jobMatches('Vendeur de voitures', "vendeur d'arme")).toBe(false)
+    expect(jobMatches('Flic', 'flic des rues')).toBe(true)
+    expect(jobMatches('Street doc de Redmond', 'street doc')).toBe(true)
+  })
+  it("sans genre, ou de genre « autre », le métier compte comme avant", () => {
+    for (const gender of [undefined, '', 'other']) expect(contactImageCandidates({
+      job: 'Videuse', metatype: 'troll', gender
+    }).map((e) => e.file)).toEqual(['videuse-de-bar-troll-femme.webp'])
+  })
+  it("un personnage nommé de genre contraire n'est pas candidat ; sans visage du bon genre, le tirage reste possible", () => {
+    const named = [
+      {
+        file: 'nommee.webp', job: 'fixer', metatype: '', gender: 'female', named: true
+      },
+      {
+        file: 'fixer-homme.webp', job: 'fixer', metatype: 'human', gender: 'male'
+      },
+    ]
+    expect(contactImageCandidates({
+      job: 'Fixer', gender: 'male'
+    }, named).map((e) => e.file)).toEqual(['fixer-homme.webp'])
+    expect(contactImageCandidates({
+      job: 'Fixer', gender: 'female'
+    }, named).map((e) => e.file)).toEqual(['nommee.webp'])
+    const onlyFemale = [
+      {
+        file: 'videuse-troll-femme.webp', job: 'videuse', metatype: 'troll', gender: 'female'
+      }
+    ]
+    expect(defaultContactImages({
+      job: 'Videuse', metatype: 'troll', gender: 'male'
+    }, 's', onlyFemale).portrait).toBe(`${CONTACT_IMAGE_DIR}/videuse-troll-femme.webp`)
   })
   it("un personnage nommé ne vient que sur son métier", () => {
     expect(contactImageCandidates({

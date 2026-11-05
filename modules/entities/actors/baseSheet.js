@@ -2420,7 +2420,13 @@ export class ActorSheetSR5 extends foundry.applications.api.HandlebarsApplicatio
                   if((i + 1) !== (modifier.details.length)) modifierDetails += `, `
                 }
                 detailsHTML = detailsHTML + `<li>${game.i18n.localize('SR5.PenaltyValueSpecial')} [${modifierDetails}]${game.i18n.localize('SR5.Colons')} ${modifier.value}</li>`
-              } else detailsHTML = detailsHTML + `<li>${modifier.source} [${game.i18n.localize(SR5.modifierTypes[modifier.type])}]${game.i18n.localize('SR5.Colons')} ${(modifier.isMultiplier ? 'x' : (modifier.value >= 0 ? '+' : ''))}${modifier.value}</li>`
+              } else {
+                //An augmentation a lock leaves out (Quadriplegic, Better Than Bad p. 125): its own value, said ignored
+                const ignored = modifier.ignoredValue !== undefined ? ` (${game.i18n.format('SR5.ModifierIgnored', {
+                  value: `${modifier.isMultiplier ? 'x' : '+'}${modifier.ignoredValue}`
+                })})` : ""
+                detailsHTML = detailsHTML + `<li>${modifier.source} [${game.i18n.localize(SR5.modifierTypes[modifier.type])}]${game.i18n.localize('SR5.Colons')} ${(modifier.isMultiplier ? 'x' : (modifier.value >= 0 ? '+' : ''))}${modifier.value}${ignored}</li>`
+              }
             } else detailsHTML = detailsHTML + `<li>${modifier.source} [${game.i18n.localize(SR5.modifierTypes[modifier.type])}]${game.i18n.localize('SR5.Colons')} ${(modifier.isMultiplier ? 'x' : (modifier.dicePool >= 0 ? '+' : ''))}${modifier.dicePool}</li>`
           }
         }

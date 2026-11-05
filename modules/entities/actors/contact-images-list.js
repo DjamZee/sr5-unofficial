@@ -34,6 +34,9 @@ export const CONTACT_IMAGES = [
     "file":"alchimiste-mercenaire-elfe-homme.webp","job":"alchimiste mercenaire","metatype":"elf","gender":"male","token":"alchimiste-mercenaire-elfe-homme-token.webp"
   },
   {
+    "file":"armurier-nain-femme.webp","job":"armurier","metatype":"dwarf","gender":"female","token":"armurier-nain-femme-token.webp"
+  },
+  {
     "file":"armurier-nain-homme.webp","job":"armurier","metatype":"dwarf","gender":"male","token":"armurier-nain-homme-token.webp"
   },
   {
@@ -77,6 +80,9 @@ export const CONTACT_IMAGES = [
   },
   {
     "file":"codeuse-folle-boutonneuse-humain-femme.webp","job":"codeuse folle boutonneuse","metatype":"human","gender":"female","token":"codeuse-folle-boutonneuse-humain-femme-token.webp"
+  },
+  {
+    "file":"codeuse-folle-boutonneuse-nain-femme.webp","job":"codeuse folle boutonneuse","metatype":"dwarf","gender":"female","token":"codeuse-folle-boutonneuse-nain-femme-token.webp"
   },
   {
     "file":"consiglieri-de-la-mafia-humain-homme.webp","job":"consiglieri de la mafia","metatype":"human","gender":"male","token":"consiglieri-de-la-mafia-humain-homme-token.webp"
@@ -187,6 +193,9 @@ export const CONTACT_IMAGES = [
     "file":"marchand-de-talisman-humain-femme.webp","job":"marchand de talisman","metatype":"human","gender":"female","token":"marchand-de-talisman-humain-femme-token.webp"
   },
   {
+    "file":"marchand-de-talisman-troll-femme.webp","job":"marchand de talisman","metatype":"troll","gender":"female","token":"marchand-de-talisman-troll-femme-token.webp"
+  },
+  {
     "file":"mr-johnson-humain-femme.webp","job":"mr. johnson","metatype":"human","gender":"female","token":"mr-johnson-humain-femme-token.webp"
   },
   {
@@ -194,6 +203,9 @@ export const CONTACT_IMAGES = [
   },
   {
     "file":"mecano-d-atelier-de-desossage-humain-femme.webp","job":"mecano d'atelier de desossage","metatype":"human","gender":"female","token":"mecano-d-atelier-de-desossage-humain-femme-token.webp"
+  },
+  {
+    "file":"mecano-d-atelier-de-desossage-troll-femme.webp","job":"mecano d'atelier de desossage","metatype":"troll","gender":"female","token":"mecano-d-atelier-de-desossage-troll-femme-token.webp"
   },
   {
     "file":"nettoyeur-de-scene-de-crime-ork-homme.webp","job":"nettoyeur de scene de crime","metatype":"ork","gender":"male","token":"nettoyeur-de-scene-de-crime-ork-homme-token.webp"
@@ -244,9 +256,15 @@ export const CONTACT_IMAGES = [
     "file":"street-doc-humain-homme.webp","job":"street doc","metatype":"human","gender":"male","token":"street-doc-humain-homme-token.webp"
   },
   {
+    "file":"street-doc-nain-femme.webp","job":"street doc","metatype":"dwarf","gender":"female","token":"street-doc-nain-femme-token.webp"
+  },
+  {
     "file":"technicienne-cybernetique-troll-femme.webp","job":"technicienne cybernetique","metatype":"troll","gender":"female","token":"technicienne-cybernetique-troll-femme-token.webp"
   },
   {
     "file":"vendeur-d-arme-humain-homme.webp","job":"vendeur d'arme","metatype":"human","gender":"male","token":"vendeur-d-arme-humain-homme-token.webp"
+  },
+  {
+    "file":"videuse-de-bar-troll-femme.webp","job":"videuse de bar","metatype":"troll","gender":"female","token":"videuse-de-bar-troll-femme-token.webp"
   },
 ]

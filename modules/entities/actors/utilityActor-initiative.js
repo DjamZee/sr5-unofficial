@@ -17,6 +17,9 @@ import {
   limitAttributeValue
 } from "./poolOnlyAttribute.js"
 import {
+  quadriplegicSource, lockAugmentedAtZero
+} from "./effect-replace.js"
+import {
   isOriginalStrainMonad, naniteVolume
 } from "../../system/monad-matrix.js"
 import {
@@ -107,6 +110,15 @@ export class SR5_CharacterInitiativeUtility {
           if (profile?.score) SR5_EntityHelpers.updateModifier(initPhy, game.i18n.localize('SR5.InitiativeProfile'), "gruntProfile", profile.score)
           if (profile?.dice) SR5_EntityHelpers.updateModifier(initPhy.dice, game.i18n.localize('SR5.InitiativeProfile'), "gruntProfile", profile.dice)
         }
+    }
+
+    //Quadriplegic: no extra initiative die from an augmentation (wired reflexes, Jazz, a spell, an adept power), whatever
+    //the order of the items; the grunt's printed profile is no augmentation (arbitrage de DjamZ, 05/11, Better Than Bad p. 125)
+    if (actor.type === "actorPc" || actor.type === "actorGrunt") {
+      const quadriplegic = quadriplegicSource(attributes)
+      if (quadriplegic !== null) lockAugmentedAtZero(initPhy.dice, game.i18n.format("SR5.AugmentationsLockedQuadriplegic", {
+        source: quadriplegic
+      }), null, m => m.type === "gruntProfile")
     }
 
     this.applyPenalty("condition", initPhy, actor)

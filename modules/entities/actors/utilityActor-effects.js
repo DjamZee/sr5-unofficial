@@ -24,7 +24,7 @@ import {
   drugEffectApplies, phaseFromFlags, effectPhase
 } from "../items/drug-phase.js"
 import {
-  replaceModifierValue
+  replaceModifierValue, replaceTarget, zeroReplaceHolds
 } from "./effect-replace.js"
 import {
   SR5 
@@ -353,15 +353,29 @@ export class SR5_CharacterEffectsUtility {
               })
               break
             }
-            if (typeof targetObject.base === "number") targetObject.modifiers = []
             if (customEffect.type === "ratingReplace") customEffect.value = (itemData.itemRating || 0)
             if (customEffect.type === "hitsReplace") customEffect.value = (itemData.hits || 0)
+            //A value replace without a value in figures (null, "", missing) replaces nothing on an attribute: it neither
+            //clears the other modifiers nor brings the attribute down. The four valueReplace of Mystic Aptitude carry
+            //null; with the base left by the previous preparation (5), they gave -5 and an attribute of 0
+            if (typeof targetObject.base === "number" && replaceTarget(customEffect.value) === undefined) break
+            //A character attribute an effect brings down to 0 stays there: a later replace (a cyberlimb's Agility 5) used
+            //to clear it, and the lock of Quadriplegic hung on the order of the items (Better Than Bad p. 125)
+            if (typeof targetObject.base === "number" && zeroReplaceHolds(targetObject.modifiers, customEffect.target, actor.type)) break
+            if (typeof targetObject.base === "number") targetObject.modifiers = []
             if (typeof targetObject.base === "number" && targetObject.base < 1) targetObject.base = 0
             let modValue = replaceModifierValue(targetObject.base, (customEffect.value || 0)) * customEffect.multiplier
             //Pushed as it is, marked from the start: updateModifier() may merge it into another modifier of the same
             //type, and the last one of the list is not always the one just made
             if (!isNaN(modValue)) targetObject.modifiers.push({
-              source: item.name, type: modifierType, value: modValue, isMultiplier, replace: true
+              source: item.name, type: modifierType, value: modValue, isMultiplier, replace: true,
+              //The value aimed at, for a base set after the effects (reanchorReplaceModifiers, effect-replace.js)
+              //Only for a value in figures: an effect without one (null, "", missing) replaces nothing afterwards, as
+              //before (the four valueReplace of Mystic Aptitude carry null and must leave the attributes alone)
+              ...(typeof targetObject.base === "number" && replaceTarget(customEffect.value) !== undefined ? {
+                replaceTo: replaceTarget(customEffect.value), replaceMultiplier: customEffect.multiplier
+              } : {
+              })
             })
             break
           }
@@ -375,6 +389,14 @@ export class SR5_CharacterEffectsUtility {
           case "divide": {
             let divide = 1 / customEffect.multiplier
             SR5_EntityHelpers.updateModifier(targetObject, item.name, modifierType, divide, true, cumulative)
+            break
+          }
+          //The mirror of divide: the target is multiplied by the effect's multiplier, once all the additions are in
+          //(updatePropertyTotal: (base + sum) x product), whatever the order of the items. Powerful Swimmer (Shadow
+          //Spells p. 27): swimming rate and metres per hit doubled
+          case "multiply": {
+            const factor = Number(customEffect.multiplier)
+            if (Number.isFinite(factor) && factor > 0) SR5_EntityHelpers.updateModifier(targetObject, item.name, modifierType, factor, true, cumulative)
             break
           }
           default:

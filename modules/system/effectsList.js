@@ -538,6 +538,28 @@ export const _getSRStatusEffect = async function(origin, value) {
         },
         statuses: ["fuelTankBattery"]
       }
+    //SR5 p. 206: a vehicle part destroyed by a called shot
+    case "tire":
+    case "sensor":
+    case "window": {
+      const icons = {
+        tire: "StatusTireOn", sensor: "StatusSensorOn", window: "StatusWindowOn"
+      }
+      const labels = {
+        tire: "SR5.STATUSES_Tire", sensor: "SR5.STATUSES_Sensor", window: "SR5.STATUSES_Window"
+      }
+      return {
+        name: game.i18n.localize(labels[origin]),
+        origin: origin,
+        icon: `systems/sr5/assets/img/status/${icons[origin]}.svg`,
+        flags: {
+          core: {
+            active: true
+          }
+        },
+        statuses: [origin]
+      }
+    }
     case "flared":
       return {
         name: game.i18n.localize('SR5.STATUSES_Flared'),

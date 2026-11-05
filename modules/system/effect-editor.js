@@ -6,15 +6,15 @@ export const EFFECT_BINDINGS = ["customEffects", "itemEffects", "systemEffects"]
 
 // Called shots an item can ease, outside the martial arts techniques (category "martialArts" keeps those):
 // Attaque violente (SR5 p. 196), Prouesse (SR5 p. 197), Partager les dommages (SR5 p. 196), the ammo called shots
-// (Run & Gun p. 129-132) and the vehicle locations (Run & Gun p. 128-129). Tir transperçant is left out: its penalty
-// is the target's armor, not a book penalty.
+// (Run & Gun p. 129-132) and the vehicle locations (Run & Gun p. 128-129, SR5 p. 206). Tir transperçant is left out:
+// its penalty is the target's armor, not a book penalty.
 export const CALLED_SHOT_ITEM_KEYS = [
   "harderKnock", "trickShot", "splittingDamage",
   "bellringer", "bullsEye", "downTheGullet", "extremeIntimidation", "flameOn", "flashBlind", "hitEmWhereItCounts",
   "onPinsAndNeedles", "ricochetShot", "shreddedFlesh", "tag", "upTheAnte", "warningShot",
-  "antenna", "axle", "doorLock", "engineBlock", "fuelTankBattery", "windowMotor",
+  "antenna", "axle", "doorLock", "engineBlock", "fuelTankBattery", "windowMotor", "tire", "sensor", "window",
 ]
-export const CALLED_SHOT_VEHICLE_LOCATIONS = ["antenna", "axle", "doorLock", "engineBlock", "fuelTankBattery", "windowMotor"]
+export const CALLED_SHOT_VEHICLE_LOCATIONS = ["antenna", "axle", "doorLock", "engineBlock", "fuelTankBattery", "windowMotor", "tire", "sensor", "window"]
 
 // How much the items lower the penalty of a called shot: the called shot itself, and the vehicle location when one
 // is aimed at (Cible spécifique, or Doubler la mise which adds -4 to a location, Run & Gun p. 130)

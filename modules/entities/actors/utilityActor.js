@@ -5,6 +5,9 @@ import {
   SR5_EntityHelpers
 } from "../helpers.js"
 import {
+  reanchorReplaceModifiers, zeroLockSource, lockAugmentedAtZero, quadriplegicSource
+} from "./effect-replace.js"
+import {
   SR5ShopGrades
 } from "../../interface/shop-grades.js"
 import {
@@ -866,6 +869,8 @@ export class SR5_CharacterUtility extends Actor {
     let augmented = actor.system.attributes[key].augmented
     augmented.modifiers = augmented.modifiers.filter(m => m.type !== "augmentationCap")
     SR5_EntityHelpers.updateValue(augmented, 0)
+    //Locked at 0 (Better Than Bad p. 125): no augmentation counts, there is nothing to cap
+    if (augmented.modifiers.some(m => m.type === "attributeLock")) return
     let mode = "bonus"
     try {
       mode = game.settings.get("sr5", "sr5AugmentationCap")
@@ -922,6 +927,21 @@ export class SR5_CharacterUtility extends Actor {
     for (let key of Object.keys(list)) {
       SR5_EntityHelpers.updateValue(actorData.attributes[key].natural, 0)
       actorData.attributes[key].augmented.base = actorData.attributes[key].natural.value
+      reanchorReplaceModifiers(actorData.attributes[key].augmented)
+      //An attribute an effect brings down to 0 takes no augmentation (Quadriplegic, Better Than Bad p. 125)
+      if (actor.type === "actorPc" || actor.type === "actorGrunt") {
+        const lockSource = zeroLockSource(actorData.attributes[key])
+        if (lockSource !== null) lockAugmentedAtZero(actorData.attributes[key].augmented, game.i18n.format("SR5.AttributeLockedAtZero", {
+          source: lockSource
+        }))
+        //Body keeps its natural rating, without any augmentation, while Quadriplegic is on the sheet (arbitrage de DjamZ)
+        else if (key === "body") {
+          const quadriplegic = quadriplegicSource(actorData.attributes)
+          if (quadriplegic !== null) lockAugmentedAtZero(actorData.attributes[key].augmented, game.i18n.format("SR5.AttributeLockedAtNatural", {
+            source: quadriplegic
+          }), actorData.attributes[key].natural.value)
+        }
+      }
       SR5_EntityHelpers.updateValue(actorData.attributes[key].augmented, 0)
       if (actor.type === "actorPc" || actor.type === "actorGrunt") this.applyAugmentationCap(actor, key)
     }
@@ -944,6 +964,7 @@ export class SR5_CharacterUtility extends Actor {
         SR5_EntityHelpers.updateValue(actorData.specialAttributes[key].natural, 0)
 
         actorData.specialAttributes[key].augmented.base = actorData.specialAttributes[key].natural.value
+        reanchorReplaceModifiers(actorData.specialAttributes[key].augmented)
         SR5_EntityHelpers.updateValue(actorData.specialAttributes[key].augmented, 0)
 
         // KEEP IN STEP with mentorMagic() (modules/entities/items/mentor-spirits.js), which works out the same Magic
@@ -1328,6 +1349,14 @@ export class SR5_CharacterUtility extends Actor {
       const forceLimit = spiritType ? SR5_SpiritTypes.forceLimit(spiritType, actorData.force?.value, key) : null
       if (forceLimit !== null) limits[key].base = forceLimit
       limits[key].modifiers = (limits[key].modifiers ?? []).filter(m => m.type !== "augmentationCap")
+      //Quadriplegic: no bonus to the Physical limit from an augmentation (Jazz +1), whatever the order of the items
+      //(arbitrage de DjamZ, 05/11, Better Than Bad p. 125)
+      if (key === "physicalLimit" && (actor.type === "actorPc" || actor.type === "actorGrunt") && typeof limits[key].base === "number") {
+        const quadriplegic = quadriplegicSource(attributes)
+        if (quadriplegic !== null) lockAugmentedAtZero(limits[key], game.i18n.format("SR5.AugmentationsLockedQuadriplegic", {
+          source: quadriplegic
+        }), limits[key].base)
+      }
       SR5_EntityHelpers.updateValue(limits[key], 0)
       //Augmentation cap (SR5 p. 96): the limit reads the kept ratings; when the cap did cut something, the help
       //also gives the limit the real ratings would reach (arbitrage de DjamZ). The line counts for 0.

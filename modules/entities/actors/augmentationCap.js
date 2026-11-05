@@ -66,9 +66,12 @@ export function uncappedRating(attribute, forLimit = false) {
   if (!augmented) return 0
   const modifiers = augmented.modifiers ?? []
   if (forLimit && modifiers.some(m => m.poolOnly)) {
-    return (augmented.base ?? 0) + modifiers
+    const rating = (augmented.base ?? 0) + modifiers
       .filter(m => !m.poolOnly && !m.isMultiplier && m.type !== "augmentationCap")
       .reduce((sum, m) => sum + (Number(m.value) || 0), 0)
+    //A ceiling (an attribute locked at 0, Better Than Bad p. 125; a crash) still binds
+    const ceilings = modifiers.filter(m => typeof m?.ceiling === "number").map(m => m.ceiling)
+    return ceilings.length ? Math.min(rating, ...ceilings) : rating
   }
   const cut = modifiers.filter(m => m.type === "augmentationCap").reduce((sum, m) => sum + (Number(m.value) || 0), 0)
   return (augmented.value ?? 0) - cut

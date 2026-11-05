@@ -11,9 +11,11 @@
  *   - CI       : ...\CI\CI - originaux\ci-<nom>.png (portraits) ; ...\CI\Tokens CI - webp\ci-<nom>[-token].webp (jetons)
  *   - sprites  : ...\Sprites\PORTRAITS\Sprite - <Type>.png ; ...\Sprites\TOKENS\Token - webp\Sprite - <Type> - Token.webp
  *   - contacts : ...\Contacts\PORTRAITS\WEBP\<Métier> - <Métatype> - <Genre>.webp (les .webp seulement, DjamZ le 21/10) ;
- *                ...\Contacts\TOKENS\<même nom> - token.png (jetons ronds ; un portrait sans jeton garde son portrait pour jeton)
+ *                ...\Contacts\TOKENS\WEBP\<même nom> - token.webp (jetons ronds ; un portrait sans jeton garde son portrait pour jeton)
  *
- *   node tools/default-images.mjs [--racine <dossier Visuels>]
+ *   node tools/default-images.mjs [--racine <dossier Visuels>] [--contacts-nouveaux]
+ *
+ * --contacts-nouveaux : seulement les contacts pas encore convertis, les autres restent tels quels ; la liste est refaite.
  *
  * Python et Pillow font la conversion, comme tools/spirits-images.mjs.
  */
@@ -21,7 +23,7 @@ import {
   spawnSync
 } from "node:child_process"
 import {
-  mkdirSync, readdirSync, statSync, writeFileSync
+  existsSync, mkdirSync, readdirSync, statSync, writeFileSync
 } from "node:fs"
 import {
   join
@@ -29,6 +31,7 @@ import {
 
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined }
 const RACINE = arg("--racine") ?? "F:/FoundryVTT/Ressources Graphiques/Visuels"
+const NOUVEAUX = process.argv.includes("--contacts-nouveaux")
 const PORTRAIT = {
   taille: 400, qualite: 72
 }
@@ -63,6 +66,7 @@ im.save(dst, "WEBP", quality=q, method=6)`
 
 let total = 0, n = 0
 function convertir(src, dest, reglage) {
+  if (NOUVEAUX && existsSync(dest)) return
   const r = spawnSync("python", ["-c", PY, src, dest, String(reglage.taille), String(reglage.qualite)], {
     encoding: "utf8"
   })
@@ -73,8 +77,8 @@ function convertir(src, dest, reglage) {
 
 // CI
 const ciPortraits = join(RACINE, "CI", "CI - originaux"), ciJetons = join(RACINE, "CI", "Tokens CI - webp")
-const jetonsCi = readdirSync(ciJetons)
-for (const [nom, type] of Object.entries(CI)) {
+const jetonsCi = NOUVEAUX ? [] : readdirSync(ciJetons)
+for (const [nom, type] of NOUVEAUX ? [] : Object.entries(CI)) {
   mkdirSync(join("assets/img/ice", type), {
     recursive: true
   })
@@ -84,7 +88,7 @@ for (const [nom, type] of Object.entries(CI)) {
 }
 
 // Sprites
-for (const [nom, type] of Object.entries(SPRITES)) {
+for (const [nom, type] of NOUVEAUX ? [] : Object.entries(SPRITES)) {
   mkdirSync(join("assets/img/sprites", type), {
     recursive: true
   })
@@ -93,12 +97,12 @@ for (const [nom, type] of Object.entries(SPRITES)) {
 }
 
 // Contacts : « Métier - Métatype - Genre[ N] » ; « Nom - Métier » pour un personnage nommé
-const srcContacts = join(RACINE, "Contacts", "PORTRAITS", "WEBP"), srcJetons = join(RACINE, "Contacts", "TOKENS")
+const srcContacts = join(RACINE, "Contacts", "PORTRAITS", "WEBP"), srcJetons = join(RACINE, "Contacts", "TOKENS", "WEBP")
 const slug = (s) => norm(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
 // jetons par nom de portrait ; deux noms s'en écartent : sans « - token » (Propriétaire de magasin elfe femme) ou
 // sans numéro (« Homme » pour « Homme 1 »)
-const jetons = new Map(readdirSync(srcJetons).filter((x) => /\.png$/i.test(x))
-  .map((x) => [slug(x.replace(/( - token)?\.png$/i, "")), x]))
+const jetons = new Map(readdirSync(srcJetons).filter((x) => /\.webp$/i.test(x))
+  .map((x) => [slug(x.replace(/( - token)?\.webp$/i, "")), x]))
 const liste = [], sansJeton = []
 mkdirSync("assets/img/contacts", {
   recursive: true

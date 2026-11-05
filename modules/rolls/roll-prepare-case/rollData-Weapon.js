@@ -731,6 +731,10 @@ export function _buildCalledShotList(rollData){
     antenna: game.i18n.localize("SR5.CS_ST_Antenna"),
     doorLock: game.i18n.localize("SR5.CS_ST_DoorLock"),
     windowMotor: game.i18n.localize("SR5.CS_ST_WindowMotor"),
+    //SR5 p. 206: a tire, a sensor, a window
+    tire: game.i18n.localize("SR5.CS_ST_Tire"),
+    sensor: game.i18n.localize("SR5.CS_ST_Sensor"),
+    window: game.i18n.localize("SR5.CS_ST_Window"),
   }
 
   rollData.lists.calledShotsSpecificTarget = {

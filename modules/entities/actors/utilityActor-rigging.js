@@ -5,6 +5,9 @@ import {
   SR5_EntityHelpers
 } from "../helpers.js"
 import {
+  flatTireCount, flatTirePenalty
+} from "../../system/vehicle-parts.js"
+import {
   SR5_SystemHelpers 
 } from "../../system/utilitySystem.js"
 import {
@@ -39,6 +42,12 @@ function addControlerSneaking(test, controlerData, controlMode) {
   const rating = controlerData.skills.sneaking.rating.value
   if (rating) SR5_EntityHelpers.updateModifier(test, `${game.i18n.localize('SR5.Controler')} (${game.i18n.localize('SR5.SkillSneaking')})`, controlMode, rating)
   else SR5_EntityHelpers.updateModifier(test, `${game.i18n.localize('SR5.Controler')} (${game.i18n.localize('SR5.Defaulting')})`, controlMode, -1)
+}
+
+/** SR5 p. 206: -2 dice per flat tire on the piloting tests (vehicle test, ramming), whoever is at the controls */
+export function applyFlatTires(actor, test) {
+  const penalty = flatTirePenalty(actor.items)
+  if (penalty) SR5_EntityHelpers.updateModifier(test, `${game.i18n.localize('SR5.STATUSES_Tire')} (${flatTireCount(actor.items)})`, "flatTire", penalty)
 }
 
 export class SR5_CharacterRiggingUtility {
@@ -190,6 +199,7 @@ export class SR5_CharacterRiggingUtility {
         SR5_SystemHelpers.srLog(1, `Unknown controle mode '${actorData.controlMode}' in 'generateVehicleTest()'`)
     }
     SR5_CharacterUtility.applySpeedDemon(actor, vehicleTest.test)
+    applyFlatTires(actor, vehicleTest.test)
 
     //update vehicle Actions Value
     SR5_EntityHelpers.updateDicePool(vehicleTest.test, 0)
@@ -268,6 +278,7 @@ export class SR5_CharacterRiggingUtility {
         SR5_SystemHelpers.srLog(1, `Unknown controle mode '${actorData.controlMode}' in 'generateRammingTest()'`)
     }
     SR5_CharacterUtility.applySpeedDemon(actor, rammingTest.test)
+    applyFlatTires(actor, rammingTest.test)
 
     //update vehicle Actions Value
     SR5_EntityHelpers.updateDicePool(rammingTest.test, 0)
